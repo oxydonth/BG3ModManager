@@ -1,14 +1,14 @@
-LaughingLeader's Divinity Mod Manager
+LaughingLeader's BG3 Mod Manager
 =======
 
-A work-in-progress mod manager for Divinity: Original Sin 2 - Definitive Edition.
+A work-in-progress mod manager for Baldur's Gate 3.
 
 # Setup
 
 1. Run the game once if you haven't already, so a profile and the mods folders get created.
 2. Make sure you have [Microsoft .NET Framework 4.7.2](https://dotnet.microsoft.com/download/dotnet-framework/net472) installed
-3. [Grab the latest release.](https://github.com/LaughingLeader-DOS2-Mods/DivinityModManager/releases/latest/download/DivinityModManager_Latest.zip)
-4. The Divinity Mod Manager is portable, so extract it wherever you wish.
+3. [Grab the latest release.](https://github.com/LaughingLeader/BG3ModManager/releases/latest/download/BG3ModManager_Latest.zip)
+4. The BG3 Mod Manager is portable, so extract it wherever you wish.
 5. Upon opening the program, pathways to the game data and exe should be automatically detected. If this fails, you can manually set the pathways in Settings -> Preferences.
 6. Organize your active mods for a given profile, then click the first export button (Export Load Order to Game), or click File -> Export Order to Game, to export your active load order to the game.
  [![Exporting Load Orders](https://i.imgur.com/evJ9ulQl.jpg)](https://i.imgur.com/evJ9ulQ.png)
@@ -51,15 +51,15 @@ A work-in-progress mod manager for Divinity: Original Sin 2 - Definitive Edition
 
 # Notes
 
-* Divinity Engine 2 (editor) projects are highlighted in green. They can be used in the load order like regular mods, and even exported to zip files.
+* Mod projects in the Data folder are highlighted in green. They can be used in the load order like regular mods, and even exported to zip files.
 * New profiles must be made in-game. You should also run the game at least once, so all of the game's user folders are created.
 * Highlight over mods to see their description and list of dependencies. Red dependencies are missing dependencies.
 
 # Links
 
-* [Latest Release](https://github.com/LaughingLeader-DOS2-Mods/DivinityModManager/releases/latest)
-* [Changelog](https://github.com/LaughingLeader-DOS2-Mods/DivinityModManager/wiki/Changelog)
-* [Divinity Mod Manager Discord](https://discord.gg/j5gp6MD)
+* [Latest Release](https://github.com/LaughingLeader/BG3ModManager/releases/latest)
+* [Changelog](https://github.com/LaughingLeader/BG3ModManager/wiki/Changelog)
+* [Leader's Lair Discord](https://discord.gg/j5gp6MD)
 
 # Support
 
@@ -72,5 +72,4 @@ All coffee goes toward fueling future and current development efforts. Thanks!
 # Credits
 
 * Thanks to [Norbyte](https://github.com/Norbyte) for creating [LSLib](https://github.com/Norbyte/lslib), which allows various features of the manager (getting data from paks, reading lsb files, just to name a few).
-* [Dan Iorgulescu](https://www.artstation.com/daniorgulescu) (Concept Artist on Baldur's Gate III at Larian Studios) for the [beautiful key/box art](https://www.artstation.com/artwork/mV159) used for the app icon (Fane's head) as of 12/20/2019.
-* [Divinity: Original Sin 2](http://store.steampowered.com/app/435150/Divinity_Original_Sin_2/), a wonderful game from [Larian Studios](http://larian.com/)
+* [Baldur's Gate 3](https://store.steampowered.com/app/1086940/Baldurs_Gate_3/), a wonderful game from [Larian Studios](http://larian.com/)
