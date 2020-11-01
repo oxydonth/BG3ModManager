@@ -682,7 +682,7 @@ namespace DivinityModManager.ViewModels
 			}
 			else
 			{
-				Trace.WriteLine($"Found DOS2 workshop folder at: '{Settings.WorkshopPath}'.");
+				Trace.WriteLine($"Found workshop folder at: '{Settings.WorkshopPath}'.");
 			}
 
 			canSaveSettings = this.WhenAnyValue(x => x.Settings.CanSaveSettings);
@@ -973,8 +973,7 @@ namespace DivinityModManager.ViewModels
 			try
 			{
 				string documentsFolder = System.Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-
-				string larianDocumentsFolder = Path.Combine(documentsFolder, @"Larian Studios\Divinity Original Sin 2 Definitive Edition");
+				string larianDocumentsFolder = Path.Combine(documentsFolder, DefaultPathways.DocumentsGameFolder);
 				PathwayData.LarianDocumentsFolder = larianDocumentsFolder;
 				Trace.WriteLine($"Larian documents folder set to '{larianDocumentsFolder}'.");
 				if (!Directory.Exists(larianDocumentsFolder))
@@ -1022,7 +1021,7 @@ namespace DivinityModManager.ViewModels
 							}
 						}
 
-						string gameDataPath = Path.Combine(installPath, "DefEd/Data").Replace("\\", "/");
+						string gameDataPath = Path.Combine(installPath, DefaultPathways.GameDataFolder).Replace("\\", "/");
 						Trace.WriteLine($"Set game data path to '{gameDataPath}'.");
 						Settings.GameDataPath = gameDataPath;
 						SaveSettings();
@@ -1614,7 +1613,7 @@ namespace DivinityModManager.ViewModels
 							StatusBarRightText = $"Downloading workshop data for {unknownWorkshopMods.Count} mods...";
 						});
 						//totalSuccess += await DivinityWorkshopDataLoader.FindWorkshopDataAsync(unknownWorkshopMods, CachedWorkshopData);
-						var success = await DivinityWorkshopDataLoader.GetAllWorkshopDataAsync(CachedWorkshopData);
+						var success = await DivinityWorkshopDataLoader.GetAllWorkshopDataAsync(CachedWorkshopData, DefaultPathways.Steam.AppID);
 						if(success)
 						{
 							foreach(var mod in unknownWorkshopMods)
