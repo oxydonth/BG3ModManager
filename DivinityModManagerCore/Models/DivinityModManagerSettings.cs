@@ -205,7 +205,7 @@ namespace DivinityModManager.Models
 			set { this.RaiseAndSetIfChanged(ref disableMissingModWarnings, value); }
 		}
 
-		private bool disableWorkshopTagCheck = false;
+		private bool disableWorkshopTagCheck = true;
 
 		[DataMember]
 		public bool DisableWorkshopTagCheck
