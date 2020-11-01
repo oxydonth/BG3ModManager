@@ -1,4 +1,4 @@
 {
-  "ScriptExtender": true,
-  "Workshop": true
+  "ScriptExtender": false,
+  "Workshop": false
 }

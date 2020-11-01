@@ -102,7 +102,7 @@
 						RowCount="9"
 						RowHeight="*"
 						Rows="auto,auto,auto,auto,auto,auto,auto,auto,auto">
-						<TextBlock Text="Game Data Path" ToolTip="The path to the DOS2DE Data folder, for loading editor mods.&#x0a;Example: Divinity Original Sin 2/DefEd/Data" />
+						<TextBlock Text="Game Data Path" ToolTip="The path to the Data folder, for loading editor mods.&#x0a;Example: Baldur's Gate 3/Data" />
 						<controls:UnfocusableTextBox
 							VerticalAlignment="Center"
 							Text="{Binding GameDataPath, UpdateSourceTrigger=PropertyChanged, FallbackValue=''}"
