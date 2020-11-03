@@ -561,7 +561,7 @@
 							<Button
 								x:Name="OpenWorkshopFolderButton"
 								Command="{Binding OpenWorkshopFolderCommand}"
-								ToolTip="Open DOS2 Workshop Folder">
+								ToolTip="Open Workshop Folder">
 								<controls:AutoGrayableImage Source="{StaticResource OpenSteamWorkshopFolderImage}" />
 								<Button.ContextMenu>
 									<ContextMenu>
@@ -590,19 +590,19 @@
 								</Button.ContextMenu>
 							</Button>
 							<Button
-								x:Name="OpenDOS2GameButton"
-								Command="{Binding OpenDOS2GameCommand}"
-								ToolTip="Run Divinity: Original Sin 2 - Definitive Edition">
-								<controls:AutoGrayableImage Source="{StaticResource OpenDOS2Image}" />
+								x:Name="OpenGameButton"
+								Command="{Binding OpenGameCommand}"
+								ToolTip="Launch Game">
+								<controls:AutoGrayableImage Source="{StaticResource OpenGameImage}" />
 								<Button.ContextMenu>
 									<ContextMenu>
 										<MenuItem
 											Command="{Binding Path=OpenInFileExplorerCommand, Source={x:Static dapp:DivinityApp.Commands}}"
-											CommandParameter="{Binding Settings.DOS2DEGameExecutable}"
+											CommandParameter="{Binding Settings.GameExecutablePath}"
 											Header="Open Game Folder..." />
 										<MenuItem
 											Command="{Binding CopyPathToClipboardCommand}"
-											CommandParameter="{Binding Settings.DOS2DEGameExecutable}"
+											CommandParameter="{Binding Settings.GameExecutablePath}"
 											Header="Copy Path to Clipboard" />
 									</ContextMenu>
 								</Button.ContextMenu>

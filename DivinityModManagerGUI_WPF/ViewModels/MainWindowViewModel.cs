@@ -345,10 +345,10 @@ namespace DivinityModManager.ViewModels
 
 		private IObservable<bool> canSaveSettings;
 		private IObservable<bool> canOpenWorkshopFolder;
-		private IObservable<bool> canOpenDOS2DEGame;
+		private IObservable<bool> canOpenGameExe;
 		private IObservable<bool> canOpenDialogWindow;
 		private IObservable<bool> gameExeFoundObservable;
-		private IObservable<bool> canInstallOsiExtender;
+		//private IObservable<bool> canInstallOsiExtender;
 		private IObservable<bool> canOpenLogDirectory;
 
 		private bool OpenRepoLinkToDownload { get; set; } = false;
@@ -366,7 +366,7 @@ namespace DivinityModManager.ViewModels
 		public ICommand OpenModsFolderCommand { get; private set; }
 		public ICommand OpenWorkshopFolderCommand { get; private set; }
 		public ICommand OpenExtenderLogDirectoryCommand { get; private set; }
-		public ICommand OpenDOS2GameCommand { get; private set; }
+		public ICommand OpenGameCommand { get; private set; }
 		public ICommand OpenDonationPageCommand { get; private set; }
 		public ICommand OpenRepoPageCommand { get; private set; }
 		public ICommand DebugCommand { get; private set; }
@@ -537,7 +537,7 @@ namespace DivinityModManager.ViewModels
 				Trace.WriteLine($"Error loading extender settings: {ex.ToString()}");
 			}
 
-			string extenderUpdaterPath = Path.Combine(Path.GetDirectoryName(Settings.DOS2DEGameExecutable), "DXGI.dll");
+			string extenderUpdaterPath = Path.Combine(Path.GetDirectoryName(Settings.GameExecutablePath), "DXGI.dll");
 			Trace.WriteLine($"Looking for OsiExtender at '{extenderUpdaterPath}'.");
 			if (File.Exists(extenderUpdaterPath))
 			{
@@ -607,7 +607,7 @@ namespace DivinityModManager.ViewModels
 
 		private void LoadExtenderSettings()
 		{
-			if (File.Exists(Settings.DOS2DEGameExecutable))
+			if (File.Exists(Settings.GameExecutablePath))
 			{
 				RxApp.TaskpoolScheduler.ScheduleAsync(async (c, t) =>
 				{
@@ -688,13 +688,17 @@ namespace DivinityModManager.ViewModels
 					Trace.WriteLine($"Found workshop folder at: '{Settings.WorkshopPath}'.");
 				}
 			}
+			else
+			{
+				Settings.WorkshopPath = "";
+			}
 
 			canSaveSettings = this.WhenAnyValue(x => x.Settings.CanSaveSettings);
 			canOpenWorkshopFolder = this.WhenAnyValue(x => x.Settings.WorkshopPath, (p) => (AppSettings.FeatureEnabled("Workshop") && !String.IsNullOrEmpty(p) && Directory.Exists(p)));
-			canOpenDOS2DEGame = this.WhenAnyValue(x => x.Settings.DOS2DEGameExecutable, (p) => !String.IsNullOrEmpty(p) && File.Exists(p));
+			canOpenGameExe = this.WhenAnyValue(x => x.Settings.GameExecutablePath, (p) => !String.IsNullOrEmpty(p) && File.Exists(p));
 			canOpenLogDirectory = this.WhenAnyValue(x => x.Settings.ExtenderLogDirectory, (f) => Directory.Exists(f));
-			gameExeFoundObservable = this.WhenAnyValue(x => x.Settings.DOS2DEGameExecutable, (path) => path.IsExistingFile());
-			//canInstallOsiExtender = this.WhenAnyValue(x => x.PathwayData.OsirisExtenderLatestReleaseUrl, x => x.Settings.DOS2DEGameExecutable,
+			gameExeFoundObservable = this.WhenAnyValue(x => x.Settings.GameExecutablePath, (path) => path.IsExistingFile());
+			//canInstallOsiExtender = this.WhenAnyValue(x => x.PathwayData.OsirisExtenderLatestReleaseUrl, x => x.Settings.GameExecutablePath,
 			//	(url, exe) => !String.IsNullOrWhiteSpace(url) && exe.IsExistingFile()).ObserveOn(RxApp.MainThreadScheduler);
 
 			OpenExtenderLogDirectoryCommand = ReactiveCommand.Create(() =>
@@ -709,14 +713,14 @@ namespace DivinityModManager.ViewModels
 			{
 				try
 				{
-					System.IO.FileAttributes attr = File.GetAttributes(Settings.DOS2DEGameExecutable);
+					System.IO.FileAttributes attr = File.GetAttributes(Settings.GameExecutablePath);
 
 					if (attr.HasFlag(System.IO.FileAttributes.Directory))
 					{
-						var exe = Path.Combine(Settings.DOS2DEGameExecutable, "EoCApp.exe");
+						var exe = Path.Combine(Settings.GameExecutablePath, "EoCApp.exe");
 						if (File.Exists(exe))
 						{
-							Settings.DOS2DEGameExecutable = exe;
+							Settings.GameExecutablePath = exe;
 						}
 					}
 				}
@@ -734,7 +738,7 @@ namespace DivinityModManager.ViewModels
 
 			Settings.ExportExtenderSettingsCommand = ReactiveCommand.Create(() =>
 			{
-				string outputFile = Path.Combine(Path.GetDirectoryName(Settings.DOS2DEGameExecutable), "OsirisExtenderSettings.json");
+				string outputFile = Path.Combine(Path.GetDirectoryName(Settings.GameExecutablePath), "OsirisExtenderSettings.json");
 				try
 				{
 					var jsonSettings = new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Ignore, Formatting = Formatting.Indented };
@@ -832,7 +836,7 @@ namespace DivinityModManager.ViewModels
 				ToggleLogging(true);
 			}
 
-			SetDOS2Pathways(Settings.GameDataPath);
+			SetGamePathways(Settings.GameDataPath);
 
 			if (loaded)
 			{
@@ -972,7 +976,7 @@ namespace DivinityModManager.ViewModels
 			ModUpdatesViewData.OnLoaded?.Invoke();
 		}
 
-		private void SetDOS2Pathways(string currentGameDataPath)
+		private void SetGamePathways(string currentGameDataPath)
 		{
 			try
 			{
@@ -1008,7 +1012,7 @@ namespace DivinityModManager.ViewModels
 					if (Directory.Exists(installPath))
 					{
 						PathwayData.InstallPath = installPath;
-						if (!File.Exists(Settings.DOS2DEGameExecutable))
+						if (!File.Exists(Settings.GameExecutablePath))
 						{
 							string exePath = "";
 							if (!DivinityRegistryHelper.IsGOG)
@@ -1021,7 +1025,7 @@ namespace DivinityModManager.ViewModels
 							}
 							if (File.Exists(exePath))
 							{
-								Settings.DOS2DEGameExecutable = exePath.Replace("\\", "/");
+								Settings.GameExecutablePath = exePath.Replace("\\", "/");
 								Trace.WriteLine($"Exe path set to '{exePath}'.");
 							}
 						}
@@ -1036,7 +1040,7 @@ namespace DivinityModManager.ViewModels
 				{
 					string installPath = Path.GetFullPath(Path.Combine(Settings.GameDataPath, @"..\..\"));
 					PathwayData.InstallPath = installPath;
-					if (!File.Exists(Settings.DOS2DEGameExecutable))
+					if (!File.Exists(Settings.GameExecutablePath))
 					{
 						string exePath = "";
 						if (!DivinityRegistryHelper.IsGOG)
@@ -1049,7 +1053,7 @@ namespace DivinityModManager.ViewModels
 						}
 						if (File.Exists(exePath))
 						{
-							Settings.DOS2DEGameExecutable = exePath.Replace("\\", "/");
+							Settings.GameExecutablePath = exePath.Replace("\\", "/");
 							Trace.WriteLine($"Exe path set to '{exePath}'.");
 						}
 					}
@@ -1200,7 +1204,7 @@ namespace DivinityModManager.ViewModels
 			}
 			else
 			{
-				Trace.WriteLine($"Larian DOS2DE profile folder not found at '{PathwayData.DocumentsProfilesPath}'.");
+				Trace.WriteLine($"Profile folder not found at '{PathwayData.DocumentsProfilesPath}'.");
 			}
 		}
 
@@ -1216,7 +1220,7 @@ namespace DivinityModManager.ViewModels
 			}
 			else
 			{
-				Trace.WriteLine($"Larian DOS2DE profile folder not found at '{PathwayData.DocumentsProfilesPath}'.");
+				Trace.WriteLine($"Profile folder not found at '{PathwayData.DocumentsProfilesPath}'.");
 			}
 			return null;
 		}
@@ -3257,7 +3261,7 @@ namespace DivinityModManager.ViewModels
 		{
 			if(!OpenRepoLinkToDownload)
 			{
-				string exeDir = Path.GetDirectoryName(Settings.DOS2DEGameExecutable);
+				string exeDir = Path.GetDirectoryName(Settings.GameExecutablePath);
 				string messageText = String.Format(@"Download and install the Osiris Extender?
 The Osiris Extender is used by various mods to extend the scripting language of the game, allowing new functionality.
 The extenders needs to only be installed once, as it can auto-update itself automatically when you launch the game.
@@ -3585,25 +3589,20 @@ Directory the zip will be extracted to:
 				Process.Start(PathwayData.DocumentsModsPath);
 			}, canOpenModsFolder);
 
-			//canOpenWorkshopFolder.Subscribe((b) =>
-			//{
-			//	Trace.WriteLine($"Workshop folder exists: {b} | {Settings.WorkshopPath}");
-			//});
-
 			OpenWorkshopFolderCommand = ReactiveCommand.Create(() =>
 			{
 				Process.Start(Settings.WorkshopPath);
 			}, canOpenWorkshopFolder);
 
-			OpenDOS2GameCommand = ReactiveCommand.Create(() =>
+			OpenGameCommand = ReactiveCommand.Create(() =>
 			{
 				if (!Settings.GameStoryLogEnabled)
 				{
-					Process.Start(Settings.DOS2DEGameExecutable);
+					Process.Start(Settings.GameExecutablePath);
 				}
 				else
 				{
-					Process.Start(Settings.DOS2DEGameExecutable, "-storylog 1");
+					Process.Start(Settings.GameExecutablePath, "-storylog 1");
 				}
 
 				if (Settings.ActionOnGameLaunch != DivinityGameLaunchWindowAction.None)
@@ -3619,7 +3618,7 @@ Directory the zip will be extracted to:
 					}
 				}
 				
-			}, canOpenDOS2DEGame);
+			}, canOpenGameExe);
 
 			OpenDonationPageCommand = ReactiveCommand.Create(() =>
 			{
@@ -3712,12 +3711,6 @@ Directory the zip will be extracted to:
 					}
 				}
 			});
-
-			//var selectedOrderObservable = this.WhenAnyValue(x => x.SelectedModOrderIndex, x => x.ModOrderList.Count, 
-			//	(index, count) => index >= 0 && count > 0 && index < count).Where(b => b == true);
-
-			//selectedOrderObservable.Select(x => ModOrderList[SelectedModOrderIndex]).ToProperty(this, x => x.SelectedModOrder, out selectedModOrder).DisposeWith(this.Disposables);
-			//selectedOrderObservable.Select(x => ModOrderList[SelectedModOrderIndex].DisplayName).ToProperty(this, x => x.SelectedModOrderDisplayName, out selectedModOrderDisplayName);
 
 			//Throttle in case the index changes quickly in a short timespan
 			this.WhenAnyValue(vm => vm.SelectedModOrderIndex).ObserveOn(RxApp.MainThreadScheduler).Subscribe((_) => {
@@ -3843,11 +3836,6 @@ Directory the zip will be extracted to:
 			this.WhenAnyValue(x => x.ModUpdatesViewData.NewAvailable, 
 				x => x.ModUpdatesViewData.UpdatesAvailable, (b1, b2) => b1 || b2).BindTo(this, x => x.ModUpdatesAvailable);
 
-			//this.WhenAnyValue(x => x.ModUpdatesAvailable).Subscribe((b) =>
-			//{
-			//	Trace.WriteLine("Updates available: " + b.ToString());
-			//});
-
 			ModUpdatesViewData.CloseView = new Action<bool>((bool refresh) =>
 			{
 				ModUpdatesViewData.Clear();
@@ -3855,16 +3843,6 @@ Directory the zip will be extracted to:
 				ModUpdatesViewVisible = false;
 				view.Activate();
 			});
-
-			//this.WhenAnyValue(x => x.ModUpdatesViewData.JustUpdated).Subscribe((b) =>
-			//{
-			//	if(b)
-			//	{
-			//		ModUpdatesViewVisible = false;
-			//		ModUpdatesViewData.Clear();
-			//		Refresh();
-			//	}
-			//});
 
 			DebugCommand = ReactiveCommand.Create(() => InactiveMods.Add(new DivinityModData() { Name = "Test" }));
 
@@ -3895,48 +3873,6 @@ Directory the zip will be extracted to:
 				}
 			});
 
-			//.Buffer(TimeSpan.FromMilliseconds(50)).Distinct().SelectMany(x => x)
-			/*
-			activeModsConnection.WhereReasonsAre(ListChangeReason.Add, ListChangeReason.AddRange).ForEachItemChange((x) =>
-			{
-				if (x != null && x.Current != null)
-				{
-					x.Current.IsActive = true;
-					//if (SelectedModOrder != null)
-					//{
-					//	SelectedModOrder.Add(x.Current);
-					//}
-				}
-				//x.Current.Index = x.CurrentIndex;
-			}).Throttle(TimeSpan.FromMilliseconds(5)).Subscribe(_ =>
-			{
-				OnFilterTextChanged(ActiveModFilterText, ActiveMods);
-				if (SelectedModOrder != null)
-				{
-					SelectedModOrder.SetOrder(ActiveMods.Select(x => x.ToOrderEntry()));
-				}
-			});
-
-			inactiveModsConnection.WhereReasonsAre(ListChangeReason.Add, ListChangeReason.AddRange).ForEachItemChange((x) =>
-			{
-				if (x != null && x.Current != null)
-				{
-					x.Current.IsActive = false;
-					if (SelectedModOrder != null)
-					{
-						//SelectedModOrder.Remove(x.Current);
-					}
-				}
-			}).Throttle(TimeSpan.FromMilliseconds(5)).Subscribe(_ =>
-			{
-				OnFilterTextChanged(InactiveModFilterText, InactiveMods);
-				if (SelectedModOrder != null)
-				{
-					SelectedModOrder.SetOrder(ActiveMods.Select(x => x.ToOrderEntry()));
-				}
-			});
-			*/
-
 			activeModsConnection.AutoRefresh(x => x.IsSelected).
 				ToCollection().Select(x => x.Count(y => y.IsSelected)).ToProperty(this, x => x.ActiveSelected, out activeSelected);
 
@@ -3944,17 +3880,6 @@ Directory the zip will be extracted to:
 				ToCollection().Select(x => x.Count(y => y.IsSelected)).ToProperty(this, x => x.InactiveSelected, out inactiveSelected);
 
 			DivinityApp.Events.OrderNameChanged += OnOrderNameChanged;
-
-#if DEBUG
-			//this.WhenAnyValue(x => x.ActiveSelected).Subscribe((x) =>
-			//{
-			//	Trace.WriteLine($"Total selected active mods: {x}");
-			//});
-			//this.WhenAnyValue(x => x.InactiveSelected).Subscribe((x) =>
-			//{
-			//	Trace.WriteLine($"Total selected inactive mods: {x}");
-			//});
-#endif
 		}
 	}
 }

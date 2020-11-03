@@ -53,9 +53,9 @@ namespace DivinityModManager.Models
 
 		public string OsirisExtenderSettingsFile(DivinityModManagerSettings settings)
 		{
-			if(settings.DOS2DEGameExecutable.IsExistingFile())
+			if(settings.GameExecutablePath.IsExistingFile())
 			{
-				return Path.Combine(Path.GetDirectoryName(settings.DOS2DEGameExecutable), "OsirisExtenderSettings.json");
+				return Path.Combine(Path.GetDirectoryName(settings.GameExecutablePath), "OsirisExtenderSettings.json");
 			}
 			return "";
 		}
@@ -69,14 +69,5 @@ namespace DivinityModManager.Models
 		}
 
 		public string OsirisExtenderLatestReleaseVersion { get; set; } = "";
-
-		//private string gameDOS2DEPath;
-
-		//public string GameDOS2DEPath
-		//{
-		//	get => gameDOS2DEPath;
-		//	set { this.RaiseAndSetIfChanged(ref gameDOS2DEPath, value); }
-		//}
-
 	}
 }

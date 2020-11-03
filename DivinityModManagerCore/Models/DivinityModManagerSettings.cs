@@ -35,7 +35,7 @@ namespace DivinityModManager.Models
 		private string gameExecutable = "";
 
 		[DataMember]
-		public string DOS2DEGameExecutable
+		public string GameExecutablePath
 		{
 			get => gameExecutable;
 			set
