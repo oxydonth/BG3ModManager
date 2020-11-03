@@ -340,6 +340,14 @@ namespace DivinityModManager.ViewModels
 			set { this.RaiseAndSetIfChanged(ref statusBarBusyIndicatorVisibility, value); }
 		}
 
+		private bool workshopSupportEnabled;
+
+		public bool WorkshopSupportEnabled
+		{
+			get => workshopSupportEnabled;
+			set { this.RaiseAndSetIfChanged(ref workshopSupportEnabled, value); }
+		}
+
 
 		public IObservable<bool> canRenameOrder;
 
@@ -672,6 +680,9 @@ namespace DivinityModManager.ViewModels
 
 			LoadAppConfig();
 
+			canOpenWorkshopFolder = this.WhenAnyValue(x => x.WorkshopSupportEnabled, x => x.Settings.WorkshopPath,
+				(b,p) => (b && !String.IsNullOrEmpty(p) && Directory.Exists(p))).StartWith(false);
+
 			if (AppSettings.FeatureEnabled("Workshop"))
 			{
 				if (String.IsNullOrEmpty(Settings.WorkshopPath) || !Directory.Exists(Settings.WorkshopPath))
@@ -687,15 +698,15 @@ namespace DivinityModManager.ViewModels
 				{
 					Trace.WriteLine($"Found workshop folder at: '{Settings.WorkshopPath}'.");
 				}
+				WorkshopSupportEnabled = true;
 			}
 			else
 			{
+				WorkshopSupportEnabled = false;
 				Settings.WorkshopPath = "";
 			}
 
 			canSaveSettings = this.WhenAnyValue(x => x.Settings.CanSaveSettings).StartWith(false);
-			canOpenWorkshopFolder = this.WhenAnyValue(x => x.Settings.WorkshopPath, 
-				(p) => (AppSettings.FeatureEnabled("Workshop") && !String.IsNullOrEmpty(p) && Directory.Exists(p))).StartWith(false);
 			canOpenGameExe = this.WhenAnyValue(x => x.Settings.GameExecutablePath, (p) => !String.IsNullOrEmpty(p) && File.Exists(p)).StartWith(false);
 			canOpenLogDirectory = this.WhenAnyValue(x => x.Settings.ExtenderLogDirectory, (f) => Directory.Exists(f)).StartWith(false);
 			gameExeFoundObservable = this.WhenAnyValue(x => x.Settings.GameExecutablePath, (path) => path.IsExistingFile()).StartWith(false);
@@ -709,6 +720,41 @@ namespace DivinityModManager.ViewModels
 			this.RaisePropertyChanged("OpenExtenderLogDirectoryCommand");
 
 			DownloadAndInstallOsiExtenderCommand = ReactiveCommand.Create(InstallOsiExtender_Start).DisposeWith(Settings.Disposables);
+
+			OpenWorkshopFolderCommand = ReactiveCommand.Create(() =>
+			{
+				Trace.WriteLine($"WorkshopSupportEnabled:{WorkshopSupportEnabled} CanExecute:{OpenWorkshopFolderCommand.CanExecute(null)}");
+				if (!String.IsNullOrEmpty(Settings.WorkshopPath) && Directory.Exists(Settings.WorkshopPath))
+				{
+					Process.Start(Settings.WorkshopPath);
+				}
+			}, canOpenWorkshopFolder).DisposeWith(Settings.Disposables);
+
+			OpenGameCommand = ReactiveCommand.Create(() =>
+			{
+				if (!Settings.GameStoryLogEnabled)
+				{
+					Process.Start(Settings.GameExecutablePath);
+				}
+				else
+				{
+					Process.Start(Settings.GameExecutablePath, "-storylog 1");
+				}
+
+				if (Settings.ActionOnGameLaunch != DivinityGameLaunchWindowAction.None)
+				{
+					switch (Settings.ActionOnGameLaunch)
+					{
+						case DivinityGameLaunchWindowAction.Minimize:
+							view.WindowState = WindowState.Minimized;
+							break;
+						case DivinityGameLaunchWindowAction.Close:
+							App.Current.Shutdown();
+							break;
+					}
+				}
+
+			}, canOpenGameExe).DisposeWith(Settings.Disposables);
 
 			Settings.SaveSettingsCommand = ReactiveCommand.Create(() =>
 			{
@@ -844,6 +890,11 @@ namespace DivinityModManager.ViewModels
 				Settings.CanSaveSettings = false;
 				//view.AlertBar.SetSuccessAlert($"Loaded settings from '{settingsFile}'.", 5);
 			}
+
+			View.CreateButtonBinding("OpenWorkshopFolderButton", "OpenWorkshopFolderCommand");
+			View.CreateButtonBinding("OpenModsFolderButton", "OpenModsFolderCommand");
+			View.CreateButtonBinding("OpenExtenderLogsFolderButton", "OpenExtenderLogDirectoryCommand");
+			View.CreateButtonBinding("OpenGameButton", "OpenGameCommand");
 
 			return loaded;
 		}
@@ -3589,40 +3640,6 @@ Directory the zip will be extracted to:
 			{
 				Process.Start(PathwayData.DocumentsModsPath);
 			}, canOpenModsFolder);
-
-			OpenWorkshopFolderCommand = ReactiveCommand.Create(() =>
-			{
-				if (!String.IsNullOrEmpty(Settings.WorkshopPath) && Directory.Exists(Settings.WorkshopPath))
-				{
-					Process.Start(Settings.WorkshopPath);
-				}
-			}, canOpenWorkshopFolder);
-
-			OpenGameCommand = ReactiveCommand.Create(() =>
-			{
-				if (!Settings.GameStoryLogEnabled)
-				{
-					Process.Start(Settings.GameExecutablePath);
-				}
-				else
-				{
-					Process.Start(Settings.GameExecutablePath, "-storylog 1");
-				}
-
-				if (Settings.ActionOnGameLaunch != DivinityGameLaunchWindowAction.None)
-				{
-					switch(Settings.ActionOnGameLaunch)
-					{
-						case DivinityGameLaunchWindowAction.Minimize:
-							view.WindowState = WindowState.Minimized;
-							break;
-						case DivinityGameLaunchWindowAction.Close:
-							App.Current.Shutdown();
-							break;
-					}
-				}
-				
-			}, canOpenGameExe);
 
 			OpenDonationPageCommand = ReactiveCommand.Create(() =>
 			{

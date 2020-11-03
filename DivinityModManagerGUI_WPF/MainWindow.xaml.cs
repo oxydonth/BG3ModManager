@@ -49,6 +49,22 @@ namespace DivinityModManager.Views
 		public MainWindowViewModel ViewModel { get; set; }
 		object IViewFor.ViewModel { get; set; }
 
+		public void CreateButtonBinding(string name, string vmProperty)
+		{
+			var element = FindName(name);
+			if (element != null && element is Button button)
+			{
+				Binding binding = new Binding(vmProperty);
+				binding.Source = ViewModel;
+				binding.Mode = BindingMode.OneWay;
+				button.SetBinding(Button.CommandProperty, binding);
+			}
+			else
+			{
+				Trace.WriteLine("Failed to find button for name " + name);
+			}
+		}
+
 		public MainWindow()
 		{
 			InitializeComponent();
@@ -71,7 +87,7 @@ namespace DivinityModManager.Views
 			};
 			settingsWindow.Closed += delegate
 			{
-				if(ViewModel?.Settings != null)
+				if (ViewModel?.Settings != null)
 				{
 					ViewModel.Settings.SettingsWindowIsOpen = false;
 				}
@@ -95,7 +111,7 @@ namespace DivinityModManager.Views
 			AutoUpdater.HttpUserAgent = "DivinityModManagerUser";
 
 			var res = this.TryFindResource("ModUpdaterPanel");
-			if(res != null && res is ModUpdatesLayout modUpdaterPanel)
+			if (res != null && res is ModUpdatesLayout modUpdaterPanel)
 			{
 				Binding binding = new Binding("ModUpdatesViewData");
 				binding.Source = ViewModel;
@@ -211,6 +227,12 @@ namespace DivinityModManager.Views
 				this.WhenAnyValue(x => x.ViewModel.OpenRepoPageCommand).BindTo(this, view => view.HelpOpenRepoPageMenuItem.Command);
 				this.WhenAnyValue(x => x.ViewModel.OpenAboutWindowCommand).BindTo(this, view => view.HelpOpenAboutWindowMenuItem.Command);
 
+				// Shortcut button bindings
+				CreateButtonBinding("OpenWorkshopFolderButton", "OpenWorkshopFolderCommand");
+				CreateButtonBinding("OpenModsFolderButton", "OpenModsFolderCommand");
+				CreateButtonBinding("OpenExtenderLogsFolderButton", "OpenExtenderLogDirectoryCommand");
+				CreateButtonBinding("OpenGameButton", "OpenGameCommand");
+
 				//this.WhenAnyValue(x => x.ViewModel.OpenExtenderLogDirectoryCommand).BindTo(this, view => view.OpenExtenderLogsFolderButton.Command);
 
 				//this.WhenAnyValue(x => x.ViewModel.OpenAboutWindowCommand).BindTo(this, view => view.HelpOpenAboutWindowMenuItem.Command);
@@ -221,7 +243,7 @@ namespace DivinityModManager.Views
 		{
 			ResourceLocator.SetColorScheme(this.Resources, !darkMode ? ResourceLocator.LightColorScheme : ResourceLocator.DarkColorScheme);
 			ResourceLocator.SetColorScheme(SettingsWindow.Resources, !darkMode ? ResourceLocator.LightColorScheme : ResourceLocator.DarkColorScheme);
-			if(AboutWindow != null)
+			if (AboutWindow != null)
 			{
 				ResourceLocator.SetColorScheme(AboutWindow.Resources, !darkMode ? ResourceLocator.LightColorScheme : ResourceLocator.DarkColorScheme);
 			}
@@ -257,7 +279,7 @@ namespace DivinityModManager.Views
 			}
 
 			TextBlock lblMessage = grdParent.FindVisualChildren<TextBlock>().FirstOrDefault();
-			if(lblMessage != null)
+			if (lblMessage != null)
 			{
 				Trace.WriteLine(lblMessage.Text);
 			}
@@ -271,7 +293,7 @@ namespace DivinityModManager.Views
 		private void ComboBox_KeyDown_LoseFocus(object sender, KeyEventArgs e)
 		{
 			bool loseFocus = false;
-			if((e.Key == Key.Enter || e.Key == Key.Return))
+			if ((e.Key == Key.Enter || e.Key == Key.Return))
 			{
 				UIElement elementWithFocus = Keyboard.FocusedElement as UIElement;
 				elementWithFocus.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
@@ -279,13 +301,13 @@ namespace DivinityModManager.Views
 				loseFocus = true;
 				e.Handled = true;
 			}
-			else if(e.Key == Key.Escape)
+			else if (e.Key == Key.Escape)
 			{
 				ViewModel.StopRenaming(true);
 				loseFocus = true;
 			}
 
-			if(loseFocus && sender is ComboBox comboBox)
+			if (loseFocus && sender is ComboBox comboBox)
 			{
 				var tb = comboBox.FindVisualChildren<TextBox>().FirstOrDefault();
 				if (tb != null)
@@ -297,11 +319,11 @@ namespace DivinityModManager.Views
 
 		private void OrdersComboBox_LostFocus(object sender, RoutedEventArgs e)
 		{
-			if(sender is ComboBox comboBox && comboBox.IsEditable)
+			if (sender is ComboBox comboBox && comboBox.IsEditable)
 			{
 				RxApp.MainThreadScheduler.Schedule(TimeSpan.FromMilliseconds(250), _ =>
 				{
-					if(ViewModel.IsRenamingOrder)
+					if (ViewModel.IsRenamingOrder)
 					{
 						var tb = comboBox.FindVisualChildren<TextBox>().FirstOrDefault();
 						if (tb != null && !tb.IsFocused)
@@ -332,10 +354,10 @@ namespace DivinityModManager.Views
 
 		private void OrdersComboBox_Loaded(object sender, RoutedEventArgs e)
 		{
-			if(sender is ComboBox ordersComboBox)
+			if (sender is ComboBox ordersComboBox)
 			{
 				var tb = ordersComboBox.FindVisualChildren<TextBox>().FirstOrDefault();
-				if(tb != null)
+				if (tb != null)
 				{
 					tb.ContextMenu = ordersComboBox.ContextMenu;
 					tb.ContextMenu.DataContext = ViewModel;

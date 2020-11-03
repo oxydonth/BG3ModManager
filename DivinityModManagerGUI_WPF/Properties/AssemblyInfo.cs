@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 
 [assembly: AssemblyTitle("DivinityModManager")]
-[assembly: AssemblyDescription("A mod manager for Divinity: Original Sin 2 - Definitive Edition.")]
+[assembly: AssemblyDescription("A mod manager for Baldur's Gate 3.")]
 #if DEBUG
  [assembly: AssemblyConfiguration("Debug")]
 #else
@@ -13,7 +13,7 @@ using System.Windows;
 #endif
 [assembly: AssemblyCompany("LaughingLeader")]
 [assembly: AssemblyProduct("DivinityModManager")]
-[assembly: AssemblyCopyright("Copyright © 2019")]
+[assembly: AssemblyCopyright("Copyright © 2020")]
 [assembly: AssemblyTrademark("")]
 [assembly: NeutralResourcesLanguageAttribute("en")]
 [assembly: AssemblyCulture("")]

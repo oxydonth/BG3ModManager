@@ -29,7 +29,7 @@
 	<Window.Resources>
 		<ResourceDictionary>
 			<ResourceDictionary.MergedDictionaries>
-				<ResourceDictionary Source="pack://application:,,,/BG3ModManager;component/Resources/Themes/MainResourceDictionary.xaml" />
+				<ResourceDictionary Source="pack://application:,,,/DivinityModManager;component/Resources/Themes/MainResourceDictionary.xaml" />
 			</ResourceDictionary.MergedDictionaries>
 			<Style BasedOn="{StaticResource {x:Type Button}}" TargetType="Button">
 				<Setter Property="Padding" Value="20,2" />
@@ -107,10 +107,10 @@
 							VerticalAlignment="Center"
 							Text="{Binding GameDataPath, UpdateSourceTrigger=PropertyChanged, FallbackValue=''}"
 							TextAlignment="Left" />
-						<TextBlock Text="Game Executable Path" ToolTip="The path to the DOS2DE exe, EoCApp.exe." />
+						<TextBlock Text="Game Executable Path" ToolTip="The path to bg3.exe." />
 						<controls:UnfocusableTextBox
 							VerticalAlignment="Center"
-							Text="{Binding DOS2DEGameExecutable, UpdateSourceTrigger=PropertyChanged, FallbackValue=''}"
+							Text="{Binding GameExecutable, UpdateSourceTrigger=PropertyChanged, FallbackValue=''}"
 							TextAlignment="Left" />
 						<TextBlock Text="Workshop Path" ToolTip="The workshop folder.&#x0a;Used for detecting mod updates and new mods to be copied into the local mods folder." />
 						<controls:UnfocusableTextBox
