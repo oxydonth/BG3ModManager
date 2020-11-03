@@ -45,10 +45,6 @@ namespace DivinityModManager.Models
 			}
 		}
 
-		//Old. Will be read, but not written.
-		[DataMember]
-		public string DOS2DEGameExecutable { set => GameExecutablePath = value; }
-
 		private bool gameStoryLogEnabled = false;
 
 		[DataMember]
