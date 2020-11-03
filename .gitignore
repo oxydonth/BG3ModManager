@@ -2,7 +2,7 @@
 _Backup/*
 LSLib/*
 
-Assets/
+_Assets/
 !/DivinityModManagerGUI_WPF/Resources/
 
 ## Visual Studio Code specific files and folder

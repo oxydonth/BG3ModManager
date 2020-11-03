@@ -3,6 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net472</TargetFramework>
     <RootNamespace>DivinityModManager</RootNamespace>
+    <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
 	<ItemGroup>
 		<PackageReference Include="AlphaFS" Version="2.2.6" />
@@ -16,7 +17,7 @@
 	</ItemGroup>
 	<ItemGroup>
 		<Reference Include="LSLib">
-			<HintPath>..\LSLib\LSLib.dll</HintPath>
+		  <HintPath>D:\Projects\_Visual_Studio\lslib\ConverterApp\bin\Release\LSLib.dll</HintPath>
 		</Reference>
 		<Reference Include="Microsoft.CSharp" />
 		<Reference Include="Microsoft.VisualBasic" />
