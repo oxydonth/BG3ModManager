@@ -899,11 +899,6 @@ namespace DivinityModManager.ViewModels
 				//view.AlertBar.SetSuccessAlert($"Loaded settings from '{settingsFile}'.", 5);
 			}
 
-			View.CreateButtonBinding("OpenWorkshopFolderButton", "OpenWorkshopFolderCommand");
-			View.CreateButtonBinding("OpenModsFolderButton", "OpenModsFolderCommand");
-			View.CreateButtonBinding("OpenExtenderLogsFolderButton", "OpenExtenderLogDirectoryCommand");
-			View.CreateButtonBinding("OpenGameButton", "OpenGameCommand");
-
 			return loaded;
 		}
 
