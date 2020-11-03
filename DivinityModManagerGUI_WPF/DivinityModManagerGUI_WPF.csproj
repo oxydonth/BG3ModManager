@@ -192,8 +192,8 @@
     <Compile Include="Converters\ModIsAvailableConverter.cs" />
     <Compile Include="Converters\StringToUriConverter.cs" />
     <Compile Include="Extensions\DependencyObjectExtensions.cs" />
-    <Compile Include="Resources\DivinityColors.cs" />
-    <Compile Include="Resources\Themes\ResourceAliasHelper.cs" />
+    <Compile Include="Themes\DivinityColors.cs" />
+    <Compile Include="Themes\ResourceAliasHelper.cs" />
     <Compile Include="Util\RxExceptionHandler.cs" />
     <Compile Include="ViewModels\MainWindowExceptionHandler.cs" />
     <Compile Include="ViewModels\MainWindowViewModel.cs" />
@@ -232,11 +232,11 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Resources\Themes\Dark.xaml">
+    <Page Include="Themes\Dark.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Resources\Themes\Light.xaml">
+    <Page Include="Themes\Light.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -248,7 +248,7 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Resources\Themes\MainResourceDictionary.xaml">
+    <Page Include="Themes\MainResourceDictionary.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -443,7 +443,7 @@
     </Resource>
   </ItemGroup>
   <ItemGroup>
-    <Page Include="Resources\Themes\DefaultStyles\ComboBox.xaml">
+    <Page Include="Themes\DefaultStyles\ComboBox.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

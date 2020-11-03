@@ -15,12 +15,12 @@
 	<UserControl.Resources>
 		<ResourceDictionary>
 			<ResourceDictionary.MergedDictionaries>
-				<ResourceDictionary Source="pack://application:,,,/DivinityModManager;component/Resources/Themes/MainResourceDictionary.xaml" />
+				<ResourceDictionary Source="../Themes/MainResourceDictionary.xaml" />
 			</ResourceDictionary.MergedDictionaries>
 		</ResourceDictionary>
 	</UserControl.Resources>
 	<UserControl.Triggers>
-		<EventTrigger RoutedEvent="local:AlertBar.Show">
+		<EventTrigger RoutedEvent="{x:Static local:AlertBar.ShowEvent}">
 			<BeginStoryboard>
 				<Storyboard>
 					<DoubleAnimationUsingKeyFrames

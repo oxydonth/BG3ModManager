@@ -12,7 +12,7 @@ using System.Windows;
 [assembly: AssemblyConfiguration("Release")]
 #endif
 [assembly: AssemblyCompany("LaughingLeader")]
-[assembly: AssemblyProduct("DivinityModManager")]
+[assembly: AssemblyProduct("Baldur's Gate 3 Mod Manager")]
 [assembly: AssemblyCopyright("Copyright © 2020")]
 [assembly: AssemblyTrademark("")]
 [assembly: NeutralResourcesLanguageAttribute("en")]

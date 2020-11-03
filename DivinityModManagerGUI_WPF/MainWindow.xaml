@@ -33,7 +33,7 @@
 	<Window.Resources>
 		<ResourceDictionary>
 			<ResourceDictionary.MergedDictionaries>
-				<ResourceDictionary Source="pack://application:,,,/DivinityModManager;component/Resources/Themes/MainResourceDictionary.xaml" />
+				<ResourceDictionary Source="Themes/MainResourceDictionary.xaml" />
 			</ResourceDictionary.MergedDictionaries>
 			<DataTemplate x:Key="VerticalModLayout">
 				<local:VerticalModLayout />
@@ -119,7 +119,7 @@
 											Direction="330"
 											Opacity="0.5"
 											ShadowDepth="1"
-											Color="{DynamicResource {x:Static adonisUI:Colors.Layer3BackgroundColor}}" />
+											Color="Black" />
 									</TextBlock.Effect>
 								</TextBlock>
 								<Image
@@ -190,7 +190,7 @@
 				</DataTemplate.Triggers>
 			</DataTemplate>
 			<local:ModUpdatesLayout x:Key="ModUpdaterPanel" Background="{DynamicResource {x:Static adonisUI:Brushes.Layer4BackgroundBrush}}" />
-			<Grid x:Key="ModOrderPanel">
+			<Grid x:Key="ModOrderPanel" Loaded="ModOrderPanel_Loaded">
 				<Grid.RowDefinitions>
 					<RowDefinition Height="Auto" />
 					<RowDefinition Height="Auto" />
@@ -446,7 +446,7 @@
 																Direction="330"
 																Opacity="0.5"
 																ShadowDepth="4"
-																Color="{DynamicResource {x:Static adonisUI:Colors.Layer3BackgroundColor}}" />
+																Color="Black" />
 														</TextBlock.Effect>
 													</TextBlock>
 													<TextBlock
@@ -475,7 +475,7 @@
 															Direction="330"
 															Opacity="0.5"
 															ShadowDepth="4"
-															Color="{DynamicResource {x:Static adonisUI:Colors.Layer3BackgroundColor}}" />
+															Color="Black" />
 													</TextBlock.Effect>
 												</TextBlock>
 												<TextBlock
