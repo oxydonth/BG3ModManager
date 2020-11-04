@@ -5,3 +5,6 @@ dotnet_diagnostic.CS0168.severity = silent
 
 # CS0618: Type or member is obsolete
 dotnet_diagnostic.CS0618.severity = silent
+
+# CS0414: The field 'DivinityWorkshopDataLoader.STEAM_API_GET_WORKSHOP_MODS_URL' is assigned but its value is never used
+dotnet_diagnostic.CS0414.severity = silent
