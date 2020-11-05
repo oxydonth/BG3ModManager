@@ -793,6 +793,14 @@ namespace DivinityModManager.ViewModels
 				if (SaveSettings())
 				{
 					view.AlertBar.SetSuccessAlert($"Saved settings to '{settingsFile}'.", 10);
+					if(Settings.TelemetryDisabled)
+					{
+						DivinityModDataLoader.SetTelemetry(false);
+					}
+					else
+					{
+						DivinityModDataLoader.SetTelemetry(SelectedModOrder == null || SelectedModOrder.Order.Count == 0);
+					}
 				}
 			}, canSaveSettings).DisposeWith(Settings.Disposables);
 

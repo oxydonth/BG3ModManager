@@ -1319,6 +1319,30 @@ namespace DivinityModManager.Util
 			return true;
 		}
 
+		public static void SetTelemetry(bool enabled)
+		{
+			Dictionary<string, object> settings = null;
+			var settingsFilePath = Path.Combine(Environment.GetEnvironmentVariable("LocalAppData"), @"LarianStudios\Launcher\Settings\preferences.json");
+			if (File.Exists(settingsFilePath))
+			{
+				settings = DivinityJsonUtils.SafeDeserializeFromPath<Dictionary<string, object>>(settingsFilePath);
+			}
+			if (settings == null)
+			{
+				settings = new Dictionary<string, object>();
+			}
+			settings["SendStats"] = enabled;
+			string contents = JsonConvert.SerializeObject(settings, Newtonsoft.Json.Formatting.Indented);
+			try
+			{
+				File.WriteAllText(settingsFilePath, contents);
+			}
+			catch (Exception ex)
+			{
+				Trace.WriteLine($"Error saving'{settingsFilePath}':\n{ex}");
+			}
+		}
+
 		public static string GenerateModSettingsFile(IEnumerable<DivinityLoadOrderEntry> order, IEnumerable<DivinityModData> allMods, bool addDependencies, DivinityModData selectedAdventure)
 		{
 			List<string> orderList = new List<string>();
