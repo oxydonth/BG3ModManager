@@ -58,6 +58,15 @@ namespace DivinityModManager.Models
 			}
 		}
 
+		private bool telemetryDisabled = false;
+
+		[DataMember]
+		public bool TelemetryDisabled
+		{
+			get => telemetryDisabled;
+			set { this.RaiseAndSetIfChanged(ref telemetryDisabled, value); }
+		}
+
 		private string workshopPath = "";
 
 		[DataMember]

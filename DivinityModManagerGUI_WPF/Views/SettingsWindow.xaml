@@ -126,8 +126,10 @@
 							VerticalAlignment="Center"
 							Text="{Binding LoadOrderPath, UpdateSourceTrigger=PropertyChanged, FallbackValue='Load Order'}"
 							TextAlignment="Left" />
-						<TextBlock Text="Enable Story Log" ToolTip="When launching DOS2DE, enable the story log." />
+						<TextBlock Text="Enable Story Log" ToolTip="When launching the game, enable the story log (osiris.log)." />
 						<CheckBox VerticalAlignment="Center" IsChecked="{Binding GameStoryLogEnabled, UpdateSourceTrigger=PropertyChanged}" />
+						<TextBlock Text="Always Disable Telemetry" ToolTip="If enabled, Larian's telemetry (data gathering for early access) for BG3 will always be disabled, regardless of active mods. Telemetry is always disabled if mods are active." />
+						<CheckBox VerticalAlignment="Center" IsChecked="{Binding TelemetryDisabled, UpdateSourceTrigger=PropertyChanged}" />
 						<TextBlock Text="Auto Add Missing Dependencies When Exporting" ToolTip="Automatically add dependency mods above their dependents in the exported load order, if omitted from the active order." />
 						<CheckBox VerticalAlignment="Center" IsChecked="{Binding AutoAddDependenciesWhenExporting, UpdateSourceTrigger=PropertyChanged}" />
 						<TextBlock Text="Enable Automatic Updates" ToolTip="Automatically check for updates when the program starts." />
