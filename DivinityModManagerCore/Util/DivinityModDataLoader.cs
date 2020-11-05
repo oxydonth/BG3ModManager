@@ -1291,6 +1291,34 @@ namespace DivinityModManager.Util
 			return false;
 		}
 
+		/// <summary>
+		/// Enables or disables telemetry. If mods are enabled, telemetry should be disabled.
+		/// </summary>
+		/// <param name="enabled"></param>
+		public static async Task<bool> SetTelemetryAsync(bool enabled)
+		{
+			Dictionary<string, object> settings = null;
+			var settingsFilePath = Path.Combine(Environment.GetEnvironmentVariable("LocalAppData"), @"LarianStudios\Launcher\Settings\preferences.json");
+			if (File.Exists(settingsFilePath))
+			{
+				settings = DivinityJsonUtils.SafeDeserializeFromPath<Dictionary<string, object>>(settingsFilePath);
+			}
+			if (settings == null)
+			{
+				settings = new Dictionary<string, object>();
+			}
+			settings["SendStats"] = enabled;
+			string contents = JsonConvert.SerializeObject(settings, Newtonsoft.Json.Formatting.Indented);
+
+			var buffer = Encoding.UTF8.GetBytes(contents);
+			using (var fs = new System.IO.FileStream(settingsFilePath, System.IO.FileMode.Create,
+				System.IO.FileAccess.Write, System.IO.FileShare.None, buffer.Length, true))
+			{
+				await fs.WriteAsync(buffer, 0, buffer.Length);
+			}
+			return true;
+		}
+
 		public static string GenerateModSettingsFile(IEnumerable<DivinityLoadOrderEntry> order, IEnumerable<DivinityModData> allMods, bool addDependencies, DivinityModData selectedAdventure)
 		{
 			List<string> orderList = new List<string>();

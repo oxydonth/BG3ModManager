@@ -2252,6 +2252,9 @@ namespace DivinityModManager.ViewModels
 				{
 					view.AlertBar.SetSuccessAlert($"Exported load order to '{outputPath}'", 15);
 
+					// If mods are enabled, telemetry should be disabled.
+					await DivinityModDataLoader.SetTelemetryAsync(mods.Count > 0);
+
 					if (DivinityModDataLoader.ExportedSelectedProfile(PathwayData.DocumentsProfilesPath, SelectedProfile.UUID))
 					{
 						Trace.WriteLine($"Set active profile to '{SelectedProfile.Name}'.");
