@@ -7,21 +7,22 @@
   ],
   "Mods": [
     {
-      "Name": "Shared",
-      "UUID": "ed539163-bb70-431b-96a7-f5b2eda5376b",
-      "Folder": "Shared",
-      "Version": "273816645",
+      "Name": "Story",
+      "UUID": "991c9c7a-fb80-40cb-8f0d-b92d4e80e9b1",
+      "Folder": "Gustav",
+      "Version": 273876636,
       "Type": "Adventure",
       "Targets": "Story",
       "Author": "Larian Studios",
-      "Description": ""
+      "Description": "The main story campaign.",
+      "Tags": "Campaign"
     },
     {
-      "Name": "Gustav",
-      "UUID": "991c9c7a-fb80-40cb-8f0d-b92d4e80e9b1",
-      "Folder": "Gustav",
-      "Version": "273876636",
-      "Type": "Adventure",
+      "Name": "Shared",
+      "UUID": "ed539163-bb70-431b-96a7-f5b2eda5376b",
+      "Folder": "Shared",
+      "Version": 273816645,
+      "Type": "Add-on",
       "Targets": "Story",
       "Author": "Larian Studios",
       "Description": ""
@@ -30,7 +31,7 @@
       "Name": "FW3",
       "UUID": "e5c9077e-1fca-4f24-b55d-464f512c98a8",
       "Folder": "FW3",
-      "Version": "268435456",
+      "Version": 268435456,
       "Type": "Add-on",
       "Targets": "Story",
       "Author": "Larian Studios",
@@ -40,8 +41,8 @@
       "Name": "Engine",
       "UUID": "9dff4c3b-fda7-43de-a763-ce1383039999",
       "Folder": "Engine",
-      "Version": "268435456",
-      "Type": "Adventure",
+      "Version": 268435456,
+      "Type": "Add-on",
       "Targets": "Story",
       "Author": "Larian Studios",
       "Description": ""
