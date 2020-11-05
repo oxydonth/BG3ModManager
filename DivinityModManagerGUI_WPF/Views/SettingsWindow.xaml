@@ -111,16 +111,16 @@
 						<TextBlock Text="Game Executable Path" ToolTip="The path to bg3.exe." />
 						<controls:UnfocusableTextBox
 							VerticalAlignment="Center"
-							Text="{Binding GameExecutable, UpdateSourceTrigger=PropertyChanged, FallbackValue=''}"
+							Text="{Binding GameExecutablePath, UpdateSourceTrigger=PropertyChanged, FallbackValue=''}"
 							TextAlignment="Left" />
-						<TextBlock Text="Workshop Path" ToolTip="The workshop folder.&#x0a;Used for detecting mod updates and new mods to be copied into the local mods folder." />
+						<!--<TextBlock Text="Workshop Path" ToolTip="The workshop folder.&#x0a;Used for detecting mod updates and new mods to be copied into the local mods folder." />
 						<controls:UnfocusableTextBox
 							x:Name="WorkshopPathTextbox"
 							VerticalAlignment="Center"
 							GotFocus="WorkshopPathTextbox_GotFocus"
 							LostFocus="WorkshopPathTextbox_LostFocus"
 							Text="{Binding WorkshopPath, UpdateSourceTrigger=PropertyChanged, FallbackValue=''}"
-							TextAlignment="Left" />
+							TextAlignment="Left" />-->
 						<TextBlock Text="Saved Load Orders Path" ToolTip="The folder to save and load load orders to." />
 						<controls:UnfocusableTextBox
 							VerticalAlignment="Center"
@@ -338,7 +338,7 @@
 							ToolTip="{Binding ElementName=DebugModeTextBlock, Path=ToolTip}" />
 						<TextBlock Text="Enable Logging" ToolTip="Automatically save logs to _Logs." />
 						<CheckBox VerticalAlignment="Center" IsChecked="{Binding LogEnabled, UpdateSourceTrigger=PropertyChanged}" />
-						<TextBlock
+						<!--<TextBlock
 							x:Name="ClearCacheTextBlock"
 							Text="Clear Workshop Cache"
 							ToolTip="Delete the local workshop cache used for tag display, located at Data\workshopdata.json." />
@@ -347,7 +347,7 @@
 							VerticalAlignment="Center"
 							Command="{Binding ClearWorkshopCacheCommand}"
 							Content="Delete Cache"
-							ToolTip="{Binding ElementName=ClearCacheTextBlock, Path=ToolTip}" />
+							ToolTip="{Binding ElementName=ClearCacheTextBlock, Path=ToolTip}" />-->
 					</autogrid:AutoGrid>
 				</ScrollViewer>
 			</TabItem>

@@ -175,12 +175,6 @@ namespace DivinityModManager.ViewModels
 					},
 					WindowTitle = "Update Mods?",
 					Content = "Override local mods with the latest workshop versions?",
-					/*
-					Content = string.Format("Override local mods with the latest workshop versions?{0}{1}{0}{2}",
-						Environment.NewLine,
-						"Existing paks will be moved to the backup folder:",
-						"(Larian Studios/Divinity Original Sin 2 Definitive Edition/Mods_Backup/)"),
-					*/
 					MainIcon = TaskDialogIcon.Warning
 				})
 				{
