@@ -772,7 +772,17 @@ namespace DivinityModManager.ViewModels
 
 					if (attr.HasFlag(System.IO.FileAttributes.Directory))
 					{
-						var exe = Path.Combine(Settings.GameExecutablePath, "EoCApp.exe");
+						string exeName = "";
+						if (!DivinityRegistryHelper.IsGOG)
+						{
+							exeName = Path.GetFileName(AppSettings.DefaultPathways.Steam.ExePath);
+						}
+						else
+						{
+							exeName = Path.GetFileName(AppSettings.DefaultPathways.GOG.ExePath);
+						}
+						
+						var exe = Path.Combine(Settings.GameExecutablePath, exeName);
 						if (File.Exists(exe))
 						{
 							Settings.GameExecutablePath = exe;
@@ -1128,7 +1138,7 @@ namespace DivinityModManager.ViewModels
 		private void SetLoadedMods(IEnumerable<DivinityModData> loadedMods)
 		{
 			mods.Clear();
-			foreach(var m in DivinityApp.IgnoredMods)
+			foreach (var m in DivinityApp.IgnoredMods)
 			{
 				mods.Add(m);
 				Trace.WriteLine($"Added base mod: Name({m.Name}) UUID({m.UUID}) Type({m.Type}) Version({m.Version.VersionInt})");
@@ -1914,7 +1924,6 @@ namespace DivinityModManager.ViewModels
 				OnFilterTextChanged(InactiveModFilterText, InactiveMods);
 			});
 			*/
-
 #if DEBUG
 			Trace.WriteLine("Mods (" + mods.Count + ")");
 			Trace.WriteLine(String.Join("\n", mods.Items.Select(x => $"{x.UUID}|{x.Name}|{x.Type}")));
@@ -1923,7 +1932,6 @@ namespace DivinityModManager.ViewModels
 			Trace.WriteLine("Adventure Mods (" + AdventureMods.Count + ")");
 			Trace.WriteLine(String.Join("\n", AdventureMods.Select(x => $"{x.UUID}|{x.Name}")));
 #endif
-
 			return Disposable.Empty;
 		}
 
