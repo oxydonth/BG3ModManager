@@ -96,13 +96,13 @@
 			<TabItem Header="General">
 				<ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
 					<autogrid:AutoGrid
-						Margin="20"
+						Margin="10,0"
 						ChildMargin="4"
 						ColumnCount="2"
 						Columns="auto,*"
-						RowCount="9"
+						RowCount="10"
 						RowHeight="*"
-						Rows="auto,auto,auto,auto,auto,auto,auto,auto,auto">
+						Rows="auto,auto,auto,auto,auto,auto,auto,auto,auto,auto">
 						<TextBlock Text="Game Data Path" ToolTip="The path to the Data folder, for loading editor mods.&#x0a;Example: Baldur's Gate 3/Data" />
 						<controls:UnfocusableTextBox
 							VerticalAlignment="Center"
@@ -161,7 +161,7 @@
 					</Grid.RowDefinitions>
 					<ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
 						<autogrid:AutoGrid
-							Margin="20"
+							Margin="10,0"
 							ChildMargin="4"
 							ColumnCount="2"
 							Columns="auto,*"
@@ -325,7 +325,7 @@
 			<TabItem Header="Advanced">
 				<ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
 					<autogrid:AutoGrid
-						Margin="20"
+						Margin="10,0"
 						ChildMargin="2"
 						ColumnCount="2"
 						Columns="auto,*"
@@ -342,16 +342,18 @@
 							ToolTip="{Binding ElementName=DebugModeTextBlock, Path=ToolTip}" />
 						<TextBlock Text="Enable Logging" ToolTip="Automatically save logs to _Logs." />
 						<CheckBox VerticalAlignment="Center" IsChecked="{Binding LogEnabled, UpdateSourceTrigger=PropertyChanged}" />
-						<!--<TextBlock
+						<TextBlock
 							x:Name="ClearCacheTextBlock"
 							Text="Clear Workshop Cache"
-							ToolTip="Delete the local workshop cache used for tag display, located at Data\workshopdata.json." />
+							ToolTip="Delete the local workshop cache used for tag display, located at Data\workshopdata.json."
+							Visibility="Collapsed" />
 						<Button
 							HorizontalAlignment="Left"
 							VerticalAlignment="Center"
 							Command="{Binding ClearWorkshopCacheCommand}"
 							Content="Delete Cache"
-							ToolTip="{Binding ElementName=ClearCacheTextBlock, Path=ToolTip}" />-->
+							ToolTip="{Binding ElementName=ClearCacheTextBlock, Path=ToolTip}"
+							Visibility="Collapsed" />
 					</autogrid:AutoGrid>
 				</ScrollViewer>
 			</TabItem>

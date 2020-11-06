@@ -59,7 +59,10 @@
 				</Style.Triggers>
 			</Style>
 			<DataTemplate x:Key="UpdatesButtonTemplate">
-				<StackPanel x:Name="UpdateViewPanel" VerticalAlignment="Stretch">
+				<StackPanel
+					x:Name="UpdateViewPanel"
+					VerticalAlignment="Stretch"
+					Visibility="Collapsed">
 					<Button
 						x:Name="UpdateViewToggleButton"
 						MinWidth="20"
