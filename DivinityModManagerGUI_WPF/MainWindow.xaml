@@ -835,11 +835,12 @@
 								Header="Toggle Dark/Light Mode" />
 						</MenuItem>
 						<MenuItem Header="Tools" Style="{StaticResource MenuItemHightlightBlink}">
-							<!--<MenuItem
+							<MenuItem
 								x:Name="ToolsInstallOsiExtenderMenuItem"
 								Command="{Binding DownloadAndInstallOsiExtenderCommand}"
 								Header="Download &amp; Install the Script Extender..."
-								Style="{StaticResource MenuItemHightlightBlink}" />-->
+								Style="{StaticResource MenuItemHightlightBlink}"
+								Visibility="Collapsed" />
 							<MenuItem
 								x:Name="ToolsExtractSelectedModsMenuItem"
 								Command="{Binding ExtractSelectedModsCommand}"
@@ -857,7 +858,7 @@
 							<MenuItem x:Name="HelpOpenRepoPageMenuItem" Header="Open Repostory Page..." />
 							<MenuItem
 								x:Name="HelpOpenAboutWindowMenuItem"
-								Header="About Divinity Mod Manager"
+								Header="About"
 								InputGestureText="F1" />
 						</MenuItem>
 					</Menu>
