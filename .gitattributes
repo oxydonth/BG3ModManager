@@ -2,4 +2,5 @@ AppFeatures.json merge=ours
 DefaultPathways.json merge=ours
 IgnoredMods.json merge=ours
 AssemblyInfo.cs merge=ours
-DivinityModManagerGUI_WPF.csproj merge=ours
+GUI.csproj merge=ours
+BuildRelease.py merge=ours
