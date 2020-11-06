@@ -52,13 +52,26 @@ def zipdir(src, zip_name):
     ziph.close()
 
 def SilentRemove(f):
-	with contextlib.suppress(FileNotFoundError, PermissionError):
-		os.remove(f)
+	try:
+		if Path(f).is_dir():
+			shutil.rmtree(f, ignore_errors=True)
+		else:
+			os.remove(f)
+		print("Removed {}".format(f))
+	except Exception as e:
+		print(e)
 
 def SilentCopyAndRemove(source, dest):
 	with contextlib.suppress(FileNotFoundError, PermissionError):
 		shutil.copy(source, dest)
-		os.remove(source)
+		if Path(source).is_dir():
+			shutil.rmtree(source, ignore_errors=True)
+		else:
+			os.remove(source)
+		print("Removed {}".format(source))
+
+import time
+time.sleep(3)
 
 SilentRemove("bin/Publish/Data")
 SilentRemove("bin/Publish/_Logs")
@@ -66,8 +79,6 @@ SilentRemove(file_name)
 SilentCopyAndRemove("bin/Publish/DivinityModManager.exe", "bin/Publish/BG3ModManager.exe")
 SilentCopyAndRemove("bin/Publish/DivinityModManager.exe.config", "bin/Publish/BG3ModManager.exe.config")
 
-import time
-time.sleep(3)
 zipdir("bin/Publish", file_name)
 
 # writing files to a zipfile 
