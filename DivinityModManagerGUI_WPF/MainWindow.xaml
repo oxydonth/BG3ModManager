@@ -835,11 +835,11 @@
 								Header="Toggle Dark/Light Mode" />
 						</MenuItem>
 						<MenuItem Header="Tools" Style="{StaticResource MenuItemHightlightBlink}">
-							<MenuItem
+							<!--<MenuItem
 								x:Name="ToolsInstallOsiExtenderMenuItem"
 								Command="{Binding DownloadAndInstallOsiExtenderCommand}"
 								Header="Download &amp; Install the Script Extender..."
-								Style="{StaticResource MenuItemHightlightBlink}" />
+								Style="{StaticResource MenuItemHightlightBlink}" />-->
 							<MenuItem
 								x:Name="ToolsExtractSelectedModsMenuItem"
 								Command="{Binding ExtractSelectedModsCommand}"
