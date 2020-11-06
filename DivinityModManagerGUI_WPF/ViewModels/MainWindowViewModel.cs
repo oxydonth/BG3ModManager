@@ -1176,6 +1176,18 @@ namespace DivinityModManager.ViewModels
 						DivinityApp.IgnoredMods.Remove(existingIgnoredMod);
 					}
 					DivinityApp.IgnoredMods.Add(m);
+
+					// Gustav
+					if (m.UUID == "991c9c7a-fb80-40cb-8f0d-b92d4e80e9b1")
+					{
+						m.Name = "Story";
+						m.UpdateDisplayName();
+					}
+					else if (m.UUID == "ed539163-bb70-431b-96a7-f5b2eda5376b" || m.UUID == "9dff4c3b-fda7-43de-a763-ce1383039999")
+					{
+						// Shared and Engine are "Adventure" for some reason.
+						m.Type = "Add-on";
+					}
 				}
 				var existingMod = mods.Items.FirstOrDefault(x => x.UUID == m.UUID);
 				if (existingMod == null)
