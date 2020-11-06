@@ -1,3 +1,4 @@
 AppFeatures.json merge=ours
 DefaultPathways.json merge=ours
 IgnoredMods.json merge=ours
+AssemblyInfo.cs merge=ours
