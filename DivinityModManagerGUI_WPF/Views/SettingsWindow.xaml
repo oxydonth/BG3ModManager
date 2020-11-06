@@ -145,6 +145,8 @@
 							SelectedValue="{Binding ActionOnGameLaunch, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
 							SelectedValuePath="Value"
 							ToolTip="When the game launches through the mod manager, this action will be performed" />
+						<TextBlock Text="Enable DirectX 11 Mode" ToolTip="If enabled, when launching the game, bg3_dx11.exe is used instead." />
+						<CheckBox VerticalAlignment="Center" IsChecked="{Binding LaunchDX11, UpdateSourceTrigger=PropertyChanged}" />
 					</autogrid:AutoGrid>
 				</ScrollViewer>
 			</TabItem>

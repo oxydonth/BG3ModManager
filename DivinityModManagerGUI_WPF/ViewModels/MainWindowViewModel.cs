@@ -740,28 +740,43 @@ namespace DivinityModManager.ViewModels
 
 			OpenGameCommand = ReactiveCommand.Create(() =>
 			{
-				if (!Settings.GameStoryLogEnabled)
+				string exePath = Settings.GameExecutablePath;
+				if (Settings.LaunchDX11)
 				{
-					Process.Start(Settings.GameExecutablePath);
+					string exePath2 = Regex.Replace(exePath, "bg3.exe", "bg3_dx11.exe", RegexOptions.IgnoreCase);
+					if (File.Exists(exePath2))
+					{
+						exePath = exePath2;
+					}
+				}
+				if (File.Exists(exePath))
+				{
+					if (!Settings.GameStoryLogEnabled)
+					{
+						Process.Start(exePath);
+					}
+					else
+					{
+						Process.Start(exePath, "-storylog 1");
+					}
+
+					if (Settings.ActionOnGameLaunch != DivinityGameLaunchWindowAction.None)
+					{
+						switch (Settings.ActionOnGameLaunch)
+						{
+							case DivinityGameLaunchWindowAction.Minimize:
+								view.WindowState = WindowState.Minimized;
+								break;
+							case DivinityGameLaunchWindowAction.Close:
+								App.Current.Shutdown();
+								break;
+						}
+					}
 				}
 				else
 				{
-					Process.Start(Settings.GameExecutablePath, "-storylog 1");
+					ShowAlert($"Failed to find game exe at, \"{exePath}\"", -1, 90);
 				}
-
-				if (Settings.ActionOnGameLaunch != DivinityGameLaunchWindowAction.None)
-				{
-					switch (Settings.ActionOnGameLaunch)
-					{
-						case DivinityGameLaunchWindowAction.Minimize:
-							view.WindowState = WindowState.Minimized;
-							break;
-						case DivinityGameLaunchWindowAction.Close:
-							App.Current.Shutdown();
-							break;
-					}
-				}
-
 			}, canOpenGameExe).DisposeWith(Settings.Disposables);
 
 			Settings.SaveSettingsCommand = ReactiveCommand.Create(() =>

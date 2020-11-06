@@ -64,7 +64,22 @@ namespace DivinityModManager.Models
 		public bool TelemetryDisabled
 		{
 			get => telemetryDisabled;
-			set { this.RaiseAndSetIfChanged(ref telemetryDisabled, value); }
+			set {
+				if (value != telemetryDisabled) CanSaveSettings = true;
+				this.RaiseAndSetIfChanged(ref telemetryDisabled, value); 
+			}
+		}
+
+		private bool launchDX11 = false;
+
+		[DataMember]
+		public bool LaunchDX11
+		{
+			get => launchDX11;
+			set {
+				if (value != launchDX11) CanSaveSettings = true;
+				this.RaiseAndSetIfChanged(ref launchDX11, value); 
+			}
 		}
 
 		private string workshopPath = "";
