@@ -2703,8 +2703,16 @@ namespace DivinityModManager.ViewModels
 					}
 					else if (fileType.Equals(".tsv", StringComparison.OrdinalIgnoreCase))
 					{
-						outputText = "Index\tName\tAuthor\tFileName\tTags\tDependencies\tURL\n";
-						outputText += String.Join("\n", ActiveMods.Select(x => $"{x.Index}\t{x.Name}\t{x.Author}\t{x.OutputPakName}\t{String.Join(", ", x.Tags)}\t{String.Join(", ", x.Dependencies.Items.Select(y => y.Name))}\t{x.GetURL()}"));
+						if (WorkshopSupportEnabled)
+						{
+							outputText = "Index\tName\tAuthor\tFileName\tTags\tDependencies\tURL\n";
+							outputText += String.Join("\n", ActiveMods.Select(x => $"{x.Index}\t{x.Name}\t{x.Author}\t{x.OutputPakName}\t{String.Join(", ", x.Tags)}\t{String.Join(", ", x.Dependencies.Items.Select(y => y.Name))}\t{x.GetURL()}"));
+						}
+						else
+						{
+							outputText = "Index\tName\tAuthor\tFileName\tTags\tDependencies\n";
+							outputText += String.Join("\n", ActiveMods.Select(x => $"{x.Index}\t{x.Name}\t{x.Author}\t{x.OutputPakName}\t{String.Join(", ", x.Tags)}\t{String.Join(", ", x.Dependencies.Items.Select(y => y.Name))}"));
+						}
 					}
 					else
 					{
