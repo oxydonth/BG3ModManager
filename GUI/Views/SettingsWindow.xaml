@@ -370,7 +370,7 @@
 									Command="{Binding ClearLaunchParamsCommand}"
 									CommandParameter="{x:Null}"
 									Header="Clear"
-									ToolTip="Clear current params." />
+									ToolTip="Clear all current params." />
 							</MenuItem>
 						</Menu>
 						<TextBox
