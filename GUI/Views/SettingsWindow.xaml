@@ -356,6 +356,16 @@
 								ToolTip="Parameters to pass to the game executable when launching the game through the mod manager.">
 								<MenuItem Header="-storylog 1" ToolTip="Enables the story log." />
 								<MenuItem Header="--logPath &quot;&quot;" ToolTip="A directory to write story logs to." />
+								<MenuItem Header="-asserts 1" ToolTip="Purpose unknown." />
+								<MenuItem Header="-stats 1" ToolTip="Purpose unknown." />
+								<MenuItem Header="-dynamicStory 1" ToolTip="Purpose unknown." />
+								<MenuItem Header="-externalcrashhandler" ToolTip="Purpose unknown." />
+								<MenuItem Header="-nametag x" ToolTip="Purpose unknown." />
+								<MenuItem Header="--cpuLimit x" ToolTip="Purpose unknown." />
+								<MenuItem Header="-module &quot;&quot;" ToolTip="Purpose unknown." />
+								<MenuItem Header="+connect_lobby &quot;&quot;" ToolTip="Purpose unknown." />
+								<MenuItem Header="-locaupdater 1" ToolTip="Purpose unknown." />
+								<MenuItem Header="-mediaPath &quot;&quot;" ToolTip="Purpose unknown." />
 								<MenuItem
 									Command="{Binding ClearLaunchParamsCommand}"
 									CommandParameter="{x:Null}"

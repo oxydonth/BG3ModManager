@@ -787,7 +787,6 @@ namespace DivinityModManager.ViewModels
 					}
 				}
 			}, canOpenGameExe).DisposeWith(Settings.Disposables);
-
 			Settings.SaveSettingsCommand = ReactiveCommand.Create(() =>
 			{
 				try
