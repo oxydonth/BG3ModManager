@@ -20,6 +20,7 @@ os.chdir(script_dir)
 version = get_arg(1, None)
 
 file_name = "BG3ModManager_v{}.zip".format(version)
+export_file = "BG3ModManager_Latest.zip"
 print("Writing release zip:{}".format(file_name))
 
 def zipdir(src, zip_name):
@@ -59,14 +60,4 @@ SilentCopyAndRemove("bin/Publish/DivinityModManager.exe.config", "bin/Publish/BG
 
 zipdir("bin/Publish", file_name)
 
-# writing files to a zipfile 
-# with ZipFile(file_name,"w") as zip: 
-# 	# writing each file one by one 
-# 	for file in write_files:
-# 		p = Path(file)
-# 		print(str(p.absolute()), p.name)
-# 		if p.is_file():
-# 			zip.write(str(p.absolute()), p.name, compress_type = ZipFile.ZIP_DEFLATED)
-# 		elif p.is_dir():
-# 			for x in p.rglob(".*"):
-# 				zip.write(str(x.absolute()), x.name, compress_type = ZipFile.ZIP_DEFLATED)
+shutil.copy(file_name, export_file)

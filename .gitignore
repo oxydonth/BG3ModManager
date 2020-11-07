@@ -344,3 +344,4 @@ ASALocalRun/
 *.psd
 .vscode/settings.json
 GUI/DivinityModManager.ico
+PublishRelease.py
