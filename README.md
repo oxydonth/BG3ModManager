@@ -11,7 +11,7 @@ A work-in-progress mod manager for Baldur's Gate 3.
 4. The BG3 Mod Manager is portable, so extract it wherever you wish.
 5. Upon opening the program, pathways to the game data and exe should be automatically detected. If this fails, you can manually set the pathways in Settings -> Preferences.
 6. Organize your active mods for a given profile, then click the first export button (Export Load Order to Game), or click File -> Export Order to Game, to export your active load order to the game.
- [![Exporting Load Orders](https://i.imgur.com/evJ9ulQl.jpg)](https://i.imgur.com/evJ9ulQ.png)
+ [![Exporting Load Orders](https://i.imgur.com/m9IBQrj.png)](https://i.imgur.com/m9IBQrjQ.png)
 
 # Current Features:
 
