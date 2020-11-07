@@ -25,27 +25,11 @@ A work-in-progress mod manager for Baldur's Gate 3.
 * Shortcut buttons to all the various game-related folders (mods folder, workshop folder, game directory, etc).
 * Dark and light theme support.
 
-## Steam Workshop Support
-
-* View pending Steam Workshop mod updates and update with a few clicks.
-* Filter mods by Steam Workshop tags. Mods can also specify custom tags in their meta.lsx file.
-* If a mod has a Steam Workshop page, you can open this by right clicking the mod and selecting "Open Steam Workshop Page".  
-[![Opening a Workshop Page with Right Click](https://i.imgur.com/gs1BV0ym.jpg)](https://i.imgur.com/gs1BV0y.png)
-
-## Script Extender Support
-
-[Norbyte's Script Extender (ositools)](https://github.com/Norbyte/ositools) allows mods to mod the game even further, and is required by many newer mods. The Divinity Mod Manager makes this easier to install and configure with the following features:
-
-* Install the Script Extender with a few clicks (Tools -> Download & Install the Script Extender).
-* Configure Script Extender settings in Settings -> Preferences -> the Script Extender tab.
-* See if mods use or require the script extender.
-
 ## Features for Mod Authors
 
 * Extract selected mods with a few clicks. Useful for mod authors, or those wanting to study mod files for learning.
 * Copy a mod's UUID or FolderName in the right click menu. Useful for if you're setting up Ext.IsModLoaded checks with the script extender, for mod support.
 * You can specify custom tags in your project's meta.lsx (the "Tags" property"). Seperate tags with a semi-colon, and the mod manager will display them.
-
 
 [![Custom Tags](https://i.imgur.com/bxkVqssl.jpg)](https://i.imgur.com/bxkVqss.png)
 
