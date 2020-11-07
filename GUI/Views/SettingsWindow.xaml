@@ -360,8 +360,8 @@
 								<MenuItem Header="-stats 1" ToolTip="Purpose unknown." />
 								<MenuItem Header="-dynamicStory 1" ToolTip="Purpose unknown." />
 								<MenuItem Header="-externalcrashhandler" ToolTip="Purpose unknown." />
-								<MenuItem Header="-nametag x" ToolTip="Purpose unknown." />
-								<MenuItem Header="--cpuLimit x" ToolTip="Purpose unknown." />
+								<MenuItem Header="-nametag &quot;&quot;" ToolTip="Purpose unknown." />
+								<MenuItem Header="--cpuLimit &quot;&quot;" ToolTip="Purpose unknown." />
 								<MenuItem Header="-module &quot;&quot;" ToolTip="Purpose unknown." />
 								<MenuItem Header="+connect_lobby &quot;&quot;" ToolTip="Purpose unknown." />
 								<MenuItem Header="-locaupdater 1" ToolTip="Purpose unknown." />
