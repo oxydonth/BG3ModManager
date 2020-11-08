@@ -4,3 +4,5 @@ IgnoredMods.json merge=ours
 AssemblyInfo.cs merge=ours
 GUI.csproj merge=ours
 BuildRelease.py merge=ours
+Update.xml merge=ours
+.gitignore merge=ours
