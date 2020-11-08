@@ -92,8 +92,8 @@
 		<Setter Property="VerticalAlignment" Value="Stretch" />
 		<Setter Property="Fill" Value="{DynamicResource {x:Static adonisUI:Brushes.DisabledForegroundBrush}}" />
 	</Style>
-	<Style BasedOn="{StaticResource {x:Type TextBox}}" TargetType="{x:Type controls:UnfocusableTextBox}" />
-	<Style BasedOn="{StaticResource {x:Type ToolTip}}" TargetType="{x:Type ToolTip}">
+	<Style BasedOn="{StaticResource {x:Type TextBox}}" TargetType="controls:UnfocusableTextBox" />
+	<Style BasedOn="{StaticResource {x:Type ToolTip}}" TargetType="ToolTip">
 		<Setter Property="OverridesDefaultStyle" Value="true" />
 		<Setter Property="HasDropShadow" Value="True" />
 		<Setter Property="Foreground" Value="{DynamicResource {x:Static adonisUI:Brushes.ForegroundBrush}}" />
