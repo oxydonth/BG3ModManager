@@ -741,9 +741,10 @@ namespace DivinityModManager.ViewModels
 			OpenGameCommand = ReactiveCommand.Create(() =>
 			{
 				string exePath = Settings.GameExecutablePath;
-				if (Settings.LaunchDX11)
+				if (Settings.LaunchDX11 && !exePath.Contains("bg3_dx11"))
 				{
 					string exePath2 = Regex.Replace(exePath, "bg3.exe", "bg3_dx11.exe", RegexOptions.IgnoreCase);
+					DivinityApp.Log($"Looking for DirectX 11 exe: {exePath2}");
 					if (File.Exists(exePath2))
 					{
 						exePath = exePath2;
@@ -766,13 +767,15 @@ namespace DivinityModManager.ViewModels
 						}
 					}
 
+
+					DivinityApp.Log($"Opening game exe at: {exePath}");
 					if (String.IsNullOrWhiteSpace(launchParams))
 					{
-						Process.Start(Settings.GameExecutablePath);
+						Process.Start(exePath);
 					}
 					else
 					{
-						Process.Start(Settings.GameExecutablePath, launchParams);
+						Process.Start(exePath, launchParams);
 					}
 				}
 				else
@@ -1262,6 +1265,7 @@ namespace DivinityModManager.ViewModels
 					projects = DivinityModDataLoader.LoadEditorProjects(modsDirectory);
 				}
 
+				DivinityApp.Log($"Loading base game mods from '{Settings.GameDataPath}'.");
 				baseMods = DivinityModDataLoader.LoadBuiltinMods(Settings.GameDataPath);
 			}
 
@@ -2992,7 +2996,6 @@ namespace DivinityModManager.ViewModels
 
 			LoadSettings();
 			RefreshAsync_Start("Loading...");
-			//Refresh();
 			SaveSettings(); // New values
 			IsInitialized = true;
 		}
