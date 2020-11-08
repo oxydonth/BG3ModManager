@@ -1676,49 +1676,55 @@ namespace DivinityModManager.Util
 		public static List<DivinityModData> LoadBuiltinMods(string gameDataPath)
 		{
 			List<DivinityModData> baseMods = new List<DivinityModData>();
-
-			var modResources = new ModResources();
-			var modHelper = new ModPathVisitor(modResources);
-			modHelper.CollectGlobals = false;
-			modHelper.CollectLevels = false;
-			modHelper.CollectStoryGoals = false;
-			modHelper.Discover(gameDataPath);
-
-			foreach (var modInfo in modResources.Mods.Values)
+			try
 			{
-				var metaFile = modInfo.Meta;
-				if (metaFile != null)
+				var modResources = new ModResources();
+				var modHelper = new ModPathVisitor(modResources);
+				modHelper.CollectGlobals = false;
+				modHelper.CollectLevels = false;
+				modHelper.CollectStoryGoals = false;
+				modHelper.Discover(gameDataPath);
+
+				foreach (var modInfo in modResources.Mods.Values)
 				{
-					using (var stream = metaFile.MakeStream())
+					var metaFile = modInfo.Meta;
+					if (metaFile != null)
 					{
-						using (var sr = new System.IO.StreamReader(stream))
+						using (var stream = metaFile.MakeStream())
 						{
-							string text = sr.ReadToEnd();
-							var modData = ParseMetaFile(text);
-							if (modData != null)
+							using (var sr = new System.IO.StreamReader(stream))
 							{
-								modData.IsLarianMod = true;
-								modData.IsHidden = true;
-
-								var last = baseMods.FirstOrDefault(x => x.UUID == modData.UUID);
-
-								if (last == null)
+								string text = sr.ReadToEnd();
+								var modData = ParseMetaFile(text);
+								if (modData != null)
 								{
-									baseMods.Add(modData);
-								}
-								else
-								{
+									modData.IsLarianMod = true;
+									modData.IsHidden = true;
 
-									if (modData.Version.VersionInt > last.Version.VersionInt)
+									var last = baseMods.FirstOrDefault(x => x.UUID == modData.UUID);
+
+									if (last == null)
 									{
-										baseMods.Remove(last);
 										baseMods.Add(modData);
+									}
+									else
+									{
+
+										if (modData.Version.VersionInt > last.Version.VersionInt)
+										{
+											baseMods.Remove(last);
+											baseMods.Add(modData);
+										}
 									}
 								}
 							}
 						}
 					}
 				}
+			}
+			catch(Exception ex)
+			{
+				DivinityApp.Log("Error loading base mods:\n" + ex.ToString());
 			}
 
 			return baseMods;
@@ -1727,35 +1733,41 @@ namespace DivinityModManager.Util
 		public static async Task<List<DivinityModData>> LoadBuiltinModsAsync(string gameDataPath)
 		{
 			List<DivinityModData> baseMods = new List<DivinityModData>();
-
-			var modResources = new ModResources();
-			var modHelper = new ModPathVisitor(modResources);
-			modHelper.CollectGlobals = false;
-			modHelper.CollectLevels = false;
-			modHelper.CollectStoryGoals = false;
-			modHelper.Discover(gameDataPath);
-
-			foreach(var modInfo in modResources.Mods.Values)
+			try
 			{
-				var metaFile = modInfo.Meta;
-				if (metaFile != null)
+				var modResources = new ModResources();
+				var modHelper = new ModPathVisitor(modResources);
+				modHelper.CollectGlobals = false;
+				modHelper.CollectLevels = false;
+				modHelper.CollectStoryGoals = false;
+				modHelper.Discover(gameDataPath);
+
+				foreach(var modInfo in modResources.Mods.Values)
 				{
-					using (var stream = metaFile.MakeStream())
+					var metaFile = modInfo.Meta;
+					if (metaFile != null)
 					{
-						using (var sr = new System.IO.StreamReader(stream))
+						using (var stream = metaFile.MakeStream())
 						{
-							string text = await sr.ReadToEndAsync();
-							var modData = ParseMetaFile(text);
-							if (modData != null)
+							using (var sr = new System.IO.StreamReader(stream))
 							{
-								DivinityApp.Log($"Added base mod: Name({modData.Name}) UUID({modData.UUID}) Author({modData.Author}) Version({modData.Version.VersionInt})");
-								modData.IsLarianMod = true;
-								modData.IsHidden = true;
-								baseMods.Add(modData);
+								string text = await sr.ReadToEndAsync();
+								var modData = ParseMetaFile(text);
+								if (modData != null)
+								{
+									DivinityApp.Log($"Added base mod: Name({modData.Name}) UUID({modData.UUID}) Author({modData.Author}) Version({modData.Version.VersionInt})");
+									modData.IsLarianMod = true;
+									modData.IsHidden = true;
+									baseMods.Add(modData);
+								}
 							}
 						}
 					}
 				}
+			}
+			catch (Exception ex)
+			{
+				DivinityApp.Log("Error loading base mods:\n" + ex.ToString());
 			}
 
 			return baseMods;
