@@ -769,15 +769,12 @@ namespace DivinityModManager.ViewModels
 					}
 
 
-					DivinityApp.Log($"Opening game exe at: {exePath}");
-					if (String.IsNullOrWhiteSpace(launchParams))
-					{
-						Process.Start(exePath);
-					}
-					else
-					{
-						Process.Start(exePath, launchParams);
-					}
+					DivinityApp.Log($"Opening game exe at: {exePath} with args {launchParams}");
+					Process proc = new Process();
+					proc.StartInfo.FileName = exePath;
+					proc.StartInfo.Arguments = launchParams;
+					proc.StartInfo.WorkingDirectory = Path.GetDirectoryName(exePath);
+					proc.Start();
 				}
 				else
 				{
