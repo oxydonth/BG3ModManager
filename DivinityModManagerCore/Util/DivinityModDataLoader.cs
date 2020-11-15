@@ -1701,7 +1701,7 @@ namespace DivinityModManager.Util
 								using (var sr = new System.IO.StreamReader(stream))
 								{
 									string text = sr.ReadToEnd();
-									var modData = ParseMetaFile(text);
+									var modData = ParseMetaFile(text, true);
 									if (modData != null)
 									{
 										modData.IsLarianMod = true;
@@ -1721,15 +1721,6 @@ namespace DivinityModManager.Util
 												baseMods.Remove(last);
 												baseMods.Add(modData);
 											}
-										}
-									}
-									else
-									{
-
-										if (modData.Version.VersionInt > last.Version.VersionInt)
-										{
-											baseMods.Remove(last);
-											baseMods.Add(modData);
 										}
 									}
 								}
