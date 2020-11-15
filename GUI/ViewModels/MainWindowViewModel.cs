@@ -767,8 +767,7 @@ namespace DivinityModManager.ViewModels
 							launchParams = launchParams + " " + "-storylog 1";
 						}
 					}
-
-
+					
 					DivinityApp.Log($"Opening game exe at: {exePath} with args {launchParams}");
 					Process proc = new Process();
 					proc.StartInfo.FileName = exePath;
@@ -1296,18 +1295,55 @@ namespace DivinityModManager.ViewModels
 			}
 		}
 
-		public async Task<List<DivinityModData>> LoadModsAsync()
+		private CancellationTokenSource GetCancellationToken(int delay, CancellationTokenSource last=null)
+		{
+			CancellationTokenSource token = new CancellationTokenSource();
+			if (last != null && last.IsCancellationRequested)
+			{
+				last.Dispose();
+			}
+			token.CancelAfter(delay);
+			return token;
+		}
+
+		private async Task<TResult> RunTask<TResult>(Task<TResult> task, TResult defaultValue)
+		{
+			try
+			{
+				return await task;
+			}
+			catch (OperationCanceledException ex)
+			{
+				DivinityApp.Log("Operation timed out/canceled.");
+			}
+			catch (TimeoutException ex)
+			{
+				DivinityApp.Log("Operation timed out.");
+			}
+			catch (Exception ex)
+			{
+				DivinityApp.Log($"Error awaiting task:\n{ex.ToString()}");
+			}
+			return defaultValue;
+		}
+
+		public async Task<List<DivinityModData>> LoadModsAsync(double taskStepAmount = 0.1d)
 		{
 			List<DivinityModData> finalMods = new List<DivinityModData>();
 			List<DivinityModData> modPakData = null;
 			List<DivinityModData> projects = null;
 			List<DivinityModData> baseMods = null;
 
+			var cancelTokenSource = GetCancellationToken(int.MaxValue);
+
 			if (Directory.Exists(PathwayData.DocumentsModsPath))
 			{
 				DivinityApp.Log($"Loading mods from '{PathwayData.DocumentsModsPath}'.");
 				await SetMainProgressTextAsync("Loading mods from documents folder...");
-				modPakData = await DivinityModDataLoader.LoadModPackageDataAsync(PathwayData.DocumentsModsPath);
+				cancelTokenSource.CancelAfter(60000);
+				modPakData = await RunTask(DivinityModDataLoader.LoadModPackageDataAsync(PathwayData.DocumentsModsPath, false, cancelTokenSource.Token), null);
+				cancelTokenSource = GetCancellationToken(int.MaxValue);
+				await IncreaseMainProgressValueAsync(taskStepAmount);
 			}
 
 			GameDirectoryFound = Directory.Exists(Settings.GameDataPath);
@@ -1320,11 +1356,17 @@ namespace DivinityModManager.ViewModels
 				{
 					DivinityApp.Log($"Loading mod projects from '{modsDirectory}'.");
 					await SetMainProgressTextAsync("Loading editor project mods...");
-					projects = await DivinityModDataLoader.LoadEditorProjectsAsync(modsDirectory);
+					cancelTokenSource = GetCancellationToken(30000);
+					projects = await RunTask(DivinityModDataLoader.LoadEditorProjectsAsync(modsDirectory, cancelTokenSource.Token), null);
+					cancelTokenSource = GetCancellationToken(int.MaxValue);
+					await IncreaseMainProgressValueAsync(taskStepAmount);
 				}
 
 				await SetMainProgressTextAsync("Loading base game mods from data folder...");
-				baseMods = await DivinityModDataLoader.LoadBuiltinModsAsync(Settings.GameDataPath);
+				cancelTokenSource = GetCancellationToken(30000);
+				baseMods = await RunTask(DivinityModDataLoader.LoadBuiltinModsAsync(Settings.GameDataPath, cancelTokenSource.Token), null);
+				cancelTokenSource = GetCancellationToken(int.MaxValue);
+				await IncreaseMainProgressValueAsync(taskStepAmount);
 			}
 
 			if (baseMods != null) MergeModLists(finalMods, baseMods);
@@ -1338,7 +1380,9 @@ namespace DivinityModManager.ViewModels
 
 		public bool ModIsAvailable(IDivinityModData divinityModData)
 		{
-			return mods.Items.Any(k => k.UUID == divinityModData.UUID) || DivinityApp.IgnoredMods.Any(im => im.UUID == divinityModData.UUID);
+			return mods.Items.Any(k => k.UUID == divinityModData.UUID) 
+				|| DivinityApp.IgnoredMods.Any(im => im.UUID == divinityModData.UUID) 
+				|| DivinityApp.IgnoredDependencyMods.Any(d => d.UUID == divinityModData.UUID);
 		}
 
 		public void LoadProfiles()
@@ -1844,7 +1888,7 @@ namespace DivinityModManager.ViewModels
 		{
 			DivinityApp.Log($"Refreshing data asynchronously...");
 
-			double taskStepAmount = 1.0 / 7;
+			double taskStepAmount = 1.0 / 10;
 
 			List<DivinityLoadOrderEntry> lastActiveOrder = null;
 			int lastOrderIndex = -1;
@@ -1866,7 +1910,7 @@ namespace DivinityModManager.ViewModels
 			if (Directory.Exists(PathwayData.LarianDocumentsFolder))
 			{
 				await SetMainProgressTextAsync("Loading mods...");
-				var loadedMods = await LoadModsAsync();
+				var loadedMods = await LoadModsAsync(taskStepAmount);
 				await IncreaseMainProgressValueAsync(taskStepAmount);
 
 				await SetMainProgressTextAsync("Loading profiles...");
@@ -1885,7 +1929,7 @@ namespace DivinityModManager.ViewModels
 				}
 
 				await SetMainProgressTextAsync("Loading external load orders...");
-				var savedModOrderList = await LoadExternalLoadOrdersAsync();
+				var savedModOrderList = await RunTask(LoadExternalLoadOrdersAsync(), new List<DivinityLoadOrder>());
 				await IncreaseMainProgressValueAsync(taskStepAmount);
 
 				if (savedModOrderList.Count > 0)
@@ -1940,6 +1984,7 @@ namespace DivinityModManager.ViewModels
 					return Unit.Default;
 				}, RxApp.MainThreadScheduler);
 
+				await SetMainProgressTextAsync("Finishing up...");
 				await IncreaseMainProgressValueAsync(taskStepAmount);
 			}
 			else
@@ -1948,6 +1993,8 @@ namespace DivinityModManager.ViewModels
 			}
 
 			await Observable.Start(() => {
+				int defaultAdventureIndex = AdventureMods.IndexOf(AdventureMods.FirstOrDefault(x => x.UUID == DivinityApp.ORIGINS_UUID));
+				if (defaultAdventureIndex == -1) defaultAdventureIndex = 0;
 				if (lastAdventureMod != null && AdventureMods != null && AdventureMods.Count > 0)
 				{
 					DivinityApp.Log($"Setting selected adventure mod.");
@@ -1956,11 +2003,15 @@ namespace DivinityModManager.ViewModels
 					{
 						SelectedAdventureModIndex = AdventureMods.IndexOf(nextAdventureMod);
 					}
-					SelectedAdventureModIndex = 0;
+					else
+					{
+
+						SelectedAdventureModIndex = defaultAdventureIndex;
+					}
 				}
 				else
 				{
-					SelectedAdventureModIndex = 0;
+					SelectedAdventureModIndex = defaultAdventureIndex;
 				}
 
 				DivinityApp.Log($"Finishing up refresh.");
@@ -2050,9 +2101,8 @@ namespace DivinityModManager.ViewModels
 			catch (Exception ex)
 			{
 				DivinityApp.Log($"Error loading external load orders: {ex.ToString()}.");
-				return null;
+				return new List<DivinityLoadOrder>();
 			}
-
 		}
 
 		private void SaveLoadOrder()
@@ -2436,21 +2486,6 @@ namespace DivinityModManager.ViewModels
 			RxApp.MainThreadScheduler.Schedule(delaySpan, _ => {
 				MainProgressIsActive = false;
 				CanCancelProgress = true;
-
-				if (Settings.CheckForUpdates)
-				{
-					if (Settings.LastUpdateCheck == -1 || (DateTimeOffset.Now.ToUnixTimeSeconds() - Settings.LastUpdateCheck >= 43200))
-					{
-						try
-						{
-							AutoUpdater.Start(DivinityApp.URL_UPDATE);
-						}
-						catch (Exception ex)
-						{
-							DivinityApp.Log($"Error running AutoUpdater:\n{ex.ToString()}");
-						}
-					}
-				}
 			});
 		}
 
@@ -2981,21 +3016,62 @@ namespace DivinityModManager.ViewModels
 			}
 		}
 
+		public void CheckForUpdates(bool force = false)
+		{
+			if (!force)
+			{
+				if (Settings.LastUpdateCheck == -1 || (DateTimeOffset.Now.ToUnixTimeSeconds() - Settings.LastUpdateCheck >= 43200))
+				{
+					try
+					{
+						AutoUpdater.Start(DivinityApp.URL_UPDATE);
+					}
+					catch (Exception ex)
+					{
+						DivinityApp.Log($"Error running AutoUpdater:\n{ex.ToString()}");
+					}
+				}
+			}
+			else
+			{
+				AutoUpdater.ReportErrors = true;
+				AutoUpdater.Start(DivinityApp.URL_UPDATE);
+				Settings.LastUpdateCheck = DateTimeOffset.Now.ToUnixTimeSeconds();
+				SaveSettings();
+				Task.Delay(1000).ContinueWith(_ =>
+				{
+					AutoUpdater.ReportErrors = false;
+				});
+			}
+		}
+
 		public void OnViewActivated(MainWindow parentView)
 		{
 			view = parentView;
-
 			DivinityApp.Commands.SetViewModel(this);
 
 			if (DebugMode)
 			{
+				string lastMessage = "";
 				this.WhenAnyValue(x => x.MainProgressWorkText, x => x.MainProgressValue).Subscribe((ob) =>
 				{
-					DivinityApp.Log($"Progress: {MainProgressValue} - {MainProgressWorkText}");
+					if(lastMessage != ob.Item1)
+					{
+						DivinityApp.Log($"Loading({ob.Item2 * 100}%): {ob.Item1}");
+						lastMessage = ob.Item1;
+					}
+					else
+					{
+						DivinityApp.Log($"Loading({ob.Item2 * 100}%)");
+					}
 				});
 			}
 
 			LoadSettings();
+			if (Settings.CheckForUpdates)
+			{
+				CheckForUpdates();
+			}
 			RefreshAsync_Start("Loading...");
 			SaveSettings(); // New values
 			IsInitialized = true;
@@ -3942,7 +4018,7 @@ Directory the zip will be extracted to:
 			var modsConnecton = mods.Connect();
 			modsConnecton.Filter(x => !x.IsLarianMod && x.Type != "Adventure").Bind(out allMods).DisposeMany().Subscribe();
 
-			modsConnecton.Filter(x => x.Type == "Adventure" && (!x.IsHidden || x.IsLarianMod)).Bind(out adventureMods).DisposeMany().Subscribe();
+			modsConnecton.Filter(x => x.Type == "Adventure" && (!x.IsHidden || x.UUID == DivinityApp.ORIGINS_UUID)).Bind(out adventureMods).DisposeMany().Subscribe();
 			this.WhenAnyValue(x => x.SelectedAdventureModIndex, x => x.AdventureMods.Count, (index, count) => index >= 0 && count > 0 && index < count).
 				Where(b => b == true).Select(x => AdventureMods[SelectedAdventureModIndex]).
 				ToProperty(this, x => x.SelectedAdventureMod, out selectedAdventureMod).DisposeWith(this.Disposables);
@@ -3979,6 +4055,9 @@ Directory the zip will be extracted to:
 					ShowAlert($"Path not found.", -1, 30);
 				}
 			}, adventureModCanOpenObservable);
+
+			var canCheckForUpdates = this.WhenAnyValue(x => x.MainProgressIsActive, b => b == false);
+			CheckForAppUpdatesCommand = ReactiveCommand.Create(() => CheckForUpdates(true), canCheckForUpdates);
 
 			canRenameOrder = this.WhenAnyValue(x => x.SelectedModOrderIndex, (i) => i > 0);
 

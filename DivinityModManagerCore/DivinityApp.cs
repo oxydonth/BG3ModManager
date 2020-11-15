@@ -32,6 +32,8 @@ namespace DivinityModManager
 		public const string PATH_DEFAULT_PATHWAYS = @"Resources/DefaultPathways.json";
 		public const string PATH_IGNORED_MODS = @"Resources/IgnoredMods.json";
 
+		public const string ORIGINS_UUID = "991c9c7a-fb80-40cb-8f0d-b92d4e80e9b1";
+
 		public static HashSet<DivinityModData> IgnoredMods { get; set; } = new HashSet<DivinityModData>();
 		public static HashSet<DivinityModData> IgnoredDependencyMods { get; set; } = new HashSet<DivinityModData>();
 
