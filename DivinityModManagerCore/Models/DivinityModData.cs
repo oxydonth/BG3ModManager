@@ -114,18 +114,7 @@ namespace DivinityModManager.Models
 		public DivinityModVersion HeaderVersion
 		{
 			get => headerVersion;
-			set
-			{
-				headerVersion = value;
-				if(headerVersion != null)
-				{
-					IsClassicMod = headerVersion.Minor == 1;
-					if (IsClassicMod)
-					{
-						DivinityApp.Log($"Found a Classic mod: {Name}");
-					}
-				}
-			}
+			set { this.RaiseAndSetIfChanged(ref headerVersion, value); }
 		}
 
 		private string tagsText = "";

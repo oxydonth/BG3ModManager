@@ -1572,7 +1572,7 @@ namespace DivinityModManager.ViewModels
 			{
 				var entry = loadFrom[i];
 				var mod = mods.Items.FirstOrDefault(m => m.UUID == entry.UUID);
-				if (mod != null && !mod.IsClassicMod)
+				if (mod != null)
 				{
 					ActiveMods.Add(mod);
 					if (mod.Dependencies.Count > 0)

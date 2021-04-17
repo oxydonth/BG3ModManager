@@ -503,7 +503,7 @@ namespace DivinityModManager.Util
 								DivinityApp.Log($"Error: No meta.lsx for mod pak '{pakPath}'.");
 							}
 
-							if(modData != null && (!ignoreClassic || !modData.IsClassicMod))
+							if(modData != null)
 							{
 								modData.FilePath = pakPath;
 								try
@@ -681,7 +681,7 @@ namespace DivinityModManager.Util
 									}
 								}
 
-								if (modData != null && (!ignoreClassic || !modData.IsClassicMod))
+								if (modData != null)
 								{
 									modData.FilePath = pakPath;
 									try
