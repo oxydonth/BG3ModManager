@@ -14,6 +14,7 @@
 	xmlns:vm="clr-namespace:DivinityModManager.ViewModels"
 	d:DesignHeight="450"
 	d:DesignWidth="800"
+	FocusManager.FocusedElement="{Binding ElementName=ActiveModsListView}"
 	mc:Ignorable="d">
 	<UserControl.Resources>
 		<ResourceDictionary>
@@ -66,6 +67,7 @@
 					Padding="4,0"
 					HorizontalAlignment="Left"
 					VerticalAlignment="Center"
+					behavior:ScreenReaderHelperBehavior.Name="Active Mods Filter"
 					AcceptsReturn="False"
 					AcceptsTab="False"
 					CanUndoTextOnEscape="True"
@@ -101,18 +103,22 @@
 					<Run Text="{Binding TotalActiveModsHidden, Mode=OneWay}" />
 					<Run Text="Hidden" /></TextBlock>
 				<TextBlock
+					x:Name="ActiveSelectedText"
 					Grid.Column="3"
 					Margin="4,0,0,0"
 					HorizontalAlignment="Left"
 					VerticalAlignment="Center"
+					AutomationProperties.HelpText="{Binding Text, RelativeSource={RelativeSource Self}}"
+					AutomationProperties.Name="Active Mods"
 					Visibility="{Binding ActiveSelected, Converter={StaticResource IntToVisibilityConverter}}">
 					<Run Text="{Binding ActiveSelected, Mode=OneWay}" />
 					<Run Text="Selected" /></TextBlock>
 			</Grid>
-			<ListView
+			<c:ModListView
 				x:Name="ActiveModsListView"
 				Grid.Row="1"
 				MaxHeight="99999"
+				behavior:ScreenReaderHelperBehavior.Name="Active Mods"
 				dd:DragDrop.DragHandler="{Binding DragHandler}"
 				dd:DragDrop.DropHandler="{Binding DropHandler}"
 				GridViewColumnHeader.Click="ListView_Click"
@@ -150,6 +156,7 @@
 					Padding="4,0"
 					HorizontalAlignment="Left"
 					VerticalAlignment="Center"
+					behavior:ScreenReaderHelperBehavior.Name="Inactive Mods Filter"
 					AcceptsReturn="False"
 					AcceptsTab="False"
 					CanUndoTextOnEscape="True"
@@ -182,22 +189,28 @@
 					Margin="4,0,0,0"
 					HorizontalAlignment="Left"
 					VerticalAlignment="Center"
+					behavior:ScreenReaderHelperBehavior.Name="Total Hidden Inactive Mods"
 					Visibility="{Binding TotalInactiveModsHidden, Converter={StaticResource IntToVisibilityConverter}}">
 					<Run Text="{Binding TotalInactiveModsHidden, Mode=OneWay}" />
 					<Run Text="Hidden" /></TextBlock>
 				<TextBlock
+					x:Name="InactiveSelectedText"
 					Grid.Column="3"
 					Margin="4,0,0,0"
 					HorizontalAlignment="Left"
 					VerticalAlignment="Center"
+					behavior:ScreenReaderHelperBehavior.Name="Total Inactive Mods Selected"
+					AutomationProperties.HelpText="{Binding Text, RelativeSource={RelativeSource Self}}"
+					AutomationProperties.Name="Inactive Mods"
 					Visibility="{Binding InactiveSelected, Converter={StaticResource IntToVisibilityConverter}}">
 					<Run Text="{Binding InactiveSelected, Mode=OneWay}" />
 					<Run Text="Selected" /></TextBlock>
 			</Grid>
-			<ListView
+			<c:ModListView
 				x:Name="InactiveModsListView"
 				Grid.Row="2"
 				MaxHeight="99999"
+				behavior:ScreenReaderHelperBehavior.Name="Inactive Mods"
 				dd:DragDrop.DragHandler="{Binding DragHandler}"
 				dd:DragDrop.DropHandler="{Binding DropHandler}"
 				GridViewColumnHeader.Click="ListView_Click"

@@ -31,6 +31,9 @@ using DivinityModManager.WinForms;
 using AdonisUI;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using DivinityModManager.Util.ScreenReader;
+using System.Reflection;
+using DivinityModManager.Models.App;
 
 namespace DivinityModManager.Views
 {
@@ -66,14 +69,8 @@ namespace DivinityModManager.Views
 			set => ViewModel = (MainWindowViewModel)value;
 		}
 
-		private void CreateButtonBinding(Button button, string vmProperty, object source = null)
-		{
-			if (source == null) source = ViewModel;
-			Binding binding = new Binding(vmProperty);
-			binding.Source = source;
-			binding.Mode = BindingMode.OneWay;
-			button.SetBinding(Button.CommandProperty, binding);
-		}
+		private Dictionary<string, MenuItem> menuItems = new Dictionary<string, MenuItem>();
+		public Dictionary<string, MenuItem> MenuItems => menuItems;
 
 		public MainWindow()
 		{
@@ -135,51 +132,61 @@ namespace DivinityModManager.Views
 				ViewModel.OnViewActivated(this);
 				RegisterBindings();
 			});
+
+			AddHandler(UIElement.GotFocusEvent, new RoutedEventHandler(OnGotFocus));
+		}
+
+		void OnGotFocus(object sender, RoutedEventArgs e)
+		{
+			//Trace.WriteLine($"[OnGotFocus] {sender} {e.Source}");
+		}
+
+		private void OpenPreferences(bool switchToKeybindings = false)
+		{
+			if (!SettingsWindow.IsVisible)
+			{
+				if (switchToKeybindings == true)
+				{
+					ViewModel.Settings.SelectedTabIndex = SettingsWindow.PreferencesTabControl.Items.IndexOf(SettingsWindow.KeybindingsTabItem);
+				}
+				SettingsWindow.Init(this.ViewModel);
+				SettingsWindow.Show();
+				SettingsWindow.Owner = this;
+				ViewModel.Settings.SettingsWindowIsOpen = true;
+			}
+			else
+			{
+				SettingsWindow.Hide();
+				ViewModel.Settings.SettingsWindowIsOpen = false;
+			}
+		}
+
+		private void ToggleAboutWindow()
+		{
+			if (AboutWindow == null)
+			{
+				AboutWindow = new AboutWindow();
+			}
+
+			if (!AboutWindow.IsVisible)
+			{
+				AboutWindow.DataContext = ViewModel;
+				AboutWindow.Show();
+				AboutWindow.Owner = this;
+			}
+			else
+			{
+				AboutWindow.Hide();
+			}
 		}
 
 		private void RegisterBindings()
 		{
 			this.WhenAnyValue(x => x.ViewModel.Title).BindTo(this, view => view.Title);
 
-			var c = ReactiveCommand.Create(() =>
-			{
-				if (!SettingsWindow.IsVisible)
-				{
-					SettingsWindow.Init(this.ViewModel.Settings);
-					SettingsWindow.Show();
-					SettingsWindow.Owner = this;
-					ViewModel.Settings.SettingsWindowIsOpen = true;
-				}
-				else
-				{
-					SettingsWindow.Hide();
-					ViewModel.Settings.SettingsWindowIsOpen = false;
-				}
-			});
-			c.ThrownExceptions.Subscribe((ex) =>
-			{
-				DivinityApp.Log("Error opening settings window: " + ex.ToString());
-			});
-			ViewModel.OpenPreferencesCommand = c;
-
-			ViewModel.OpenAboutWindowCommand = ReactiveCommand.Create(() =>
-			{
-				if (AboutWindow == null)
-				{
-					AboutWindow = new AboutWindow();
-				}
-
-				if (!AboutWindow.IsVisible)
-				{
-					AboutWindow.DataContext = ViewModel;
-					AboutWindow.Show();
-					AboutWindow.Owner = this;
-				}
-				else
-				{
-					AboutWindow.Hide();
-				}
-			});
+			ViewModel.Keys.OpenPreferences.AddAction(() => OpenPreferences(false));
+			ViewModel.Keys.OpenKeybindings.AddAction(() => OpenPreferences(true));
+			ViewModel.Keys.OpenAboutWindow.AddAction(ToggleAboutWindow);
 
 			this.WhenAnyValue(x => x.ViewModel.MainProgressIsActive).Subscribe((b) =>
 			{
@@ -193,7 +200,7 @@ namespace DivinityModManager.Views
 				}
 			});
 
-			ViewModel.ToggleVersionGeneratorWindowCommand = ReactiveCommand.Create(() =>
+			ViewModel.Keys.ToggleVersionGeneratorWindow.AddAction(() =>
 			{
 				if (VersionGeneratorWindow == null)
 				{
@@ -215,47 +222,91 @@ namespace DivinityModManager.Views
 
 			this.WhenAnyValue(x => x.ViewModel.MainProgressValue).BindTo(this, view => view.TaskbarItemInfo.ProgressValue);
 
-			this.WhenAnyValue(x => x.ViewModel.AddOrderConfigCommand).BindTo(this, view => view.FileAddNewOrderMenuItem.Command);
-			this.WhenAnyValue(x => x.ViewModel.SaveOrderCommand).BindTo(this, view => view.FileSaveOrderMenuItem.Command);
-			this.WhenAnyValue(x => x.ViewModel.SaveOrderAsCommand).BindTo(this, view => view.FileSaveOrderAsMenuItem.Command);
+			foreach (var key in ViewModel.Keys.All)
+			{
+				var keyBinding = new KeyBinding(key.Command, key.Key, key.Modifiers);
+				BindingOperations.SetBinding(keyBinding, InputBinding.CommandProperty, new Binding { Path = new PropertyPath("Command"), Source=key });
+				BindingOperations.SetBinding(keyBinding, KeyBinding.KeyProperty, new Binding { Path = new PropertyPath("Key"), Source=key });
+				BindingOperations.SetBinding(keyBinding, KeyBinding.ModifiersProperty, new Binding { Path = new PropertyPath("Modifiers"), Source=key });
+				this.InputBindings.Add(keyBinding);
+			}
 
-			this.WhenAnyValue(x => x.ViewModel.ImportOrderFromSaveCommand).BindTo(this, view => view.FileImportOrderFromSave.Command);
-			this.WhenAnyValue(x => x.ViewModel.ImportOrderFromSaveAsNewCommand).BindTo(this, view => view.FileImportOrderFromSaveAsNew.Command);
-			this.WhenAnyValue(x => x.ViewModel.ImportOrderFromFileCommand).BindTo(this, view => view.FileImportOrderFromFile.Command);
-			this.WhenAnyValue(x => x.ViewModel.ImportOrderZipFileCommand).BindTo(this, view => view.FileImportOrderZip.Command);
-			this.FileImportOrderZip.Visibility = Visibility.Collapsed; // Disabled for now
+			foreach (var entry in TopMenuBar.Items.Cast<MenuItem>())
+			{
+				menuItems.Add((string)entry.Header, entry);
+			}
 
-			this.WhenAnyValue(x => x.ViewModel.ExportOrderCommand).BindTo(this, view => view.FileExportOrderToGameMenuItem.Command);
-			this.WhenAnyValue(x => x.ViewModel.ExportLoadOrderAsArchiveCommand).BindTo(this, view => view.FileExportOrderToArchiveMenuItem.Command);
-			this.WhenAnyValue(x => x.ViewModel.ExportLoadOrderAsArchiveToFileCommand).BindTo(this, view => view.FileExportOrderToArchiveAsMenuItem.Command);
-			this.WhenAnyValue(x => x.ViewModel.ExportLoadOrderAsTextFileCommand).BindTo(this, view => view.FileExportOrderToTextListMenuItem.Command);
+			//Generating menu items
+			var menuKeyProperties = typeof(AppKeys)
+			.GetRuntimeProperties()
+			.Where(prop => Attribute.IsDefined(prop, typeof(MenuSettingsAttribute)))
+			.Select(prop => typeof(AppKeys).GetProperty(prop.Name));
+			foreach(var prop in menuKeyProperties)
+			{
+				Hotkey key = (Hotkey)prop.GetValue(ViewModel.Keys);
+				MenuSettingsAttribute menuSettings = prop.GetCustomAttribute<MenuSettingsAttribute>();
+				if (String.IsNullOrEmpty(key.DisplayName))
+					key.DisplayName = menuSettings.DisplayName;
 
-			this.WhenAnyValue(x => x.ViewModel.RefreshCommand).BindTo(this, view => view.FileRefreshMenuItem.Command);
+				MenuItem parentMenuItem;
+				if (!menuItems.TryGetValue(menuSettings.Parent, out parentMenuItem))
+				{
+					parentMenuItem = new MenuItem();
+					parentMenuItem.Header = menuSettings.Parent;
+					TopMenuBar.Items.Add(parentMenuItem);
+					menuItems.Add(menuSettings.Parent, parentMenuItem);
+				}
 
-			this.WhenAnyValue(x => x.ViewModel.ToggleDisplayNameCommand).BindTo(this, view => view.EditToggleFileNameDisplayMenuItem.Command);
+				MenuItem newEntry = new MenuItem();
+				newEntry.Header = menuSettings.DisplayName;
+				newEntry.InputGestureText = key.ToString();
+				newEntry.Command = key.Command;
+				BindingOperations.SetBinding(newEntry, MenuItem.CommandProperty, new Binding { Path = new PropertyPath("Command"), Source = key });
+				parentMenuItem.Items.Add(newEntry);
+				if(!String.IsNullOrWhiteSpace(menuSettings.Tooltip))
+				{
+					newEntry.ToolTip = menuSettings.Tooltip;
+				}
+				if(!String.IsNullOrWhiteSpace(menuSettings.Style))
+				{
+					Style style = (Style)TryFindResource(menuSettings.Style);
+					if(style != null)
+					{
+						newEntry.Style = style;
+					}
+				}
 
-			this.WhenAnyValue(x => x.ViewModel.OpenPreferencesCommand).BindTo(this, view => view.SettingsPreferencesMenuItem.Command);
-			this.WhenAnyValue(x => x.ViewModel.ToggleDarkModeCommand).BindTo(this, view => view.SettingsDarkModeMenuItem.Command);
+				if(menuSettings.AddSeparator)
+				{
+					parentMenuItem.Items.Add(new Separator());
+				}
 
-			this.WhenAnyValue(x => x.ViewModel.DownloadAndInstallOsiExtenderCommand).BindTo(this, view => view.ToolsInstallOsiExtenderMenuItem.Command);
-			this.WhenAnyValue(x => x.ViewModel.ExtractSelectedModsCommand).BindTo(this, view => view.ToolsExtractSelectedModsMenuItem.Command);
-			this.WhenAnyValue(x => x.ViewModel.ToggleVersionGeneratorWindowCommand).BindTo(this, view => view.ToolsToggleVersionGeneratorWindowMenuItem.Command);
-			this.WhenAnyValue(x => x.ViewModel.RenameSaveCommand).BindTo(this, view => view.ToolsRenameSaveMenuItem.Command);
+				menuItems.Add(prop.Name, newEntry);
+			}
+		}
 
-			this.WhenAnyValue(x => x.ViewModel.CheckForAppUpdatesCommand).BindTo(this, view => view.HelpCheckForUpdateMenuItem.Command);
-			this.WhenAnyValue(x => x.ViewModel.OpenDonationPageCommand).BindTo(this, view => view.HelpDonationMenuItem.Command);
-			this.WhenAnyValue(x => x.ViewModel.OpenRepoPageCommand).BindTo(this, view => view.HelpOpenRepoPageMenuItem.Command);
-			this.WhenAnyValue(x => x.ViewModel.OpenAboutWindowCommand).BindTo(this, view => view.HelpOpenAboutWindowMenuItem.Command);
+		protected override System.Windows.Automation.Peers.AutomationPeer OnCreateAutomationPeer()
+		{
+			return new CachedAutomationPeer(this);
 		}
 
 		public void UpdateColorTheme(bool darkMode)
 		{
-			ResourceLocator.SetColorScheme(this.Resources, !darkMode ? ResourceLocator.LightColorScheme : ResourceLocator.DarkColorScheme);
-			ResourceLocator.SetColorScheme(SettingsWindow.Resources, !darkMode ? ResourceLocator.LightColorScheme : ResourceLocator.DarkColorScheme);
-			if (AboutWindow != null)
+			ResourceLocator.SetColorScheme(this.Resources, !darkMode ? DivinityApp.LightTheme : DivinityApp.DarkTheme);
+			ResourceLocator.SetColorScheme(SettingsWindow.Resources, !darkMode ? DivinityApp.LightTheme : DivinityApp.DarkTheme);
+			if(AboutWindow != null)
 			{
-				ResourceLocator.SetColorScheme(AboutWindow.Resources, !darkMode ? ResourceLocator.LightColorScheme : ResourceLocator.DarkColorScheme);
+				ResourceLocator.SetColorScheme(AboutWindow.Resources, !darkMode ? DivinityApp.LightTheme : DivinityApp.DarkTheme);
 			}
+			if(VersionGeneratorWindow != null)
+			{
+				ResourceLocator.SetColorScheme(VersionGeneratorWindow.Resources, !darkMode ? DivinityApp.LightTheme : DivinityApp.DarkTheme);
+			}
+			//if(ModUpdatesLayout.Instance != null)
+			//{
+			//	ResourceLocator.SetColorScheme(ModUpdatesLayout.Instance.Resources, !darkMode ? DivinityApp.LightTheme : DivinityApp.DarkTheme);
+			//	ModUpdatesLayout.Instance.UpdateBackgroundColors();
+			//}
 		}
 
 		private void OnAppClosing(object sender, ExitEventArgs e)
@@ -374,12 +425,13 @@ namespace DivinityModManager.Views
 			}
 		}
 
-		private Dictionary<string, string> _buttonBindings = new Dictionary<string, string>()
+		private Dictionary<string, string> _shortcutButtonBindings = new Dictionary<string, string>()
 		{
-			["OpenWorkshopFolderButton"] = "OpenWorkshopFolderCommand",
-			["OpenModsFolderButton"] = "OpenModsFolderCommand",
-			["OpenExtenderLogsFolderButton"] = "OpenExtenderLogDirectoryCommand",
-			["OpenGameButton"] = "OpenGameCommand"
+			["OpenWorkshopFolderButton"] = "Keys.OpenWorkshopFolder.Command",
+			["OpenModsFolderButton"] = "Keys.OpenModsFolder.Command",
+			["OpenExtenderLogsFolderButton"] = "Keys.OpenLogsFolder.Command",
+			["OpenGameButton"] = "Keys.LaunchGame.Command",
+			["LoadGameMasterModOrderButton"] = "Keys.ImportOrderFromSelectedGMCampaign.Command",
 		};
 
 		private void ModOrderPanel_Loaded(object sender, RoutedEventArgs e)
@@ -390,12 +442,20 @@ namespace DivinityModManager.Views
 				var buttons = orderPanel.FindVisualChildren<Button>();
 				foreach(var button in buttons)
 				{
-					if(_buttonBindings.TryGetValue(button.Name, out string command))
+					if(_shortcutButtonBindings.TryGetValue(button.Name, out string path))
 					{
-						CreateButtonBinding(button, command);
+						if(button.Command == null)
+						{
+							BindingHelper.CreateCommandBinding(button, path, ViewModel);
+						}
 					}
 				}
 			};
+		}
+
+		private void GameMasterCampaignComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+		{
+			ViewModel.UserChangedSelectedGMCampaign = true;
 		}
 	}
 }

@@ -1,5 +1,6 @@
 ﻿using Alphaleonis.Win32.Filesystem;
 using DivinityModManager.Models;
+using DivinityModManager.Models.App;
 using DivinityModManager.ViewModels;
 using ReactiveUI;
 using System;
@@ -48,7 +49,7 @@ namespace DivinityModManager.Util
 			}
 			else
 			{
-				_viewModel.ShowAlert($"Error opening '{path}': File does not exist!", -1, 10);
+				_viewModel.ShowAlert($"Error opening '{path}': File does not exist!", AlertType.Danger, 10);
 			}
 		}
 
@@ -64,7 +65,7 @@ namespace DivinityModManager.Util
 			}
 			else
 			{
-				_viewModel.ShowAlert($"Error opening '{path}': File does not exist!", -1, 10);
+				_viewModel.ShowAlert($"Error opening '{path}': File does not exist!", AlertType.Danger, 10);
 			}
 		}
 
@@ -77,7 +78,7 @@ namespace DivinityModManager.Util
 			}
 			catch (Exception ex)
 			{
-				_viewModel.ShowAlert($"Error copying text to clipboard: {ex.ToString()}", -1, 10);
+				_viewModel.ShowAlert($"Error copying text to clipboard: {ex.ToString()}", AlertType.Danger, 10);
 			}
 		}
 
@@ -97,7 +98,6 @@ namespace DivinityModManager.Util
 			ToggleNameDisplayCommand = ReactiveCommand.Create<DivinityModData>((mod) =>
 			{
 				mod.DisplayFileForName = !mod.DisplayFileForName;
-				mod.UpdateDisplayName();
 				if (_viewModel != null)
 				{
 					if (_viewModel.ActiveSelected > 1 && _viewModel.ActiveMods.Contains(mod))
@@ -105,7 +105,6 @@ namespace DivinityModManager.Util
 						foreach(var m in _viewModel.ActiveMods.Where(x => x.IsSelected))
 						{
 							m.DisplayFileForName = mod.DisplayFileForName;
-							mod.UpdateDisplayName();
 						}
 					}
 					else if (_viewModel.InactiveSelected > 1 && _viewModel.InactiveMods.Contains(mod))
@@ -113,7 +112,6 @@ namespace DivinityModManager.Util
 						foreach (var m in _viewModel.InactiveMods.Where(x => x.IsSelected))
 						{
 							m.DisplayFileForName = mod.DisplayFileForName;
-							mod.UpdateDisplayName();
 						}
 					}
 				}

@@ -8,10 +8,51 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 
 namespace DivinityModManager.ViewModels
 {
+	public class ManualDropInfo : IDropInfo
+	{
+		public object Data { get; }
+		public IDragInfo DragInfo { get; }
+		public Point DropPosition { get; }
+		public Type DropTargetAdorner { get; set; }
+		public DragDropEffects Effects { get; set; }
+		public int InsertIndex { get; }
+		public int UnfilteredInsertIndex { get; }
+		public System.Collections.IEnumerable TargetCollection { get; set; }
+		public object TargetItem { get; }
+		public CollectionViewGroup TargetGroup { get; }
+		public UIElement VisualTarget { get; }
+		public UIElement VisualTargetItem { get; }
+		public Orientation VisualTargetOrientation { get; }
+		public FlowDirection VisualTargetFlowDirection { get; }
+		public string DestinationText { get; set; }
+		public string EffectText { get; set; }
+		public RelativeInsertPosition InsertPosition { get; }
+		public DragDropKeyStates KeyStates { get; }
+		public bool NotHandled { get; set; }
+		public bool IsSameDragDropContextAsSource { get; }
+		public EventType EventType { get; }
+
+		public ManualDropInfo(List<DivinityModData> data, int index, UIElement visualTarget, System.Collections.IEnumerable targetCollection, System.Collections.IEnumerable sourceCollection)
+		{
+			UnfilteredInsertIndex = index;
+			VisualTarget = visualTarget;
+			TargetCollection = targetCollection;
+			Data = data;
+			DragInfo = new ManualDragInfo()
+			{
+				SourceCollection = sourceCollection,
+				Data = data
+			};
+		}
+	}
+
+
 	public class ModListDropHandler : DefaultDropHandler
 	{
 		override public void Drop(IDropInfo dropInfo)
@@ -69,7 +110,23 @@ namespace DivinityModManager.ViewModels
 				{
 					var obj2Insert = o;
 					objects2Insert.Add(obj2Insert);
-					destinationList.Insert(insertIndex++, obj2Insert);
+					try
+					{
+						if (insertIndex < destinationList.Count)
+						{
+							destinationList.Insert(insertIndex, obj2Insert);
+							insertIndex++;
+						}
+						else
+						{
+							destinationList.Add(obj2Insert);
+						}
+					}
+					catch (Exception ex)
+					{
+						DivinityApp.Log($"Error adding drop operation item to destinationList:\n{ex}");
+						destinationList.Add(obj2Insert);
+					}
 				}
 
 				var selectDroppedItems = itemsControl is TabControl || (itemsControl != null && GongSolutions.Wpf.DragDrop.DragDrop.GetSelectDroppedItems(itemsControl));

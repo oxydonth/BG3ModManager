@@ -7,8 +7,10 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Automation.Peers;
 
 namespace DivinityModManager
 {
@@ -33,6 +35,8 @@ namespace DivinityModManager
 		public const string PATH_IGNORED_MODS = @"Resources/IgnoredMods.json";
 
 		public const string ORIGINS_UUID = "991c9c7a-fb80-40cb-8f0d-b92d4e80e9b1";
+		public static readonly Uri LightTheme = new Uri("pack://application:,,,/DivinityModManager;component/Themes/Light.xaml", UriKind.Absolute);
+		public static readonly Uri DarkTheme = new Uri("pack://application:,,,/DivinityModManager;component/Themes/Dark.xaml", UriKind.Absolute);
 
 		public static HashSet<DivinityModData> IgnoredMods { get; set; } = new HashSet<DivinityModData>();
 		public static HashSet<DivinityModData> IgnoredDependencyMods { get; set; } = new HashSet<DivinityModData>();
@@ -59,6 +63,17 @@ namespace DivinityModManager
 			}
 		}
 
+		private static bool isKeyboardNavigating = false;
+
+		public static bool IsKeyboardNavigating
+		{
+			get => isKeyboardNavigating;
+			set {
+				isKeyboardNavigating = value;
+				NotifyStaticPropertyChanged();
+			}
+		}
+
 		public static IObservable<Func<DivinityModDependencyData, bool>> DependencyFilter { get; set; }
 
 		public static string DateTimeColumnFormat { get; set; } = "MM/dd/yyyy";
@@ -67,6 +82,24 @@ namespace DivinityModManager
 		public static void Log(string msg, [CallerMemberName] string mName = "", [CallerFilePath] string path = "", [CallerLineNumber] int line = 0)
 		{
 			System.Diagnostics.Trace.WriteLine($"[{Path.GetFileName(path)}:{mName}({line})] {msg}");
+		}
+
+		[DllImport("user32.dll")]
+		static extern bool SystemParametersInfo(int iAction, int iParam, out bool bActive, int iUpdate);
+
+		public static bool IsScreenReaderActive()
+		{
+			int iAction = 70; // SPI_GETSCREENREADER constant;
+			int iParam = 0;
+			int iUpdate = 0;
+			bool bActive = false;
+			bool bReturn = SystemParametersInfo(iAction, iParam, out bActive, iUpdate);
+			return bReturn && bActive;
+			//if (AutomationPeer.ListenerExists(AutomationEvents.AutomationFocusChanged) || AutomationPeer.ListenerExists(AutomationEvents.LiveRegionChanged))
+			//{
+			//	return true;
+			//}
+			//return false;
 		}
 	}
 }

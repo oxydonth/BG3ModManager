@@ -1,21 +1,15 @@
-﻿using System;
+﻿using AdonisUI;
+using DivinityModManager.ViewModels;
+using Microsoft.Windows.Themes;
+using ReactiveUI;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Reactive.Concurrency;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
-using DivinityModManager.ViewModels;
-using ReactiveUI;
 
 namespace DivinityModManager.Views
 {
@@ -25,9 +19,12 @@ namespace DivinityModManager.Views
 	/// </summary>
 	public partial class ModUpdatesLayout : ModUpdatesLayoutBase
 	{
+		public static ModUpdatesLayout Instance { get; private set; }
 		public ModUpdatesLayout()
 		{
 			InitializeComponent();
+
+			Instance = this;
 
 			Loaded += ModUpdatesLayout_Loaded;
 			DataContextChanged += ModUpdatesLayout_DataContextChanged;
@@ -35,7 +32,7 @@ namespace DivinityModManager.Views
 
 		private void ModUpdatesLayout_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
 		{
-			if(DataContext is ModUpdatesViewData vm)
+			if (e.NewValue != null && e.NewValue is ModUpdatesViewData vm)
 			{
 				ViewModel = vm;
 
@@ -72,9 +69,28 @@ namespace DivinityModManager.Views
 			}
 		}
 
+		private List<string> ignoreColors = new List<string>{"#FFEDEDED", "#00FFFFFF", "#FFFFFFFF", "#FFF4F4F4", "#FFE8E8E8", "#FF000000" };
+
+		public void UpdateBackgroundColors()
+		{
+			//Fix for IsEnabled False ListView having a system color border background we can't change.
+			foreach (var border in this.FindVisualChildren<ClassicBorderDecorator>())
+			{
+				border.SetResourceReference(BackgroundProperty, Brushes.Layer4BackgroundBrush);
+			}
+
+			//foreach (var c in this.FindVisualChildren<Control>())
+			//{
+			//	if(c.Background != null)
+			//	{
+			//		DivinityApp.Log($"{c.GetType()} ({c.Name}) | Background: {c.Background.ToString().Replace("#FF", "#")}");
+			//	}
+			//	//c.SetResourceReference(BackgroundProperty, Brushes.Layer4BackgroundBrush);
+			//}
+		}
 		private void ModUpdatesLayout_Loaded(object sender, RoutedEventArgs e)
 		{
-			
+			UpdateBackgroundColors();
 		}
 
 		GridViewColumnHeader _lastHeaderClicked = null;

@@ -5,6 +5,7 @@
 	xmlns:adonisExtensions="clr-namespace:AdonisUI.Extensions;assembly=AdonisUI"
 	xmlns:adonisUI="clr-namespace:AdonisUI;assembly=AdonisUI"
 	xmlns:autogrid="clr-namespace:WpfAutoGrid;assembly=WpfAutoGrid"
+	xmlns:behavior="clr-namespace:DivinityModManager.Controls.Behavior"
 	xmlns:c="clr-namespace:DivinityModManager.Controls"
 	xmlns:controls="clr-namespace:DivinityModManager.Controls"
 	xmlns:conv="clr-namespace:DivinityModManager.Converters"
@@ -19,8 +20,8 @@
 	xmlns:vm="clr-namespace:DivinityModManager.ViewModels"
 	xmlns:xc="http://schemas.xceed.com/wpf/xaml/toolkit"
 	Title="Preferences"
-	Width="600"
-	Height="450"
+	Width="800"
+	Height="900"
 	TitleBarBackground="#4e38c9"
 	TitleBarForeground="{DynamicResource {x:Static adonisUI:Brushes.AccentForegroundBrush}}"
 	mc:Ignorable="d">
@@ -92,52 +93,50 @@
 		<TabControl
 			x:Name="PreferencesTabControl"
 			Grid.Row="1"
-			SelectionChanged="PreferencesTabControl_SelectionChanged">
-			<TabItem Header="General">
+			SelectedIndex="{Binding SelectedTabIndex}">
+			<TabItem FocusManager.FocusedElement="{Binding ElementName=SettingsAutoGrid}" Header="General">
 				<ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
 					<autogrid:AutoGrid
+						x:Name="SettingsAutoGrid"
 						Margin="10,0"
 						ChildMargin="4"
 						ColumnCount="2"
 						Columns="auto,*"
-						RowCount="10"
+						RowCount="12"
 						RowHeight="*"
 						Rows="auto,auto,auto,auto,auto,auto,auto,auto,auto,auto">
-						<TextBlock Text="Game Data Path" ToolTip="The path to the Data folder, for loading editor mods.&#x0a;Example: Baldur's Gate 3/Data" />
+						<autogrid:AutoGrid.Resources>
+							<Style BasedOn="{StaticResource {x:Type TextBlock}}" TargetType="TextBlock">
+								<Setter Property="DataContext" Value="{Binding}" />
+							</Style>
+						</autogrid:AutoGrid.Resources>
+						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="GameDataPath" />
 						<controls:UnfocusableTextBox
 							VerticalAlignment="Center"
 							Text="{Binding GameDataPath, UpdateSourceTrigger=PropertyChanged, FallbackValue=''}"
 							TextAlignment="Left" />
-						<TextBlock Text="Game Executable Path" ToolTip="The path to bg3.exe." />
+						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="GameExecutablePath" Text="Game Executable Path" ToolTip="The path to bg3.exe." />
 						<controls:UnfocusableTextBox
 							VerticalAlignment="Center"
 							Text="{Binding GameExecutablePath, UpdateSourceTrigger=PropertyChanged, FallbackValue=''}"
 							TextAlignment="Left" />
-						<!--<TextBlock Text="Workshop Path" ToolTip="The workshop folder.&#x0a;Used for detecting mod updates and new mods to be copied into the local mods folder." />
-						<controls:UnfocusableTextBox
-							x:Name="WorkshopPathTextbox"
-							VerticalAlignment="Center"
-							GotFocus="WorkshopPathTextbox_GotFocus"
-							LostFocus="WorkshopPathTextbox_LostFocus"
-							Text="{Binding WorkshopPath, UpdateSourceTrigger=PropertyChanged, FallbackValue=''}"
-							TextAlignment="Left" />-->
-						<TextBlock Text="Saved Load Orders Path" ToolTip="The folder to save and load load orders to." />
+						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="LoadOrderPath" />
 						<controls:UnfocusableTextBox
 							VerticalAlignment="Center"
 							Text="{Binding LoadOrderPath, UpdateSourceTrigger=PropertyChanged, FallbackValue='Load Order'}"
 							TextAlignment="Left" />
-						<TextBlock Text="Enable Story Log" ToolTip="When launching the game, enable the story log (osiris.log)." />
+						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="GameStoryLogEnabled" />
 						<CheckBox VerticalAlignment="Center" IsChecked="{Binding GameStoryLogEnabled, UpdateSourceTrigger=PropertyChanged}" />
-						<TextBlock Text="Always Disable Telemetry" ToolTip="If enabled, Larian's telemetry (data gathering for early access) for BG3 will always be disabled, regardless of active mods. Telemetry is always disabled if mods are active." />
+						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="TelemetryDisabled" />
 						<CheckBox VerticalAlignment="Center" IsChecked="{Binding TelemetryDisabled, UpdateSourceTrigger=PropertyChanged}" />
-						<TextBlock Text="Auto Add Missing Dependencies When Exporting" ToolTip="Automatically add dependency mods above their dependents in the exported load order, if omitted from the active order." />
+						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="AutoAddDependenciesWhenExporting" />
 						<CheckBox VerticalAlignment="Center" IsChecked="{Binding AutoAddDependenciesWhenExporting, UpdateSourceTrigger=PropertyChanged}" />
-						<TextBlock Text="Enable Automatic Updates" ToolTip="Automatically check for updates when the program starts." />
+						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="CheckForUpdates" />
 						<CheckBox VerticalAlignment="Center" IsChecked="{Binding CheckForUpdates, UpdateSourceTrigger=PropertyChanged}" />
-						<TextBlock Text="Disable Missing Mod Warnings" ToolTip="If a load order is missing mods, no warnings will be displayed." />
+						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="DisableMissingModWarnings" />
 						<CheckBox VerticalAlignment="Center" IsChecked="{Binding DisableMissingModWarnings, UpdateSourceTrigger=PropertyChanged}" />
-						<!--<TextBlock Text="Disable Checking for Steam Workshop Tags" ToolTip="The mod manager will try and find mod tags from the workshop by default." />
-						<CheckBox VerticalAlignment="Center" IsChecked="{Binding DisableWorkshopTagCheck, UpdateSourceTrigger=PropertyChanged}" />-->
+						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="ShiftListFocusOnSwap" />
+						<CheckBox VerticalAlignment="Center" IsChecked="{Binding ShiftListFocusOnSwap, UpdateSourceTrigger=PropertyChanged}" />
 						<TextBlock Text="On Game Launch" />
 						<ComboBox
 							DisplayMemberPath="Description"
@@ -152,6 +151,7 @@
 			</TabItem>
 			<TabItem
 				x:Name="OsirisExtenderTab"
+				FocusManager.FocusedElement="{Binding ElementName=ExtenderSettingsAutoGrid}"
 				Header="Script Extender"
 				Visibility="{Binding ExtenderSettings.ExtenderIsAvailable, Converter={StaticResource BoolToVisibilityConverter}}">
 				<Grid>
@@ -161,6 +161,7 @@
 					</Grid.RowDefinitions>
 					<ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
 						<autogrid:AutoGrid
+							x:Name="ExtenderSettingsAutoGrid"
 							Margin="10,0"
 							ChildMargin="4"
 							ColumnCount="2"
@@ -322,9 +323,83 @@
 					</ScrollViewer>
 				</Grid>
 			</TabItem>
-			<TabItem Header="Advanced">
+			<TabItem
+				x:Name="KeybindingsTabItem"
+				FocusManager.FocusedElement="{Binding ElementName=KeybindingsListView}"
+				Header="Keyboard Shortcuts">
+				<ListView
+					x:Name="KeybindingsListView"
+					KeyboardNavigation.TabNavigation="Continue"
+					MouseDoubleClick="HotkeyListViewItem_MouseDoubleClick"
+					ScrollViewer.VerticalScrollBarVisibility="Auto">
+					<ListView.ItemContainerStyle>
+						<Style BasedOn="{StaticResource {x:Type ListViewItem}}" TargetType="ListViewItem">
+							<Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+							<Setter Property="Tag" Value="{Binding}" />
+							<Setter Property="HorizontalContentAlignment" Value="Stretch" />
+							<Setter Property="VerticalContentAlignment" Value="Stretch" />
+							<Setter Property="ToolTip" Value="{Binding ToolTip}" />
+							<Setter Property="ContextMenu">
+								<Setter.Value>
+									<ContextMenu>
+										<MenuItem
+											x:Name="ResetHotkeyMenuItem"
+											Command="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type ContextMenu}}, Path=PlacementTarget.DataContext.ResetCommand}"
+											Header="Reset Keybinding" />
+										<MenuItem
+											x:Name="ClearHotkeyMenuItem"
+											Command="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type ContextMenu}}, Path=PlacementTarget.DataContext.ClearCommand}"
+											Header="Remove Keybinding" />
+									</ContextMenu>
+								</Setter.Value>
+							</Setter>
+						</Style>
+					</ListView.ItemContainerStyle>
+					<ListView.View>
+						<GridView AllowsColumnReorder="False" ColumnHeaderContainerStyle="{StaticResource GridViewLeftContainerStyle}">
+							<GridView.Columns>
+								<GridViewColumn
+									Width="450"
+									Header="Command"
+									HeaderTemplate="{StaticResource GridViewTextblockHeaderTemplate}">
+									<GridViewColumn.CellTemplate>
+										<DataTemplate>
+											<TextBlock
+												Margin="0,4"
+												Padding="0"
+												HorizontalAlignment="Stretch"
+												VerticalAlignment="Bottom"
+												IsHitTestVisible="False"
+												TextAlignment="Left">
+												<Run Foreground="Lime" Text="{Binding ModifiedText}" />
+												<Run Text="{Binding DisplayName}" /></TextBlock>
+										</DataTemplate>
+									</GridViewColumn.CellTemplate>
+								</GridViewColumn>
+								<GridViewColumn
+									Width="400"
+									Header="Keybinding"
+									HeaderTemplate="{StaticResource GridViewTextblockHeaderTemplate}">
+									<GridViewColumn.CellTemplate>
+										<DataTemplate>
+											<controls:HotkeyEditorControl
+												HorizontalAlignment="Left"
+												FocusReturnTarget="{Binding ElementName=KeybindingsListView}"
+												GotFocus="HotkeyEditorControl_GotFocus"
+												Hotkey="{Binding}"
+												LostFocus="HotkeyEditorControl_LostFocus" />
+										</DataTemplate>
+									</GridViewColumn.CellTemplate>
+								</GridViewColumn>
+							</GridView.Columns>
+						</GridView>
+					</ListView.View>
+				</ListView>
+			</TabItem>
+			<TabItem FocusManager.FocusedElement="{Binding ElementName=AdvancedSettingsAutoGrid}" Header="Advanced">
 				<ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
 					<autogrid:AutoGrid
+						x:Name="AdvancedSettingsAutoGrid"
 						Margin="10,0"
 						ChildMargin="2"
 						ColumnCount="2"
@@ -334,8 +409,8 @@
 						Rows="auto,auto,auto,auto">
 						<TextBlock
 							x:Name="DebugModeTextBlock"
-							Text="Enable Developer Mode"
-							ToolTip="This enables features for mod developers, such as being able to copy a mod's UUID in context menus, and additional OsiExtender options." />
+							behavior:TextBlockSettingsEntryAttributeBehavior.Target="DebugModeEnabled"
+							DataContext="{Binding}" />
 						<CheckBox
 							VerticalAlignment="Center"
 							IsChecked="{Binding DebugModeEnabled, UpdateSourceTrigger=PropertyChanged}"
@@ -404,16 +479,22 @@
 					x:Name="ExportExtenderSettingsButton"
 					HorizontalAlignment="Center"
 					Command="{Binding ExportExtenderSettingsCommand}"
-					Content="Export Settings"
+					Content="Save OsirisExtenderSettings.json"
 					ToolTip="Export Settings to DefEd\bin\OsirisExtenderSettings.json"
-					Visibility="{Binding ExtenderTabIsVisible, Converter={StaticResource BoolToVisibilityConverter}, FallbackValue=COllapsed}" />
+					Visibility="{Binding ExtenderTabIsVisible, Converter={StaticResource BoolToVisibilityConverter}, FallbackValue=Collapsed}" />
+				<Button
+					x:Name="ResetKeybindingsButton"
+					HorizontalAlignment="Center"
+					Command="{Binding ResetKeybindingsCommand}"
+					Content="Reset to Default"
+					ToolTip="Reset all keybindings to their default value."
+					Visibility="{Binding KeybindingsTabIsVisible, Converter={StaticResource BoolToVisibilityConverter}, FallbackValue=Collapsed}" />
 			</Grid>
 			<Grid Grid.Column="1">
 				<Button
 					x:Name="SaveSettingsButton"
 					Padding="30,0"
 					HorizontalAlignment="Center"
-					Command="{Binding SaveSettingsCommand}"
 					Content="Save" />
 			</Grid>
 		</Grid>
