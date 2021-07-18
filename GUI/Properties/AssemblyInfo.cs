@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Windows;
 
-[assembly: AssemblyTitle("DivinityModManager")]
+[assembly: AssemblyTitle("BG3ModManager")]
 [assembly: AssemblyDescription("A mod manager for Baldur's Gate 3.")]
 #if DEBUG
  [assembly: AssemblyConfiguration("Debug")]
@@ -25,4 +25,4 @@ using System.Windows;
 	ResourceDictionaryLocation.SourceAssembly
 )]
 
-[assembly: AssemblyVersion("1.0.2.1")]
+[assembly: AssemblyVersion("1.0.3.0")]
