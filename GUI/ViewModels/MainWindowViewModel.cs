@@ -447,7 +447,10 @@ namespace DivinityModManager.ViewModels
 			}
 
 			gameMasterCampaigns.Clear();
-			gameMasterCampaigns.AddRange(data);
+			if(data != null)
+			{
+				gameMasterCampaigns.AddRange(data);
+			}
 
 			DivinityGameMasterCampaign nextSelected = null;
 
@@ -880,7 +883,7 @@ namespace DivinityModManager.ViewModels
 
 					if (Settings.GameStoryLogEnabled && launchParams.IndexOf("storylog") < 0)
 					{
-						if(String.IsNullOrWhiteSpace(launchParams))
+						if (String.IsNullOrWhiteSpace(launchParams))
 						{
 							launchParams = "-storylog 1";
 						}
@@ -889,7 +892,7 @@ namespace DivinityModManager.ViewModels
 							launchParams = launchParams + " " + "-storylog 1";
 						}
 					}
-					
+
 					DivinityApp.Log($"Opening game exe at: {exePath} with args {launchParams}");
 					Process proc = new Process();
 					proc.StartInfo.FileName = exePath;
@@ -912,16 +915,16 @@ namespace DivinityModManager.ViewModels
 				}
 				else
 				{
-					if(String.IsNullOrWhiteSpace(exePath))
+					if (String.IsNullOrWhiteSpace(exePath))
 					{
-						ShowAlert("No game executable path set.", -1, 30);
+						ShowAlert("No game executable path set.", AlertType.Warning, 30);
 					}
 					else
 					{
-						ShowAlert($"Failed to find game exe at, \"{exePath}\"", -1, 90);
+						ShowAlert($"Failed to find game exe at, \"{exePath}\"", AlertType.Danger, 90);
 					}
 				}
-			}, canOpenGameExe).DisposeWith(Settings.Disposables);
+			}, canOpenGameExe);
 			Settings.SaveSettingsCommand = ReactiveCommand.Create(() =>
 			{
 				try
@@ -1377,7 +1380,6 @@ namespace DivinityModManager.ViewModels
 					if (m.UUID == "991c9c7a-fb80-40cb-8f0d-b92d4e80e9b1")
 					{
 						m.Name = "Story";
-						m.UpdateDisplayName();
 					}
 					else if (m.UUID == "ed539163-bb70-431b-96a7-f5b2eda5376b" || m.UUID == "9dff4c3b-fda7-43de-a763-ce1383039999")
 					{
@@ -1564,9 +1566,9 @@ namespace DivinityModManager.ViewModels
 			if (data != null)
 			{
 				data = data.OrderBy(m => m.Name).ToList();
+				DivinityApp.Log($"Loaded '{data.Count}' GM campaigns.");
 			}
 			
-			DivinityApp.Log($"Loaded '{data.Count}' GM campaigns.");
 			return data;
 		}
 
