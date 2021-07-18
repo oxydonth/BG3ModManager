@@ -11,9 +11,9 @@ namespace DivinityModManager.Models
 	[JsonObject(MemberSerialization.OptIn)]
 	public class DivinityModVersion : ReactiveObject
 	{
-		private int major = 0;
+		private long major = 0;
 
-		public int Major
+		public long Major
 		{
 			get { return major; }
 			set
@@ -23,9 +23,9 @@ namespace DivinityModManager.Models
 			}
 		}
 
-		private int minor = 0;
+		private long minor = 0;
 
-		public int Minor
+		public long Minor
 		{
 			get { return minor; }
 			set
@@ -35,9 +35,9 @@ namespace DivinityModManager.Models
 			}
 		}
 
-		private int revision = 0;
+		private long revision = 0;
 
-		public int Revision
+		public long Revision
 		{
 			get { return revision; }
 			set
@@ -47,9 +47,9 @@ namespace DivinityModManager.Models
 			}
 		}
 
-		private int build = 0;
+		private long build = 0;
 
-		public int Build
+		public long Build
 		{
 			get { return build; }
 			set
@@ -71,15 +71,15 @@ namespace DivinityModManager.Models
 			}
 		}
 
-		private int versionInt = 0;
+		private long versionInt = 0;
 
 		[JsonProperty]
-		public int VersionInt
+		public long VersionInt
 		{
 			get { return versionInt; }
 			set
 			{
-				value = Math.Max(Int32.MinValue, Math.Min(value, Int32.MaxValue));
+				value = Math.Max(long.MinValue, Math.Min(value, long.MaxValue));
 				if(versionInt != value)
 				{
 					ParseInt(versionInt);
@@ -99,9 +99,9 @@ namespace DivinityModManager.Models
 			}
 		}
 
-		public int ToInt()
+		public long ToInt()
 		{
-			return (Major << 28) + (Minor << 24) + (Revision << 16) + (Build);
+			return (Major << 55) + (Minor << 47) + (Revision << 31) + (Build);
 		}
 
 		public override string ToString()
@@ -109,17 +109,17 @@ namespace DivinityModManager.Models
 			return String.Format("{0}.{1}.{2}.{3}", Major, Minor, Revision, Build);
 		}
 
-		public void ParseInt(int vInt, bool update=true)
+		public void ParseInt(long vInt, bool update=true)
 		{
 			if(versionInt != vInt)
 			{
 				versionInt = vInt;
 				this.RaisePropertyChanged("VersionInt");
 			}
-			major = (versionInt >> 28);
-			minor = (versionInt >> 24) & 0x0F;
-			revision = (versionInt >> 16) & 0xFF;
-			build = (versionInt & 0xFFFF);
+			major = (sbyte)(versionInt >> 55);
+			minor = (sbyte)(versionInt >> 47);
+			revision = (Int16)(versionInt >> 31) & 0xFF;
+			build = (versionInt & 0x7FFFFFFF);
 			if (update)
 			{
 				UpdateVersion();
