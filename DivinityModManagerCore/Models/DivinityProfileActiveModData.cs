@@ -15,7 +15,7 @@ namespace DivinityModManager.Models
 		public string MD5 { get; set; }
 		public string Name { get; set; }
 		public string UUID { get; set; }
-		public int Version { get; set; }
+		public long Version { get; set; }
 
 		private T GetAttribute<T>(Dictionary<string, NodeAttribute> attributes, string name, T fallBack)
 		{

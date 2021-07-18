@@ -21,16 +21,16 @@
 				<ResourceDictionary Source="../Themes/MainResourceDictionary.xaml" />
 			</ResourceDictionary.MergedDictionaries>
 			<Style
-				x:Key="IntegerUpDownStyle"
-				BasedOn="{StaticResource ThemedIntegerUpDown}"
-				TargetType="xc:IntegerUpDown">
+				x:Key="NumberSliderStyle"
+				BasedOn="{StaticResource ThemedLongUpDown}"
+				TargetType="xc:LongUpDown">
 				<Setter Property="VerticalAlignment" Value="Center" />
 				<Setter Property="HorizontalAlignment" Value="Center" />
 				<Setter Property="MinHeight" Value="25" />
 				<Setter Property="Margin" Value="2" />
 				<Setter Property="ClipValueToMinMax" Value="True" />
-				<EventSetter Event="ValueChanged" Handler="IntegerUpDown_ValueChanged" />
-				<EventSetter Event="LostFocus" Handler="IntegerUpDown_LostFocus" />
+				<EventSetter Event="ValueChanged" Handler="NumberSlider_ValueChanged" />
+				<EventSetter Event="LostFocus" Handler="NumberSlider_LostFocus" />
 			</Style>
 			<Style TargetType="{x:Type StackPanel}">
 				<Setter Property="Margin" Value="4,0" />
@@ -55,34 +55,34 @@
 				Orientation="Horizontal">
 				<StackPanel>
 					<TextBlock Text="Major" />
-					<xc:IntegerUpDown
-						Maximum="7"
+					<xc:LongUpDown
+						Maximum="127"
 						Minimum="0"
-						Style="{StaticResource IntegerUpDownStyle}"
+						Style="{StaticResource NumberSliderStyle}"
 						Value="{Binding Major, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, FallbackValue=0}" />
 				</StackPanel>
 				<StackPanel>
 					<TextBlock Text="Minor" />
-					<xc:IntegerUpDown
-						Maximum="15"
+					<xc:LongUpDown
+						Maximum="127"
 						Minimum="0"
-						Style="{StaticResource IntegerUpDownStyle}"
+						Style="{StaticResource NumberSliderStyle}"
 						Value="{Binding Minor, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, FallbackValue=0}" />
 				</StackPanel>
 				<StackPanel>
 					<TextBlock Text="Revision" />
-					<xc:IntegerUpDown
-						Maximum="255"
+					<xc:LongUpDown
+						Maximum="65536"
 						Minimum="0"
-						Style="{StaticResource IntegerUpDownStyle}"
+						Style="{StaticResource NumberSliderStyle}"
 						Value="{Binding Revision, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, FallbackValue=0}" />
 				</StackPanel>
 				<StackPanel>
 					<TextBlock Text="Build" />
-					<xc:IntegerUpDown
-						Maximum="65354"
+					<xc:LongUpDown
+						Maximum="2147483647"
 						Minimum="0"
-						Style="{StaticResource IntegerUpDownStyle}"
+						Style="{StaticResource NumberSliderStyle}"
 						Value="{Binding Build, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, FallbackValue=0}" />
 				</StackPanel>
 			</StackPanel>

@@ -92,19 +92,19 @@ namespace DivinityModManager.Views
 		{
 			if (sender is TextBox tb)
 			{
-				if (Int32.TryParse(tb.Text, out int version))
+				if (Int64.TryParse(tb.Text, out long version))
 				{
 					VersionData.ParseInt(version);
 				}
 				else
 				{
-					VersionData.ParseInt(268435456);
-					tb.Text = "268435456";
+					VersionData.ParseInt(36028797018963968);
+					tb.Text = "36028797018963968";
 				}
 			}
 		}
 
-		private void IntegerUpDown_ValueChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+		private void NumberSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
 		{
 			if(VersionNumberTextBox != null)
 			{
@@ -119,12 +119,12 @@ namespace DivinityModManager.Views
 		}
 		private void ResetButton_Click(object sender, RoutedEventArgs e)
 		{
-			VersionData.ParseInt(268435456);
-			VersionNumberTextBox.Text = "268435456";
+			VersionData.ParseInt(36028797018963968);
+			VersionNumberTextBox.Text = "36028797018963968";
 			AlertBar.SetWarningAlert($"Reset version number.");
 		}
 
-		private void IntegerUpDown_LostFocus(object sender, RoutedEventArgs e)
+		private void NumberSlider_LostFocus(object sender, RoutedEventArgs e)
 		{
 			if (VersionNumberTextBox != null)
 			{
