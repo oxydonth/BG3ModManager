@@ -40,6 +40,9 @@ namespace DivinityModManager.Models
 		[SettingsEntry("Enable DirectX 11 Mode", "If enabled, when launching the game, bg3_dx11.exe is used instead.")]
 		[DataMember][Reactive] public bool LaunchDX11 {get; set;} = false;
 
+		[SettingsEntry("Workshop Path", "The workshop folder.&#x0a;Used for detecting mod updates and new mods to be copied into the local mods folder.")]
+		[DataMember] [Reactive] public string WorkshopPath { get; set; } = "";
+
 		[SettingsEntry("Saved Load Orders Path", "The folder containing mod load orders.")]
 		[DataMember] [Reactive] public string LoadOrderPath { get; set; } = "Orders";
 

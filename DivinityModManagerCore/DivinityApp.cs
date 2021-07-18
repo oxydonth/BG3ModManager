@@ -35,6 +35,7 @@ namespace DivinityModManager
 		public const string PATH_IGNORED_MODS = @"Resources/IgnoredMods.json";
 
 		public const string ORIGINS_UUID = "991c9c7a-fb80-40cb-8f0d-b92d4e80e9b1";
+		public const string GAMEMASTER_UUID = "NotYetAvailableInBG3";
 		public static readonly Uri LightTheme = new Uri("pack://application:,,,/DivinityModManager;component/Themes/Light.xaml", UriKind.Absolute);
 		public static readonly Uri DarkTheme = new Uri("pack://application:,,,/DivinityModManager;component/Themes/Dark.xaml", UriKind.Absolute);
 
