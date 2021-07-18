@@ -22,8 +22,8 @@
 			</ResourceDictionary.MergedDictionaries>
 			<Style
 				x:Key="NumberSliderStyle"
-				BasedOn="{StaticResource ThemedLongUpDown}"
-				TargetType="xc:LongUpDown">
+				BasedOn="{StaticResource ThemedULongUpDown}"
+				TargetType="xc:ULongUpDown">
 				<Setter Property="VerticalAlignment" Value="Center" />
 				<Setter Property="HorizontalAlignment" Value="Center" />
 				<Setter Property="MinHeight" Value="25" />
@@ -55,7 +55,7 @@
 				Orientation="Horizontal">
 				<StackPanel>
 					<TextBlock Text="Major" />
-					<xc:LongUpDown
+					<xc:ULongUpDown
 						Maximum="127"
 						Minimum="0"
 						Style="{StaticResource NumberSliderStyle}"
@@ -63,7 +63,7 @@
 				</StackPanel>
 				<StackPanel>
 					<TextBlock Text="Minor" />
-					<xc:LongUpDown
+					<xc:ULongUpDown
 						Maximum="127"
 						Minimum="0"
 						Style="{StaticResource NumberSliderStyle}"
@@ -71,7 +71,7 @@
 				</StackPanel>
 				<StackPanel>
 					<TextBlock Text="Revision" />
-					<xc:LongUpDown
+					<xc:ULongUpDown
 						Maximum="65536"
 						Minimum="0"
 						Style="{StaticResource NumberSliderStyle}"
@@ -79,7 +79,7 @@
 				</StackPanel>
 				<StackPanel>
 					<TextBlock Text="Build" />
-					<xc:LongUpDown
+					<xc:ULongUpDown
 						Maximum="2147483647"
 						Minimum="0"
 						Style="{StaticResource NumberSliderStyle}"
@@ -95,6 +95,7 @@
 				<TextBlock Text="Version Number: " />
 				<controls:UnfocusableTextBox
 					x:Name="VersionNumberTextBox"
+					LostFocus="VersionNumberTextBox_LostFocus"
 					PreviewTextInput="VersionNumberTextBox_PreviewTextInput"
 					TextChanged="VersionNumberTextBox_TextChanged" />
 			</StackPanel>

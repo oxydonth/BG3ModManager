@@ -16,6 +16,9 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using System.Reactive;
+using System.Reactive.Disposables;
+using System.Reactive.Concurrency;
 
 namespace DivinityModManager.Views
 {
@@ -73,7 +76,7 @@ namespace DivinityModManager.Views
 	/// </summary>
 	public partial class VersionGeneratorWindow : HideWindowBase
 	{
-		public DivinityModVersion VersionData { get; set; } = new DivinityModVersion(268435456);
+		public DivinityModVersion2 VersionData { get; set; } = new DivinityModVersion2(36028797018963968UL);
 
 		public VersionGeneratorWindow()
 		{
@@ -90,25 +93,17 @@ namespace DivinityModManager.Views
 
 		private void VersionNumberTextBox_TextChanged(object sender, TextChangedEventArgs e)
 		{
-			if (sender is TextBox tb)
-			{
-				if (Int64.TryParse(tb.Text, out long version))
-				{
-					VersionData.ParseInt(version);
-				}
-				else
-				{
-					VersionData.ParseInt(36028797018963968);
-					tb.Text = "36028797018963968";
-				}
-			}
+			
 		}
 
 		private void NumberSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
 		{
 			if(VersionNumberTextBox != null)
 			{
-				VersionNumberTextBox.Text = VersionData.VersionInt.ToString();
+				RxApp.MainThreadScheduler.Schedule(TimeSpan.FromMilliseconds(50), _ =>
+				{
+					VersionNumberTextBox.Text = VersionData.VersionInt.ToString();
+				});
 			}
 		}
 
@@ -119,7 +114,7 @@ namespace DivinityModManager.Views
 		}
 		private void ResetButton_Click(object sender, RoutedEventArgs e)
 		{
-			VersionData.ParseInt(36028797018963968);
+			VersionData.ParseInt(36028797018963968UL);
 			VersionNumberTextBox.Text = "36028797018963968";
 			AlertBar.SetWarningAlert($"Reset version number.");
 		}
@@ -129,6 +124,22 @@ namespace DivinityModManager.Views
 			if (VersionNumberTextBox != null)
 			{
 				VersionNumberTextBox.Text = VersionData.VersionInt.ToString();
+			}
+		}
+
+		private void VersionNumberTextBox_LostFocus(object sender, RoutedEventArgs e)
+		{
+			if (sender is TextBox tb)
+			{
+				if (UInt64.TryParse(tb.Text, out ulong version))
+				{
+					VersionData.ParseInt(version);
+				}
+				else
+				{
+					VersionData.ParseInt(36028797018963968UL);
+					tb.Text = "36028797018963968";
+				}
 			}
 		}
 	}

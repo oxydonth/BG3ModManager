@@ -84,6 +84,15 @@ namespace DivinityModManager.Util
 			return -1;
 		}
 
+		private static ulong SafeConvertStringUnsigned(string str)
+		{
+			if(!String.IsNullOrWhiteSpace(str) && UInt64.TryParse(str, out ulong val))
+			{
+				return val;
+			}
+			return 0UL;
+		}
+
 		public static string EscapeXml(string s)
 		{
 			string toxml = s;
@@ -132,10 +141,11 @@ namespace DivinityModManager.Util
 				XElement xDoc = XElement.Parse(EscapeXmlAttributes(metaContents));
 				var versionNode = xDoc.Descendants("version").FirstOrDefault();
 
-				int headerMajor = 3;
-				int headerMinor = 6;
-				int headerRevision = 1;
-				int headerBuild = 5;
+				//BG3 defaults?
+				ulong headerMajor = 4;
+				ulong headerMinor = 0;
+				ulong headerRevision = 4;
+				ulong headerBuild = 602;
 
 				if (versionNode != null)
 				{
@@ -144,19 +154,19 @@ namespace DivinityModManager.Util
 					//Classic Mods <version major="3" minor="1" revision="3" build="5" />
 					if(TryGetAttribute(versionNode, "major", out var headerMajorStr))
 					{
-						int.TryParse(headerMajorStr, out headerMajor);
+						UInt64.TryParse(headerMajorStr, out headerMajor);
 					}
 					if(TryGetAttribute(versionNode, "minor", out var headerMinorStr))
 					{
-						int.TryParse(headerMinorStr, out headerMinor);
+						UInt64.TryParse(headerMinorStr, out headerMinor);
 					}
 					if(TryGetAttribute(versionNode, "revision", out var headerRevisionStr))
 					{
-						int.TryParse(headerRevisionStr, out headerRevision);
+						UInt64.TryParse(headerRevisionStr, out headerRevision);
 					}
 					if(TryGetAttribute(versionNode, "build", out var headerBuildStr))
 					{
-						int.TryParse(headerBuildStr, out headerBuild);
+						UInt64.TryParse(headerBuildStr, out headerBuild);
 					}
 
 					//DivinityApp.LogMessage($"Version: {headerMajor}.{headerMinor}.{headerRevision}.{headerBuild}");
@@ -182,12 +192,12 @@ namespace DivinityModManager.Util
 						UUID = uuid,
 						Name = name,
 						Author = author,
-						Version = DivinityModVersion.FromInt(SafeConvertString(GetAttributeWithId(moduleInfoNode, "Version", ""))),
+						Version = DivinityModVersion2.FromInt(SafeConvertStringUnsigned(GetAttributeWithId(moduleInfoNode, "Version", ""))),
 						Folder = GetAttributeWithId(moduleInfoNode, "Folder", ""),
 						Description = description,
 						MD5 = GetAttributeWithId(moduleInfoNode, "MD5", ""),
 						Type = GetAttributeWithId(moduleInfoNode, "Type", ""),
-						HeaderVersion = new DivinityModVersion(headerMajor, headerMinor, headerRevision, headerBuild)
+						HeaderVersion = new DivinityModVersion2(headerMajor, headerMinor, headerRevision, headerBuild)
 					};
 					var tagsText = GetAttributeWithId(moduleInfoNode, "Tags", "");
 					if (!String.IsNullOrWhiteSpace(tagsText))
@@ -206,7 +216,7 @@ namespace DivinityModManager.Util
 							{
 								UUID = GetAttributeWithId(node, "UUID", ""),
 								Name = UnescapeXml(GetAttributeWithId(node, "Name", "")),
-								Version = DivinityModVersion.FromInt(SafeConvertString(GetAttributeWithId(node, "Version", ""))),
+								Version = DivinityModVersion2.FromInt(SafeConvertStringUnsigned(GetAttributeWithId(node, "Version", ""))),
 								Folder = GetAttributeWithId(node, "Folder", ""),
 								MD5 = GetAttributeWithId(node, "MD5", "")
 							};
@@ -221,7 +231,7 @@ namespace DivinityModManager.Util
 					var publishVersionNode = moduleInfoNode.Descendants("node").Where(n => n.Attribute("id")?.Value == "PublishVersion").FirstOrDefault();
 					if (publishVersionNode != null)
 					{
-						var publishVersion = DivinityModVersion.FromInt(SafeConvertString(GetAttributeWithId(publishVersionNode, "Version", "")));
+						var publishVersion = DivinityModVersion2.FromInt(SafeConvertStringUnsigned(GetAttributeWithId(publishVersionNode, "Version", "")));
 						modData.PublishVersion = publishVersion;
 						//DivinityApp.LogMessage($"{modData.Folder} PublishVersion is {publishVersion.Version}");
 					}
@@ -756,15 +766,15 @@ namespace DivinityModManager.Util
 		{
 			try
 			{
-				int headerMajor = 3;
-				int headerMinor = 6;
-				int headerRevision = 0;
-				int headerBuild = 0;
+				ulong headerMajor = 3;
+				ulong headerMinor = 6;
+				ulong headerRevision = 0;
+				ulong headerBuild = 0;
 
-				int.TryParse(meta.Metadata.MajorVersion.ToString(), out headerMajor);
-				int.TryParse(meta.Metadata.MinorVersion.ToString(), out headerMinor);
-				int.TryParse(meta.Metadata.Revision.ToString(), out headerRevision);
-				int.TryParse(meta.Metadata.BuildNumber.ToString(), out headerBuild);
+				UInt64.TryParse(meta.Metadata.MajorVersion.ToString(), out headerMajor);
+				UInt64.TryParse(meta.Metadata.MinorVersion.ToString(), out headerMinor);
+				UInt64.TryParse(meta.Metadata.Revision.ToString(), out headerRevision);
+				UInt64.TryParse(meta.Metadata.BuildNumber.ToString(), out headerBuild);
 
 				if (meta.TryFindNode("ModuleInfo", out var moduleInfoNode))
 				{
@@ -786,11 +796,11 @@ namespace DivinityModManager.Util
 						UUID = GetNodeAttribute(moduleInfoNode, "UUID", ""),
 						Name = GetNodeAttribute(moduleInfoNode, "Name", ""),
 						Author = GetNodeAttribute(moduleInfoNode, "Author", ""),
-						Version = DivinityModVersion.FromInt(SafeConvertString(GetNodeAttribute(moduleInfoNode, "Version", ""))),
+						Version = DivinityModVersion2.FromInt(SafeConvertStringUnsigned(GetNodeAttribute(moduleInfoNode, "Version", ""))),
 						Folder = GetNodeAttribute(moduleInfoNode, "Folder", ""),
 						Description = GetNodeAttribute(moduleInfoNode, "Description", ""),
 						MD5 = GetNodeAttribute(moduleInfoNode, "MD5", ""),
-						HeaderVersion = new DivinityModVersion(headerMajor, headerMinor, headerRevision, headerBuild)
+						HeaderVersion = new DivinityModVersion2(headerMajor, headerMinor, headerRevision, headerBuild)
 					};
 					var tagsText = GetNodeAttribute(moduleInfoNode, "Tags", "");
 					if (!String.IsNullOrWhiteSpace(tagsText))
@@ -809,7 +819,7 @@ namespace DivinityModManager.Util
 								{
 									UUID = GetNodeAttribute(node, "UUID", ""),
 									Name = GetNodeAttribute(node, "Name", ""),
-									Version = DivinityModVersion.FromInt(SafeConvertString(GetNodeAttribute(node, "Version", ""))),
+									Version = DivinityModVersion2.FromInt(SafeConvertStringUnsigned(GetNodeAttribute(node, "Version", ""))),
 									Folder = GetNodeAttribute(node, "Folder", ""),
 									MD5 = GetNodeAttribute(node, "MD5", "")
 								};
@@ -824,7 +834,7 @@ namespace DivinityModManager.Util
 
 					if (moduleInfoNode.Children.TryGetValue("PublishVersion", out var publishVersionList))
 					{
-						var publishVersion = DivinityModVersion.FromInt(SafeConvertString(GetNodeAttribute(publishVersionList.First(), "Version", "")));
+						var publishVersion = DivinityModVersion2.FromInt(SafeConvertStringUnsigned(GetNodeAttribute(publishVersionList.First(), "Version", "")));
 						data.PublishVersion = publishVersion;
 					}
 

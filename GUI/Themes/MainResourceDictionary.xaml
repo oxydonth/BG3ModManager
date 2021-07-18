@@ -1727,9 +1727,9 @@
 		<Setter Property="BorderThickness" Value="0" />
 	</Style>
 	<Style
-		x:Key="ThemedLongUpDown"
-		BasedOn="{StaticResource {x:Type xc:LongUpDown}}"
-		TargetType="{x:Type xc:LongUpDown}">
+		x:Key="ThemedULongUpDown"
+		BasedOn="{StaticResource {x:Type xc:ULongUpDown}}"
+		TargetType="{x:Type xc:ULongUpDown}">
 		<Setter Property="Background" Value="{DynamicResource {x:Static adonisUI:Brushes.Layer1BackgroundBrush}}" />
 		<Setter Property="Foreground" Value="{DynamicResource {x:Static adonisUI:Brushes.ForegroundBrush}}" />
 		<Setter Property="BorderBrush" Value="{DynamicResource {x:Static adonisUI:Brushes.Layer1BorderBrush}}" />

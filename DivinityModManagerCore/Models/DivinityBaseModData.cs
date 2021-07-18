@@ -31,7 +31,7 @@ namespace DivinityModManager.Models
 		string Name { get; set; }
 		string Folder { get; set; }
 		string MD5 { get; set; }
-		DivinityModVersion Version { get; set; }
+		DivinityModVersion2 Version { get; set; }
 	}
 
 	[DataContract]
@@ -50,9 +50,9 @@ namespace DivinityModManager.Models
 		[Reactive] [DataMember] public string Description { get; set; }
 		[Reactive] [DataMember] public string Author { get; set; }
 		[Reactive] public string MD5 { get; set; }
-		[Reactive] [DataMember] public DivinityModVersion Version { get; set; }
-		[Reactive] public DivinityModVersion HeaderVersion { get; set; }
-		[Reactive] public DivinityModVersion PublishVersion { get; set; }
+		[Reactive] [DataMember] public DivinityModVersion2 Version { get; set; }
+		[Reactive] public DivinityModVersion2 HeaderVersion { get; set; }
+		[Reactive] public DivinityModVersion2 PublishVersion { get; set; }
 		[Reactive] public DateTime? LastModified { get; set; }
 
 		[Reactive] public bool DisplayFileForName { get; set; } = false;

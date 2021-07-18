@@ -15,7 +15,7 @@ namespace DivinityModManager.Models
 		[JsonProperty] public string Name { get; set; }
 		public string Folder { get; set; }
 		public string MD5 { get; set; }
-		[JsonProperty] public DivinityModVersion Version { get; set; }
+		[JsonProperty] public DivinityModVersion2 Version { get; set; }
 
 		public override string ToString()
 		{

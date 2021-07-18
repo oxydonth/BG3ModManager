@@ -4202,16 +4202,16 @@ Directory the zip will be extracted to:
 							}
 							if (dict.TryGetValue("Version", out var vObj))
 							{
-								int version;
+								ulong version;
 								if (vObj is string vStr)
 								{
-									version = int.Parse(vStr);
+									version = UInt64.Parse(vStr);
 								}
 								else
 								{
-									version = Convert.ToInt32(vObj);
+									version = Convert.ToUInt64(vObj);
 								}
-								mod.Version = new DivinityModVersion(version);
+								mod.Version = new DivinityModVersion2(version);
 							}
 							if (dict.TryGetValue("Tags", out var tags))
 							{

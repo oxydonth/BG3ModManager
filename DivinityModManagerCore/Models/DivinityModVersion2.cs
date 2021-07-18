@@ -1,7 +1,5 @@
 ﻿using Newtonsoft.Json;
-
 using ReactiveUI;
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,11 +9,11 @@ using System.Threading.Tasks;
 namespace DivinityModManager.Models
 {
 	[JsonObject(MemberSerialization.OptIn)]
-	public class DivinityModVersion : ReactiveObject
+	public class DivinityModVersion2 : ReactiveObject
 	{
-		private int major = 0;
+		private ulong major = 0;
 
-		public int Major
+		public ulong Major
 		{
 			get { return major; }
 			set
@@ -25,9 +23,9 @@ namespace DivinityModManager.Models
 			}
 		}
 
-		private int minor = 0;
+		private ulong minor = 0;
 
-		public int Minor
+		public ulong Minor
 		{
 			get { return minor; }
 			set
@@ -37,9 +35,9 @@ namespace DivinityModManager.Models
 			}
 		}
 
-		private int revision = 0;
+		private ulong revision = 0;
 
-		public int Revision
+		public ulong Revision
 		{
 			get { return revision; }
 			set
@@ -49,9 +47,9 @@ namespace DivinityModManager.Models
 			}
 		}
 
-		private int build = 0;
+		private ulong build = 0;
 
-		public int Build
+		public ulong Build
 		{
 			get { return build; }
 			set
@@ -73,16 +71,16 @@ namespace DivinityModManager.Models
 			}
 		}
 
-		private int versionInt = 0;
+		private ulong versionInt = 0;
 
 		[JsonProperty]
-		public int VersionInt
+		public ulong VersionInt
 		{
 			get { return versionInt; }
 			set
 			{
-				value = Math.Max(Int32.MinValue, Math.Min(value, Int32.MaxValue));
-				if (versionInt != value)
+				value = Math.Max(ulong.MinValue, Math.Min(value, ulong.MaxValue));
+				if(versionInt != value)
 				{
 					ParseInt(versionInt);
 					this.RaisePropertyChanged("VersionInt");
@@ -94,16 +92,16 @@ namespace DivinityModManager.Models
 		{
 			Version = String.Format("{0}.{1}.{2}.{3}", Major, Minor, Revision, Build);
 			var nextVersion = ToInt();
-			if (nextVersion != versionInt)
+			if(nextVersion != versionInt)
 			{
 				versionInt = ToInt();
 				this.RaisePropertyChanged("VersionInt");
 			}
 		}
 
-		public int ToInt()
+		public ulong ToInt()
 		{
-			return (Major << 28) + (Minor << 24) + (Revision << 16) + (Build);
+			return (Major << 55) + (Minor << 47) + (Revision << 31) + Build;
 		}
 
 		public override string ToString()
@@ -111,17 +109,23 @@ namespace DivinityModManager.Models
 			return String.Format("{0}.{1}.{2}.{3}", Major, Minor, Revision, Build);
 		}
 
-		public void ParseInt(int vInt, bool update = true)
+		public void ParseInt(ulong vInt, bool update=true)
 		{
-			if (versionInt != vInt)
+			if(versionInt != vInt)
 			{
 				versionInt = vInt;
 				this.RaisePropertyChanged("VersionInt");
 			}
-			major = (versionInt >> 28);
-			minor = (versionInt >> 24) & 0x0F;
-			revision = (versionInt >> 16) & 0xFF;
-			build = (versionInt & 0xFFFF);
+			/*
+			major = (sbyte)(versionInt >> 55);
+			minor = (sbyte)(versionInt >> 47);
+			revision = (Int16)(versionInt >> 31) & 0xFF;
+			build = (versionInt & 0x7FFFFFFF);
+			*/
+			major = versionInt >> 55;
+			minor = (versionInt >> 47) & 0xFF;
+			revision = (versionInt >> 31) & 0x7FFFF;
+			build = versionInt & 0x7FFFFFFFUL;
 			if (update)
 			{
 				UpdateVersion();
@@ -132,19 +136,19 @@ namespace DivinityModManager.Models
 			this.RaisePropertyChanged("Build");
 		}
 
-		public static DivinityModVersion FromInt(int vInt)
+		public static DivinityModVersion2 FromInt(ulong vInt)
 		{
-			return new DivinityModVersion(vInt);
+			return new DivinityModVersion2(vInt);
 		}
 
-		public DivinityModVersion() { }
+		public DivinityModVersion2() { }
 
-		public DivinityModVersion(int vInt)
+		public DivinityModVersion2(ulong vInt)
 		{
 			ParseInt(vInt);
 		}
 
-		public DivinityModVersion(int headerMajor, int headerMinor, int headerRevision, int headerBuild)
+		public DivinityModVersion2(ulong headerMajor, ulong headerMinor, ulong headerRevision, ulong headerBuild)
 		{
 			Major = headerMajor;
 			Minor = headerMinor;
