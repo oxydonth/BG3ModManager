@@ -693,8 +693,9 @@ namespace DivinityModManager.Views
 								ActiveModsListView.FontWeight,
 								ActiveModsListView.FontStretch,
 								ActiveModsListView.FontSize).Width + _FontSizeMeasurePadding;
-							if (gridView.Columns[1].Width > targetWidth)
+							if (Math.Abs(gridView.Columns[1].Width - targetWidth) >= 30)
 							{
+								ActiveModsListView.Resizing = true;
 								gridView.Columns[1].Width = targetWidth;
 							}
 						}
@@ -711,6 +712,7 @@ namespace DivinityModManager.Views
 				var longestName = ViewModel.InactiveMods.OrderByDescending(m => m.Name.Length).FirstOrDefault()?.Name;
 				if (!String.IsNullOrEmpty(longestName))
 				{
+					InactiveModsListView.Resizing = true;
 					//DivinityApp.LogMessage($"Autosizing inactive mods grid for name {longestName}");
 					gridView.Columns[0].Width = MeasureText(longestName,
 						InactiveModsListView.FontFamily,

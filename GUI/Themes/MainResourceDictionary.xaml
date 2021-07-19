@@ -1003,7 +1003,7 @@
 					</DataTemplate>
 				</GridViewColumn.CellTemplate>
 			</GridViewColumn>
-			<GridViewColumn Width="400" CellTemplate="{StaticResource ModNameTemplate}">
+			<GridViewColumn x:Name="NameColumn" Width="400" CellTemplate="{StaticResource ModNameTemplate}">
 				<GridViewColumn.Header>
 					<TextBlock Text="Name" />
 				</GridViewColumn.Header>
