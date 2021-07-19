@@ -1717,20 +1717,18 @@
 			Foreground="{DynamicResource {x:Static adonisUI:Brushes.ForegroundBrush}}" />
 	</DataTemplate>
 	<Style
-		x:Key="ThemedIntegerUpDown"
 		BasedOn="{StaticResource {x:Type xc:IntegerUpDown}}"
 		TargetType="{x:Type xc:IntegerUpDown}">
-		<Setter Property="Background" Value="{DynamicResource {x:Static adonisUI:Brushes.Layer1BackgroundBrush}}" />
+		<Setter Property="Background" Value="{DynamicResource {x:Static adonisUI:Brushes.Layer2BackgroundBrush}}" />
 		<Setter Property="Foreground" Value="{DynamicResource {x:Static adonisUI:Brushes.ForegroundBrush}}" />
 		<Setter Property="BorderBrush" Value="{DynamicResource {x:Static adonisUI:Brushes.Layer1BorderBrush}}" />
 		<Setter Property="WatermarkTemplate" Value="{StaticResource DefaultXCWatermarkTemplate}" />
 		<Setter Property="BorderThickness" Value="0" />
 	</Style>
 	<Style
-		x:Key="ThemedULongUpDown"
 		BasedOn="{StaticResource {x:Type xc:ULongUpDown}}"
 		TargetType="{x:Type xc:ULongUpDown}">
-		<Setter Property="Background" Value="{DynamicResource {x:Static adonisUI:Brushes.Layer1BackgroundBrush}}" />
+		<Setter Property="Background" Value="{DynamicResource {x:Static adonisUI:Brushes.Layer2BackgroundBrush}}" />
 		<Setter Property="Foreground" Value="{DynamicResource {x:Static adonisUI:Brushes.ForegroundBrush}}" />
 		<Setter Property="BorderBrush" Value="{DynamicResource {x:Static adonisUI:Brushes.Layer1BorderBrush}}" />
 		<Setter Property="WatermarkTemplate" Value="{StaticResource DefaultXCWatermarkTemplate}" />
