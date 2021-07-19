@@ -676,7 +676,7 @@ namespace DivinityModManager.Views
 
 		public void AutoSizeNameColumn_ActiveMods(object sender, EventArgs e)
 		{
-			if (ViewModel == null) return;
+			if (ViewModel == null || ActiveModsListView.UserResizedColumns) return;
 			if (ViewModel.ActiveMods.Count > 0 && ActiveModsListView.View is GridView gridView && gridView.Columns.Count >= 2)
 			{
 				RxApp.MainThreadScheduler.Schedule(TimeSpan.FromMilliseconds(250), () =>
@@ -705,7 +705,7 @@ namespace DivinityModManager.Views
 
 		public void AutoSizeNameColumn_InactiveMods(object sender, EventArgs e)
 		{
-			if (ViewModel == null) return;
+			if (ViewModel == null || InactiveModsListView.UserResizedColumns) return;
 			if (ViewModel.InactiveMods.Count > 0 && InactiveModsListView.View is GridView gridView && gridView.Columns.Count >= 2)
 			{
 				var longestName = ViewModel.InactiveMods.OrderByDescending(m => m.Name.Length).FirstOrDefault()?.Name;
@@ -713,11 +713,11 @@ namespace DivinityModManager.Views
 				{
 					//DivinityApp.LogMessage($"Autosizing inactive mods grid for name {longestName}");
 					gridView.Columns[0].Width = MeasureText(longestName,
-						ActiveModsListView.FontFamily,
-						ActiveModsListView.FontStyle,
-						ActiveModsListView.FontWeight,
-						ActiveModsListView.FontStretch,
-						ActiveModsListView.FontSize).Width + _FontSizeMeasurePadding;
+						InactiveModsListView.FontFamily,
+						InactiveModsListView.FontStyle,
+						InactiveModsListView.FontWeight,
+						InactiveModsListView.FontStretch,
+						InactiveModsListView.FontSize).Width + _FontSizeMeasurePadding;
 				}
 			}
 		}

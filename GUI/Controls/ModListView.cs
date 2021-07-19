@@ -17,6 +17,7 @@ using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Concurrency;
 using System.Windows;
+using System.Windows.Controls.Primitives;
 
 namespace DivinityModManager.Controls
 {
@@ -25,10 +26,23 @@ namespace DivinityModManager.Controls
 		private MethodInfo getInfoMethod;
 		private MethodInfo updateAnchorMethod;
 
+		public bool UserResizedColumns { get; set; } = false;
+
 		public ModListView() : base() 
 		{
 			getInfoMethod = typeof(ItemsControl).GetMethod("ItemInfoFromContainer", BindingFlags.NonPublic | BindingFlags.Instance);
 			updateAnchorMethod = typeof(ListBox).GetMethod("UpdateAnchorAndActionItem", BindingFlags.NonPublic | BindingFlags.Instance);
+
+			AddHandler(Thumb.DragCompletedEvent, new DragCompletedEventHandler(ListViewHeader_DragCompleted), true);
+
+			//DataContextChanged += (o, e) =>
+			//{
+			//	UserResizedColumns = false;
+			//};
+		}
+		private void ListViewHeader_DragCompleted(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
+		{
+			UserResizedColumns = true;
 		}
 
 		protected override AutomationPeer OnCreateAutomationPeer()
