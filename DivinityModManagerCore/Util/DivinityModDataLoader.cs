@@ -1884,7 +1884,9 @@ namespace DivinityModManager.Util
 				modHelper.CollectGlobals = false;
 				modHelper.CollectLevels = false;
 				modHelper.CollectStoryGoals = false;
-				modHelper.Discover(gameDataPath);
+				modHelper.CollectStats = false;
+				
+				modHelper.DiscoverBuiltinPackages(gameDataPath);
 
 				if (modResources.Mods != null && modResources.Mods.Values != null)
 				{
@@ -1928,7 +1930,7 @@ namespace DivinityModManager.Util
 			}
 			catch(Exception ex)
 			{
-				DivinityApp.Log("Error parsing base game mods:\n" + ex.ToString());
+				DivinityApp.Log($"Error parsing base game mods:\n{ex}");
 			}
 
 			return baseMods;
@@ -1944,7 +1946,8 @@ namespace DivinityModManager.Util
 				modHelper.CollectGlobals = false;
 				modHelper.CollectLevels = false;
 				modHelper.CollectStoryGoals = false;
-				modHelper.Discover(gameDataPath);
+				modHelper.CollectStats = false;
+				modHelper.DiscoverBuiltinPackages(gameDataPath);
 
 				if (modResources.Mods != null && modResources.Mods.Values != null)
 				{
@@ -1978,7 +1981,7 @@ namespace DivinityModManager.Util
 			}
 			catch (Exception ex)
 			{
-				DivinityApp.Log("Error parsing base game mods:\n" + ex.ToString());
+				DivinityApp.Log($"Error parsing base game mods:\n{ex}");
 			}
 
 			return baseMods;
