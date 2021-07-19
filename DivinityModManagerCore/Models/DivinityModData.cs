@@ -63,7 +63,7 @@ namespace DivinityModManager.Models
 			}
 		}
 
-		public string OsirisExtenderSupportToolTipText { get; private set; }
+		public string ScriptExtenderSupportToolTipText { get; private set; }
 
 		public void UpdateScriptExtenderToolTip()
 		{
@@ -73,55 +73,55 @@ namespace DivinityModManager.Models
 				case DivinityExtenderModStatus.REQUIRED_MISSING:
 				case DivinityExtenderModStatus.REQUIRED_DISABLED:
 				case DivinityExtenderModStatus.REQUIRED_OLD:
-					OsirisExtenderSupportToolTipText = "";
+					ScriptExtenderSupportToolTipText = "";
 					if (ExtenderModStatus == DivinityExtenderModStatus.REQUIRED_MISSING)
 					{
-						OsirisExtenderSupportToolTipText = "[MISSING] ";
+						ScriptExtenderSupportToolTipText = "[MISSING] ";
 					}
 					else if (ExtenderModStatus == DivinityExtenderModStatus.REQUIRED_DISABLED)
 					{
-						OsirisExtenderSupportToolTipText = "[EXTENSIONS DISABLED] ";
+						ScriptExtenderSupportToolTipText = "[EXTENSIONS DISABLED] ";
 					}
 					else if (ExtenderModStatus == DivinityExtenderModStatus.REQUIRED_OLD)
 					{
-						OsirisExtenderSupportToolTipText = "[OLD] ";
+						ScriptExtenderSupportToolTipText = "[OLD] ";
 					}
-					if (OsiExtenderData.RequiredExtensionVersion > -1)
+					if (ScriptExtenderData.RequiredExtensionVersion > -1)
 					{
-						OsirisExtenderSupportToolTipText += $"Requires Osiris Extender v{OsiExtenderData.RequiredExtensionVersion} or higher";
+						ScriptExtenderSupportToolTipText += $"Requires Script Extender v{ScriptExtenderData.RequiredExtensionVersion} or higher";
 					}
 					else
 					{
-						OsirisExtenderSupportToolTipText += "Requires the Osiris Extender";
+						ScriptExtenderSupportToolTipText += "Requires the Script Extender";
 					}
 					if (ExtenderModStatus == DivinityExtenderModStatus.REQUIRED_DISABLED)
 					{
-						OsirisExtenderSupportToolTipText += " (Enable Extensions in the OsiExtender config)";
+						ScriptExtenderSupportToolTipText += " (Enable Extensions in the Script Extender config)";
 					}
 					if (ExtenderModStatus == DivinityExtenderModStatus.REQUIRED_OLD)
 					{
-						OsirisExtenderSupportToolTipText += " (Update by running the game)";
+						ScriptExtenderSupportToolTipText += " (Update by running the game)";
 					}
 					break;
 				case DivinityExtenderModStatus.SUPPORTS:
-					if (OsiExtenderData.RequiredExtensionVersion > -1)
+					if (ScriptExtenderData.RequiredExtensionVersion > -1)
 					{
-						OsirisExtenderSupportToolTipText = $"Supports Osiris Extender v{OsiExtenderData.RequiredExtensionVersion} or higher";
+						ScriptExtenderSupportToolTipText = $"Supports Script Extender v{ScriptExtenderData.RequiredExtensionVersion} or higher";
 					}
 					else
 					{
-						OsirisExtenderSupportToolTipText = $"Supports the Osiris Extender";
+						ScriptExtenderSupportToolTipText = $"Supports the Script Extender";
 					}
 					break;
 				case DivinityExtenderModStatus.NONE:
 				default:
-					OsirisExtenderSupportToolTipText = "";
+					ScriptExtenderSupportToolTipText = "";
 					break;
 			}
-			this.RaisePropertyChanged("OsirisExtenderSupportToolTipText");
+			this.RaisePropertyChanged("ScriptExtenderSupportToolTipText");
 		}
 
-		[DataMember] public DivinityModOsiExtenderConfig OsiExtenderData { get; set; }
+		[DataMember] public DivinityModScriptExtenderConfig ScriptExtenderData { get; set; }
 		[DataMember] public SourceList<DivinityModDependencyData> Dependencies { get; set; } = new SourceList<DivinityModDependencyData>();
 
 		protected ReadOnlyObservableCollection<DivinityModDependencyData> displayedDependencies;
@@ -160,7 +160,7 @@ namespace DivinityModManager.Models
 		private ObservableAsPropertyHelper<Visibility> dependencyVisibility;
 		public Visibility DependencyVisibility => dependencyVisibility.Value;
 
-		[Reactive] public bool HasOsirisExtenderSettings { get; set; } = false;
+		[Reactive] public bool HasScriptExtenderSettings { get; set; } = false;
 
 		[Reactive] public bool IsEditorMod { get; set; } = false;
 

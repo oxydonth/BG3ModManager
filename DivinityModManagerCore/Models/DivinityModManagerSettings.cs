@@ -98,10 +98,10 @@ namespace DivinityModManager.Models
 		[SettingsEntry("Shift Focus on Swap", "When moving selected mods to the opposite list with Enter, move focus to that list as well.")]
 		[DataMember] [Reactive] public bool ShiftListFocusOnSwap { get; set; } = false;
 
-		private OsiExtenderSettings extenderSettings;
+		private ScriptExtenderSettings extenderSettings;
 
 		[DataMember]
-		public OsiExtenderSettings ExtenderSettings
+		public ScriptExtenderSettings ExtenderSettings
 		{
 			get => extenderSettings;
 			set { this.RaiseAndSetIfChanged(ref extenderSettings, value); }
@@ -150,7 +150,7 @@ namespace DivinityModManager.Models
 
 		private bool debugModeEnabled = false;
 
-		[SettingsEntry("Enable Developer Mode", "This enables features for mod developers, such as being able to copy a mod's UUID in context menus, and additional OsiExtender options.")]
+		[SettingsEntry("Enable Developer Mode", "This enables features for mod developers, such as being able to copy a mod's UUID in context menus, and additional Extender options.")]
 		[DataMember]
 		public bool DebugModeEnabled
 		{
@@ -209,7 +209,7 @@ namespace DivinityModManager.Models
 		public DivinityModManagerSettings()
 		{
 			Disposables = new CompositeDisposable();
-			ExtenderSettings = new OsiExtenderSettings();
+			ExtenderSettings = new ScriptExtenderSettings();
 
 			var properties = typeof(DivinityModManagerSettings)
 			.GetRuntimeProperties()
@@ -222,7 +222,7 @@ namespace DivinityModManager.Models
 				if (SettingsWindowIsOpen) CanSaveSettings = true;
 			}).DisposeWith(Disposables);
 
-			var extender_properties = typeof(OsiExtenderSettings)
+			var extender_properties = typeof(ScriptExtenderSettings)
 			.GetRuntimeProperties()
 			.Where(prop => Attribute.IsDefined(prop, typeof(DataMemberAttribute)))
 			.Select(prop => prop.Name)

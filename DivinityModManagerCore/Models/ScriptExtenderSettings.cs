@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 namespace DivinityModManager.Models
 {
 	[DataContract]
-	public class OsiExtenderSettings : ReactiveObject
+	public class ScriptExtenderSettings : ReactiveObject
 	{
 		private bool extenderIsAvailable = false;
 
@@ -196,7 +196,7 @@ namespace DivinityModManager.Models
 			set { this.RaiseAndSetIfChanged(ref enableLuaDebugger, value); }
 		}
 
-		public static OsiExtenderSettings DefaultSettings = new OsiExtenderSettings();
+		public static ScriptExtenderSettings DefaultSettings = new ScriptExtenderSettings();
 
 		public void SetToDefault()
 		{
@@ -217,7 +217,7 @@ namespace DivinityModManager.Models
 			EnableLuaDebugger = false;
 		}
 
-		public void Set(OsiExtenderSettings osirisExtenderSettings)
+		public void Set(ScriptExtenderSettings osirisExtenderSettings)
 		{
 			EnableExtensions = osirisExtenderSettings.EnableExtensions;
 			CreateConsole = osirisExtenderSettings.CreateConsole;
