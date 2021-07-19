@@ -633,7 +633,7 @@ namespace DivinityModManager.ViewModels
 						}
 						if (jsonData.TryGetValue("tag_name", out var tagName))
 						{
-							PathwayData.OsirisExtenderLatestReleaseVersion = (string)tagName;
+							PathwayData.ScriptExtenderLatestReleaseVersion = (string)tagName;
 						}
 #if DEBUG
 						//var lines = jsonData.Select(kvp => kvp.Key + ": " + kvp.Value.ToString());
@@ -643,7 +643,7 @@ namespace DivinityModManager.ViewModels
 					if (!String.IsNullOrEmpty(latestReleaseZipUrl))
 					{
 						OpenRepoLinkToDownload = false;
-						PathwayData.OsirisExtenderLatestReleaseUrl = latestReleaseZipUrl;
+						PathwayData.ScriptExtenderLatestReleaseUrl = latestReleaseZipUrl;
 						DivinityApp.Log($"OsiTools latest release url found: {latestReleaseZipUrl}");
 					}
 					else
@@ -665,7 +665,7 @@ namespace DivinityModManager.ViewModels
 
 			try
 			{
-				string extenderSettingsJson = PathwayData.OsirisExtenderSettingsFile(Settings);
+				string extenderSettingsJson = PathwayData.ScriptExtenderSettingsFile(Settings);
 				if (extenderSettingsJson.IsExistingFile())
 				{
 					var osirisExtenderSettings = DivinityJsonUtils.SafeDeserializeFromPath<OsiExtenderSettings>(extenderSettingsJson);
@@ -3873,8 +3873,8 @@ namespace DivinityModManager.ViewModels
 				Stream unzippedEntryStream = null;
 				try
 				{
-					RxApp.MainThreadScheduler.Schedule(_ => MainProgressWorkText = $"Downloading {PathwayData.OsirisExtenderLatestReleaseUrl}...");
-					webStream = await WebHelper.DownloadFileAsStreamAsync(PathwayData.OsirisExtenderLatestReleaseUrl, MainProgressToken.Token);
+					RxApp.MainThreadScheduler.Schedule(_ => MainProgressWorkText = $"Downloading {PathwayData.ScriptExtenderLatestReleaseUrl}...");
+					webStream = await WebHelper.DownloadFileAsStreamAsync(PathwayData.ScriptExtenderLatestReleaseUrl, MainProgressToken.Token);
 					if (webStream != null)
 					{
 						successes += 1;
@@ -3922,10 +3922,10 @@ namespace DivinityModManager.ViewModels
 						Settings.ExtenderSettings.ExtenderUpdaterIsAvailable = true;
 						if (Settings.ExtenderSettings.ExtenderVersion <= -1)
 						{
-							if (!String.IsNullOrWhiteSpace(PathwayData.OsirisExtenderLatestReleaseVersion))
+							if (!String.IsNullOrWhiteSpace(PathwayData.ScriptExtenderLatestReleaseVersion))
 							{
 								var re = new Regex("v([0-9]+)");
-								var m = re.Match(PathwayData.OsirisExtenderLatestReleaseVersion);
+								var m = re.Match(PathwayData.ScriptExtenderLatestReleaseVersion);
 								if (m.Success)
 								{
 									if (int.TryParse(m.Groups[1].Value, out int version))
@@ -3935,10 +3935,10 @@ namespace DivinityModManager.ViewModels
 									}
 								}
 							}
-							else if (PathwayData.OsirisExtenderLatestReleaseUrl.Contains("v"))
+							else if (PathwayData.ScriptExtenderLatestReleaseUrl.Contains("v"))
 							{
 								var re = new Regex("v([0-9]+).*.zip");
-								var m = re.Match(PathwayData.OsirisExtenderLatestReleaseUrl);
+								var m = re.Match(PathwayData.ScriptExtenderLatestReleaseUrl);
 								if (m.Success)
 								{
 									if (int.TryParse(m.Groups[1].Value, out int version))
@@ -3966,13 +3966,13 @@ namespace DivinityModManager.ViewModels
 			if (!OpenRepoLinkToDownload)
 			{
 				string exeDir = Path.GetDirectoryName(Settings.GameExecutablePath);
-				string messageText = String.Format(@"Download and install the Osiris Extender?
-The Osiris Extender is used by various mods to extend the scripting language of the game, allowing new functionality.
+				string messageText = String.Format(@"Download and install the Script Extender?
+The Script Extender is used by various mods to extend the scripting language of the game, allowing new functionality.
 The extenders needs to only be installed once, as it can auto-update itself automatically when you launch the game.
 Download url: 
 {0}
 Directory the zip will be extracted to:
-{1}", PathwayData.OsirisExtenderLatestReleaseUrl, exeDir);
+{1}", PathwayData.ScriptExtenderLatestReleaseUrl, exeDir);
 
 				MessageBoxResult result = Xceed.Wpf.Toolkit.MessageBox.Show(view, messageText, "Download & Install the Osiris Extender?",
 					MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No, view.MainWindowMessageBox_OK.Style);
@@ -3983,8 +3983,8 @@ Directory the zip will be extracted to:
 			}
 			else
 			{
-				DivinityApp.Log($"Getting a release download link failed for some reason. Opening repo url: https://github.com/Norbyte/ositools/releases/latest");
-				Process.Start("https://github.com/Norbyte/ositools/releases/latest");
+				DivinityApp.Log($"Getting a release download link failed for some reason. Opening repo url: {DivinityApp.EXTENDER_URL}");
+				Process.Start(DivinityApp.EXTENDER_URL);
 			}
 		}
 

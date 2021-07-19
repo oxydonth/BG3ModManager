@@ -59,13 +59,13 @@ namespace DivinityModManager.Models
 			set 
 			{ 
 				this.RaiseAndSetIfChanged(ref extenderModStatus, value);
-				UpdateOsirisExtenderToolTip();
+				UpdateScriptExtenderToolTip();
 			}
 		}
 
 		public string OsirisExtenderSupportToolTipText { get; private set; }
 
-		public void UpdateOsirisExtenderToolTip()
+		public void UpdateScriptExtenderToolTip()
 		{
 			switch(ExtenderModStatus)
 			{
