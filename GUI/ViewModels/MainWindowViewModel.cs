@@ -613,10 +613,11 @@ namespace DivinityModManager.ViewModels
 			try
 			{
 				string latestReleaseZipUrl = "";
-				DivinityApp.Log($"Checking for latest DXGI.dll release at 'Norbyte/ositools'.");
-				var latestReleaseData = await GithubHelper.GetLatestReleaseDataAsync("Norbyte/ositools");
+				DivinityApp.Log($"Checking for latest {DivinityApp.EXTENDER_UPDATER_FILE} release at '{DivinityApp.EXTENDER_REPO_URL}'.");
+				var latestReleaseData = await GithubHelper.GetLatestReleaseDataAsync(DivinityApp.EXTENDER_REPO_URL);
 				if (!String.IsNullOrEmpty(latestReleaseData))
 				{
+					DivinityApp.Log($"{latestReleaseData}");
 					var jsonData = DivinityJsonUtils.SafeDeserialize<Dictionary<string, object>>(latestReleaseData);
 					if (jsonData != null)
 					{
@@ -635,20 +636,16 @@ namespace DivinityModManager.ViewModels
 						{
 							PathwayData.ScriptExtenderLatestReleaseVersion = (string)tagName;
 						}
-#if DEBUG
-						//var lines = jsonData.Select(kvp => kvp.Key + ": " + kvp.Value.ToString());
-						//DivinityApp.LogMessage($"Releases Data:\n{String.Join(Environment.NewLine, lines)}");
-#endif
 					}
 					if (!String.IsNullOrEmpty(latestReleaseZipUrl))
 					{
 						OpenRepoLinkToDownload = false;
 						PathwayData.ScriptExtenderLatestReleaseUrl = latestReleaseZipUrl;
-						DivinityApp.Log($"OsiTools latest release url found: {latestReleaseZipUrl}");
+						DivinityApp.Log($"Extender latest release url found: {latestReleaseZipUrl}");
 					}
 					else
 					{
-						DivinityApp.Log($"OsiTools latest release not found.");
+						DivinityApp.Log($"Extender latest release not found.");
 					}
 				}
 				else
@@ -668,38 +665,35 @@ namespace DivinityModManager.ViewModels
 				string extenderSettingsJson = PathwayData.ScriptExtenderSettingsFile(Settings);
 				if (extenderSettingsJson.IsExistingFile())
 				{
-					var osirisExtenderSettings = DivinityJsonUtils.SafeDeserializeFromPath<ScriptExtenderSettings>(extenderSettingsJson);
-					if (osirisExtenderSettings != null)
+					var extenderSettingsJsonData = DivinityJsonUtils.SafeDeserializeFromPath<ScriptExtenderSettings>(extenderSettingsJson);
+					if (extenderSettingsJsonData != null)
 					{
 						DivinityApp.Log($"Loaded extender settings from '{extenderSettingsJson}'.");
-						Settings.ExtenderSettings.Set(osirisExtenderSettings);
+						Settings.ExtenderSettings.Set(extenderSettingsJsonData);
 					}
 				}
 			}
 			catch (Exception ex)
 			{
-				DivinityApp.Log($"Error loading extender settings: {ex.ToString()}");
+				DivinityApp.Log($"Error loading extender settings: {ex}");
 			}
 
-			string extenderUpdaterPath = Path.Combine(Path.GetDirectoryName(Settings.GameExecutablePath), "DXGI.dll");
+			string extenderUpdaterPath = Path.Combine(Path.GetDirectoryName(Settings.GameExecutablePath), DivinityApp.EXTENDER_UPDATER_FILE);
 			DivinityApp.Log($"Looking for Extender at '{extenderUpdaterPath}'.");
 			if (File.Exists(extenderUpdaterPath))
 			{
-				DivinityApp.Log($"Checking DXGI.dll for Osiris ASCII bytes.");
+				DivinityApp.Log($"Checking {DivinityApp.EXTENDER_UPDATER_FILE}.");
 				try
 				{
-					using (var stream = new FileStream(extenderUpdaterPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+					FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(extenderUpdaterPath);
+					if(fvi != null && fvi.ProductName.IndexOf("Script Extender", StringComparison.OrdinalIgnoreCase) >= 0)
 					{
-						byte[] bytes = DivinityStreamUtils.ReadToEnd(stream);
-						if (bytes.IndexOf(Encoding.ASCII.GetBytes("Osiris")) >= 0)
-						{
-							Settings.ExtenderSettings.ExtenderUpdaterIsAvailable = true;
-							DivinityApp.Log($"Found the Extender at '{extenderUpdaterPath}'.");
-						}
-						else
-						{
-							DivinityApp.Log($"Failed to find ASCII bytes in '{extenderUpdaterPath}'.");
-						}
+						Settings.ExtenderSettings.ExtenderUpdaterIsAvailable = true;
+						DivinityApp.Log($"Found the Extender at '{extenderUpdaterPath}'.");
+					}
+					else
+					{
+						DivinityApp.Log($"'{extenderUpdaterPath}' isn't the BG3 Script Extender?");
 					}
 				}
 				catch (System.IO.IOException ex)
@@ -711,13 +705,13 @@ namespace DivinityModManager.ViewModels
 				}
 				catch (Exception ex)
 				{
-					DivinityApp.Log($"Error reading: '{extenderUpdaterPath}'\n\t{ex.ToString()}");
+					DivinityApp.Log($"Error reading: '{extenderUpdaterPath}'\n\t{ex}");
 				}
 			}
 			else
 			{
 				Settings.ExtenderSettings.ExtenderUpdaterIsAvailable = false;
-				DivinityApp.Log($"Extender DXGI.dll not found.");
+				DivinityApp.Log($"Extender {DivinityApp.EXTENDER_UPDATER_FILE} not found.");
 			}
 
 			string extenderAppFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), DivinityApp.EXTENDER_APPDATA_DLL);
@@ -743,7 +737,7 @@ namespace DivinityModManager.ViewModels
 				}
 				catch (Exception ex)
 				{
-					DivinityApp.Log($"Error getting file info from: '{extenderAppFile}'\n\t{ex.ToString()}");
+					DivinityApp.Log($"Error getting file info from: '{extenderAppFile}'\n\t{ex}");
 				}
 			}
 			return Unit.Default;
@@ -751,6 +745,15 @@ namespace DivinityModManager.ViewModels
 
 		private void LoadExtenderSettings()
 		{
+#if DEBUG
+			RxApp.TaskpoolScheduler.ScheduleAsync(async (c, t) =>
+			{
+				await LoadExtenderSettingsAsync(t);
+				await c.Yield();
+				RxApp.MainThreadScheduler.Schedule(CheckExtenderData);
+				return Disposable.Empty;
+			});
+#else
 			if (File.Exists(Settings.GameExecutablePath))
 			{
 				RxApp.TaskpoolScheduler.ScheduleAsync(async (c, t) =>
@@ -765,6 +768,7 @@ namespace DivinityModManager.ViewModels
 			{
 				CheckExtenderData();
 			}
+#endif
 		}
 
 		private bool FilterDependencies(DivinityModDependencyData x, bool devMode)
@@ -804,7 +808,7 @@ namespace DivinityModManager.ViewModels
 			}
 			catch (Exception ex)
 			{
-				view.AlertBar.SetDangerAlert($"Error loading settings at '{settingsFile}': {ex.ToString()}");
+				view.AlertBar.SetDangerAlert($"Error loading settings at '{settingsFile}': {ex}");
 				Settings = null;
 			}
 
@@ -847,8 +851,8 @@ namespace DivinityModManager.ViewModels
 			canOpenLogDirectory = this.WhenAnyValue(x => x.Settings.ExtenderLogDirectory, (f) => Directory.Exists(f)).StartWith(false);
 			gameExeFoundObservable = this.WhenAnyValue(x => x.Settings.GameExecutablePath, (path) => path.IsExistingFile()).StartWith(false);
 			canInstallScriptExtender = this.WhenAnyValue(x => x.PathwayData.ScriptExtenderLatestReleaseUrl, x => x.Settings.GameExecutablePath,
-				(url, exe) => !String.IsNullOrWhiteSpace(url) && exe.IsExistingFile()).ObserveOn(RxApp.MainThreadScheduler);
-			DownloadAndInstallScriptExtenderCommand = ReactiveCommand.Create(InstallScriptExtender_Start).DisposeWith(Settings.Disposables);
+				(url, exe) => !String.IsNullOrWhiteSpace(url) && exe.IsExistingFile()).ObserveOn(RxApp.MainThreadScheduler).StartWith(false);
+			DownloadAndInstallScriptExtenderCommand = ReactiveCommand.Create(InstallScriptExtender_Start, canInstallScriptExtender).DisposeWith(Settings.Disposables);
 
 			Keys.OpenLogsFolder.AddAction(() =>
 			{
@@ -992,7 +996,7 @@ namespace DivinityModManager.ViewModels
 				}
 				catch (Exception ex)
 				{
-					view.AlertBar.SetDangerAlert($"Error saving Script Extender settings to '{outputFile}':\n{ex.ToString()}");
+					view.AlertBar.SetDangerAlert($"Error saving Script Extender settings to '{outputFile}':\n{ex}");
 				}
 			}).DisposeWith(Settings.Disposables);
 
@@ -1034,7 +1038,7 @@ namespace DivinityModManager.ViewModels
 						}
 						catch (Exception ex)
 						{
-							view.AlertBar.SetDangerAlert($"Error deleting workshop cache:\n{ex.ToString()}");
+							view.AlertBar.SetDangerAlert($"Error deleting workshop cache:\n{ex}");
 						}
 					}
 				}
@@ -1145,7 +1149,7 @@ namespace DivinityModManager.ViewModels
 			}
 			catch (Exception ex)
 			{
-				view.AlertBar.SetDangerAlert($"Error saving settings at '{settingsFile}': {ex.ToString()}");
+				view.AlertBar.SetDangerAlert($"Error saving settings at '{settingsFile}': {ex}");
 			}
 			return false;
 		}
@@ -1353,7 +1357,7 @@ namespace DivinityModManager.ViewModels
 			}
 			catch (Exception ex)
 			{
-				DivinityApp.Log($"Error setting up game pathways: {ex.ToString()}");
+				DivinityApp.Log($"Error setting up game pathways: {ex}");
 			}
 		}
 
@@ -1491,7 +1495,7 @@ namespace DivinityModManager.ViewModels
 			}
 			catch (Exception ex)
 			{
-				DivinityApp.Log($"Error awaiting task:\n{ex.ToString()}");
+				DivinityApp.Log($"Error awaiting task:\n{ex}");
 			}
 			return defaultValue;
 		}
@@ -1703,7 +1707,7 @@ namespace DivinityModManager.ViewModels
 						}
 						catch (Exception ex)
 						{
-							DivinityApp.Log($"Error setting next load order:\n{ex.ToString()}");
+							DivinityApp.Log($"Error setting next load order:\n{ex}");
 						}
 					}
 					LoadingOrder = false;
@@ -2353,7 +2357,7 @@ namespace DivinityModManager.ViewModels
 			}
 			catch (Exception ex)
 			{
-				DivinityApp.Log($"Error loading external load orders: {ex.ToString()}.");
+				DivinityApp.Log($"Error loading external load orders: {ex}.");
 				return new List<DivinityLoadOrder>();
 			}
 		}
@@ -2942,7 +2946,7 @@ namespace DivinityModManager.ViewModels
 				{
 					RxApp.MainThreadScheduler.Schedule(() =>
 					{
-						string msg = $"Error writing load order archive '{outputPath}': {ex.ToString()}";
+						string msg = $"Error writing load order archive '{outputPath}': {ex}";
 						DivinityApp.Log(msg);
 						view.AlertBar.SetDangerAlert(msg);
 					});
@@ -3108,7 +3112,7 @@ namespace DivinityModManager.ViewModels
 					}
 					catch (Exception ex)
 					{
-						view.AlertBar.SetDangerAlert($"Error exporting mod order to '{dialog.FileName}':\n{ex.ToString()}");
+						view.AlertBar.SetDangerAlert($"Error exporting mod order to '{dialog.FileName}':\n{ex}");
 					}
 				}
 			}
@@ -3370,7 +3374,7 @@ namespace DivinityModManager.ViewModels
 					}
 					catch (Exception ex)
 					{
-						DivinityApp.Log($"Error running AutoUpdater:\n{ex.ToString()}");
+						DivinityApp.Log($"Error running AutoUpdater:\n{ex}");
 					}
 				}
 			}
@@ -3666,7 +3670,7 @@ namespace DivinityModManager.ViewModels
 						}
 						catch (Exception ex)
 						{
-							DivinityApp.Log($"Error extracting package: {ex.ToString()}");
+							DivinityApp.Log($"Error extracting package: {ex}");
 						}
 						IncreaseMainProgressValue(taskStepAmount);
 					}
@@ -3900,7 +3904,7 @@ namespace DivinityModManager.ViewModels
 				}
 				catch (Exception ex)
 				{
-					DivinityApp.Log($"Error extracting package: {ex.ToString()}");
+					DivinityApp.Log($"Error extracting package: {ex}");
 				}
 				finally
 				{
@@ -3983,8 +3987,8 @@ Directory the zip will be extracted to:
 			}
 			else
 			{
-				DivinityApp.Log($"Getting a release download link failed for some reason. Opening repo url: {DivinityApp.EXTENDER_URL}");
-				Process.Start(DivinityApp.EXTENDER_URL);
+				DivinityApp.Log($"Getting a release download link failed for some reason. Opening repo url: {DivinityApp.EXTENDER_LATEST_URL}");
+				Process.Start(DivinityApp.EXTENDER_LATEST_URL);
 			}
 		}
 
@@ -4263,7 +4267,7 @@ Directory the zip will be extracted to:
 				if (!disposables.Contains(this.Disposables)) disposables.Add(this.Disposables);
 			});
 
-			#region Keys Setup
+#region Keys Setup
 			Keys.SaveDefaultKeybindings();
 
 			var canExecuteSaveCommand = this.WhenAnyValue(x => x.CanSaveOrder, (canSave) => canSave == true);
@@ -4332,7 +4336,7 @@ Directory the zip will be extracted to:
 				}
 			});
 
-			#endregion
+#endregion
 
 			DeleteOrderCommand = ReactiveCommand.Create<DivinityLoadOrder, Unit>(DeleteOrder, canOpenDialogWindow);
 
@@ -4626,7 +4630,7 @@ Directory the zip will be extracted to:
 
 			SaveSettingsSilentlyCommand = ReactiveCommand.Create(SaveSettings);
 
-			#region GameMaster Support
+#region GameMaster Support
 
 			var gmModeChanged = this.WhenAnyValue(x => x.Settings.GameMasterModeEnabled);
 			adventureModBoxVisibility = gmModeChanged.Select(x => !x ? Visibility.Visible : Visibility.Collapsed).StartWith(Visibility.Visible).ToProperty(this, nameof(AdventureModBoxVisibility));
@@ -4678,7 +4682,7 @@ Directory the zip will be extracted to:
 					}
 				}
 			});
-			#endregion
+#endregion
 		}
 	}
 }

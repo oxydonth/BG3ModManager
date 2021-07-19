@@ -14,10 +14,17 @@ namespace DivinityModManager.Util
 	public static class GithubHelper
 	{
 		private static readonly string GIT_URL_REPO_LATEST = "https://api.github.com/repos/{0}/releases/latest";
+		private static readonly string GIT_URL_REPO_RELEASES = "https://api.github.com/repos/{0}/releases";
 
 		public static async Task<string> GetLatestReleaseDataAsync(string repo)
 		{
 			var response = await WebHelper.Client.GetAsync(String.Format(GIT_URL_REPO_LATEST, repo), System.Net.Http.HttpCompletionOption.ResponseContentRead);
+			return await response.Content.ReadAsStringAsync();
+		}
+
+		public static async Task<string> GetAllReleaseDataAsync(string repo)
+		{
+			var response = await WebHelper.Client.GetAsync(String.Format(GIT_URL_REPO_RELEASES, repo), System.Net.Http.HttpCompletionOption.ResponseContentRead);
 			return await response.Content.ReadAsStringAsync();
 		}
 

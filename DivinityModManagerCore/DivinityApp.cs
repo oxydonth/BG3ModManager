@@ -39,9 +39,11 @@ namespace DivinityModManager
 		public static readonly Uri LightTheme = new Uri("pack://application:,,,/DivinityModManager;component/Themes/Light.xaml", UriKind.Absolute);
 		public static readonly Uri DarkTheme = new Uri("pack://application:,,,/DivinityModManager;component/Themes/Dark.xaml", UriKind.Absolute);
 
-		public const string EXTENDER_URL = "https://github.com/Norbyte/bg3se/releases/latest";
+		public const string EXTENDER_REPO_URL = "Norbyte/bg3se";
+		public const string EXTENDER_LATEST_URL = "https://github.com/Norbyte/bg3se/releases/latest";
 		public const string EXTENDER_APPDATA_DLL = "BG3ScriptExtender/OsiExtenderEoCApp";
 		public const string EXTENDER_MOD_CONFIG = "Config.json";
+		public const string EXTENDER_UPDATER_FILE = "DWrite.dll";
 
 		public static HashSet<DivinityModData> IgnoredMods { get; set; } = new HashSet<DivinityModData>();
 		public static HashSet<DivinityModData> IgnoredDependencyMods { get; set; } = new HashSet<DivinityModData>();
