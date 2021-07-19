@@ -224,7 +224,7 @@ namespace DivinityModManager.ViewModels
 			}
 			catch(Exception ex)
 			{
-				string message = $"Error copying workshop mods: {ex.ToString()}";
+				string message = $"Error copying workshop mods: {ex}";
 				DivinityApp.Log(message);
 				MainWindow.Self.AlertBar.SetDangerAlert(message);
 			}
@@ -252,14 +252,14 @@ namespace DivinityModManager.ViewModels
 						}
 						catch(Alphaleonis.Win32.Filesystem.FileReadOnlyException ex)
 						{
-							string message = $"Error copying '{fileName}' - File is read only!{Environment.NewLine}{ex.ToString()}";
+							string message = $"Error copying '{fileName}' - File is read only!{Environment.NewLine}{ex}";
 							DivinityApp.Log(message);
 							MainWindow.Self.AlertBar.SetDangerAlert(message);
 							dialog.ReportProgress(args.TotalMoved / totalWork, message, null);
 						}
 						catch (Exception ex)
 						{
-							string message = $"Error copying '{fileName}':{Environment.NewLine}{ex.ToString()}";
+							string message = $"Error copying '{fileName}':{Environment.NewLine}{ex}";
 							DivinityApp.Log(message);
 							MainWindow.Self.AlertBar.SetDangerAlert(message);
 							dialog.ReportProgress(args.TotalMoved / totalWork, message, null);
@@ -284,7 +284,7 @@ namespace DivinityModManager.ViewModels
 						}
 						catch(Exception ex)
 						{
-							DivinityApp.Log($"Error copying workshop mod:\n{ex.ToString()}");
+							DivinityApp.Log($"Error copying workshop mod:\n{ex}");
 						}
 						dialog.ReportProgress(args.TotalMoved / totalWork, $"Copying '{baseName}'...", null);
 						args.TotalMoved++;

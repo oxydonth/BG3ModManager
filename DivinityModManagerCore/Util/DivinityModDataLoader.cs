@@ -258,7 +258,7 @@ namespace DivinityModManager.Util
 			}
 			catch(Exception ex)
 			{
-				Console.WriteLine($"Error parsing meta.lsx: {ex.ToString()}");
+				Console.WriteLine($"Error parsing meta.lsx: {ex}");
 			}
 			return null;
 		}
@@ -304,7 +304,7 @@ namespace DivinityModManager.Util
 									}
 									catch (PlatformNotSupportedException ex)
 									{
-										DivinityApp.Log($"Error getting last modified date for '{metaFile}': {ex.ToString()}");
+										DivinityApp.Log($"Error getting last modified date for '{metaFile}': {ex}");
 									}
 
 									projects.Add(modData);
@@ -331,7 +331,7 @@ namespace DivinityModManager.Util
 			}
 			catch(Exception ex)
 			{
-				DivinityApp.Log($"Error loading mod projects: {ex.ToString()}");
+				DivinityApp.Log($"Error loading mod projects: {ex}");
 			}
 			return projects;
 		}
@@ -386,7 +386,7 @@ namespace DivinityModManager.Util
 										}
 										catch (PlatformNotSupportedException ex)
 										{
-											DivinityApp.Log($"Error getting last modified date for '{metaFile}': {ex.ToString()}");
+											DivinityApp.Log($"Error getting last modified date for '{metaFile}': {ex}");
 										}
 										projects.Add(modData);
 
@@ -413,7 +413,7 @@ namespace DivinityModManager.Util
 			}
 			catch(Exception ex)
 			{
-				DivinityApp.Log($"Error loading mod projects: {ex.ToString()}");
+				DivinityApp.Log($"Error loading mod projects: {ex}");
 			}
 			return projects;
 		}
@@ -456,7 +456,7 @@ namespace DivinityModManager.Util
 				}
 				catch(Exception ex)
 				{
-					DivinityApp.Log($"Error enumerating pak folder '{modsFolderPath}': {ex.ToString()}");
+					DivinityApp.Log($"Error enumerating pak folder '{modsFolderPath}': {ex}");
 				}
 
 				DivinityApp.Log("Mod Packages: " + modPaks.Count());
@@ -512,7 +512,7 @@ namespace DivinityModManager.Util
 								}
 								catch (PlatformNotSupportedException ex)
 								{
-									DivinityApp.Log($"Error getting pak last modified date for '{pakPath}': {ex.ToString()}");
+									DivinityApp.Log($"Error getting pak last modified date for '{pakPath}': {ex}");
 								}
 								if(!mods.Any(x => x.UUID == modData.UUID))
 								{
@@ -573,7 +573,7 @@ namespace DivinityModManager.Util
 									}
 									catch(Exception ex)
 									{
-										DivinityApp.Log($"Error reading 'OsiToolsConfig.json' for '{pakPath}': {ex.ToString()}");
+										DivinityApp.Log($"Error reading 'OsiToolsConfig.json' for '{pakPath}': {ex}");
 									}
 								}
 							}
@@ -581,7 +581,7 @@ namespace DivinityModManager.Util
 					}
 					catch (Exception ex)
 					{
-						DivinityApp.Log($"Error loading pak '{pakPath}': {ex.ToString()}");
+						DivinityApp.Log($"Error loading pak '{pakPath}': {ex}");
 					}
 				}
 			}
@@ -592,7 +592,7 @@ namespace DivinityModManager.Util
 			}
 			catch(Exception ex)
 			{
-				DivinityApp.Log($"Error loading mod paks: {ex.ToString()}");
+				DivinityApp.Log($"Error loading mod paks: {ex}");
 			}
 
 			return mods;
@@ -619,7 +619,7 @@ namespace DivinityModManager.Util
 				}
 				catch (Exception ex)
 				{
-					DivinityApp.Log($"Error enumerating pak folder '{modsFolderPath}': {ex.ToString()}");
+					DivinityApp.Log($"Error enumerating pak folder '{modsFolderPath}': {ex}");
 				}
 
 				DivinityApp.Log("Mod Packages: " + modPaks.Count());
@@ -673,7 +673,7 @@ namespace DivinityModManager.Util
 									}
 									catch (PlatformNotSupportedException ex)
 									{
-										DivinityApp.Log($"Error getting pak last modified date for '{pakPath}': {ex.ToString()}");
+										DivinityApp.Log($"Error getting pak last modified date for '{pakPath}': {ex}");
 									}
 									mods.Add(modData);
 
@@ -972,7 +972,7 @@ namespace DivinityModManager.Util
 						}
 						catch(Exception ex)
 						{
-							DivinityApp.Log($"Error parsing profile data: \n{ex.ToString()}");
+							DivinityApp.Log($"Error parsing profile data: \n{ex}");
 						}
 					}
 
@@ -994,7 +994,7 @@ namespace DivinityModManager.Util
 						}
 						catch(Exception ex)
 						{
-							DivinityApp.Log($"Error reading '{modSettingsFile}': '{ex.ToString()}'");
+							DivinityApp.Log($"Error reading '{modSettingsFile}': '{ex}'");
 						}
 						
 						if (modSettingsRes != null && modSettingsRes.Regions.TryGetValue("ModuleSettings", out var region))
@@ -1099,7 +1099,7 @@ namespace DivinityModManager.Util
 						}
 						catch (Exception ex)
 						{
-							DivinityApp.Log($"Error reading '{modSettingsFile}': '{ex.ToString()}'");
+							DivinityApp.Log($"Error reading '{modSettingsFile}': '{ex}'");
 						}
 
 						if (modSettingsRes != null && modSettingsRes.Regions.TryGetValue("ModuleSettings", out var region))
@@ -1167,7 +1167,7 @@ namespace DivinityModManager.Util
 				}
 				catch (Exception ex)
 				{
-					DivinityApp.Log($"Error loading '{path}': {ex.ToString()}");
+					DivinityApp.Log($"Error loading '{path}': {ex}");
 					return null;
 				}
 			});
@@ -1184,7 +1184,7 @@ namespace DivinityModManager.Util
 				}
 				catch (Exception ex)
 				{
-					DivinityApp.Log($"Error loading resource: {ex.ToString()}");
+					DivinityApp.Log($"Error loading resource: {ex}");
 					return null;
 				}
 			});
@@ -1213,7 +1213,7 @@ namespace DivinityModManager.Util
 				}
 				catch (Exception ex)
 				{
-					DivinityApp.Log($"Error loading {playerprofilesFile}: {ex.ToString()}");
+					DivinityApp.Log($"Error loading {playerprofilesFile}: {ex}");
 				}
 			}
 			return activeProfileUUID;
@@ -1239,7 +1239,7 @@ namespace DivinityModManager.Util
 				}
 				catch(Exception ex)
 				{
-					DivinityApp.Log($"Error saving {playerprofilesFile}: {ex.ToString()}");
+					DivinityApp.Log($"Error saving {playerprofilesFile}: {ex}");
 				}
 			}
 			else
@@ -1338,7 +1338,7 @@ namespace DivinityModManager.Util
 					}
 					catch (Exception ex)
 					{
-						DivinityApp.Log($"Failed to read '{loadOrderFile}': {ex.ToString()}");
+						DivinityApp.Log($"Failed to read '{loadOrderFile}': {ex}");
 					}
 				}
 			}
@@ -1381,7 +1381,7 @@ namespace DivinityModManager.Util
 					}
 					catch(Exception ex)
 					{
-						DivinityApp.Log($"Failed to read '{loadOrderFile}': {ex.ToString()}");
+						DivinityApp.Log($"Failed to read '{loadOrderFile}': {ex}");
 					}
 				}
 			}
@@ -1407,7 +1407,7 @@ namespace DivinityModManager.Util
 				}
 				catch(Exception ex)
 				{
-					DivinityApp.Log($"Error loading '{loadOrderFile}': {ex.ToString()}");
+					DivinityApp.Log($"Error loading '{loadOrderFile}': {ex}");
 				}
 			}
 			return null;
@@ -1424,7 +1424,7 @@ namespace DivinityModManager.Util
 				}
 				catch(Exception ex)
 				{
-					DivinityApp.Log($"Error reading '{loadOrderFile}': {ex.ToString()}");
+					DivinityApp.Log($"Error reading '{loadOrderFile}': {ex}");
 				}
 			}
 			return null;
@@ -1462,7 +1462,7 @@ namespace DivinityModManager.Util
 				}
 				catch(AccessViolationException ex)
 				{
-					DivinityApp.Log($"Failed to write file '{outputFilePath}': {ex.ToString()}");
+					DivinityApp.Log($"Failed to write file '{outputFilePath}': {ex}");
 				}
 			}
 			return false;
@@ -1763,7 +1763,7 @@ namespace DivinityModManager.Util
 			}
 			catch(Exception ex)
 			{
-				DivinityApp.Log($"Error parsing save '{file}':\n{ex.ToString()}");
+				DivinityApp.Log($"Error parsing save '{file}':\n{ex}");
 			}
 
 			return null;
@@ -1869,7 +1869,7 @@ namespace DivinityModManager.Util
 			}
 			catch (Exception ex)
 			{
-				DivinityApp.Log($"Error reading 'OsiToolsConfig.json': {ex.ToString()}");
+				DivinityApp.Log($"Error reading 'OsiToolsConfig.json': {ex}");
 			}
 			return null;
 		}
