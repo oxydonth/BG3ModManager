@@ -36,20 +36,8 @@ namespace DivinityModManager.Views
 		{
 			InitializeComponent();
 		}
-
-		private MainWindowViewModel mainVM;
-
 		public DivinityModManagerSettings ViewModel { get; set; }
 		object IViewFor.ViewModel { get; set; }
-
-		private void CreateButtonBinding(Button button, string vmProperty, object source = null)
-		{
-			if (source == null) source = ViewModel;
-			Binding binding = new Binding(vmProperty);
-			binding.Source = source;
-			binding.Mode = BindingMode.OneWay;
-			button.SetBinding(Button.CommandProperty, binding);
-		}
 
 		private void CreateExtenderSettings()
 		{
