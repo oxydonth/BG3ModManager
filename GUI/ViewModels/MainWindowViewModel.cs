@@ -851,7 +851,7 @@ namespace DivinityModManager.ViewModels
 			gameExeFoundObservable = this.WhenAnyValue(x => x.Settings.GameExecutablePath, (path) => path.IsExistingFile()).StartWith(false);
 			canInstallScriptExtender = this.WhenAnyValue(x => x.PathwayData.ScriptExtenderLatestReleaseUrl, x => x.Settings.GameExecutablePath,
 				(url, exe) => !String.IsNullOrWhiteSpace(url) && exe.IsExistingFile()).ObserveOn(RxApp.MainThreadScheduler).StartWith(false);
-			Keys.DownloadScriptExtender.AddAction(() => InstallOsiExtender_Start(), canInstallScriptExtender, true);
+			Keys.DownloadScriptExtender.AddAction(() => InstallScriptExtender_Start(), canInstallScriptExtender, true);
 
 			Keys.OpenLogsFolder.AddAction(() =>
 			{
