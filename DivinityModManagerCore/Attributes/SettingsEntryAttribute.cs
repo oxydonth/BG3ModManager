@@ -11,7 +11,7 @@ namespace DivinityModManager
 		public string DisplayName { get; set; }
 		public string Tooltip { get; set; }
 		public bool IsDebug { get; set; } = false;
-		public SettingsEntryAttribute(string displayName = "", string tooltip = "", bool isDebug=false)
+		public SettingsEntryAttribute(string displayName = "", string tooltip = "", bool isDebug = false)
 		{
 			DisplayName = displayName;
 			Tooltip = tooltip;

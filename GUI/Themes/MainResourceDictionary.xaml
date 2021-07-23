@@ -1734,6 +1734,24 @@
 		<Setter Property="WatermarkTemplate" Value="{StaticResource DefaultXCWatermarkTemplate}" />
 		<Setter Property="BorderThickness" Value="0" />
 	</Style>
+	<Style
+		BasedOn="{StaticResource {x:Type xc:DoubleUpDown}}"
+		TargetType="{x:Type xc:DoubleUpDown}">
+		<Setter Property="Background" Value="{DynamicResource {x:Static adonisUI:Brushes.Layer1BackgroundBrush}}" />
+		<Setter Property="Foreground" Value="{DynamicResource {x:Static adonisUI:Brushes.ForegroundBrush}}" />
+		<Setter Property="BorderBrush" Value="{DynamicResource {x:Static adonisUI:Brushes.Layer1BorderBrush}}" />
+		<Setter Property="WatermarkTemplate" Value="{StaticResource DefaultXCWatermarkTemplate}" />
+		<Setter Property="BorderThickness" Value="0" />
+	</Style>
+	<Style
+		BasedOn="{StaticResource {x:Type xc:LongUpDown}}"
+		TargetType="{x:Type xc:LongUpDown}">
+		<Setter Property="Background" Value="{DynamicResource {x:Static adonisUI:Brushes.Layer1BackgroundBrush}}" />
+		<Setter Property="Foreground" Value="{DynamicResource {x:Static adonisUI:Brushes.ForegroundBrush}}" />
+		<Setter Property="BorderBrush" Value="{DynamicResource {x:Static adonisUI:Brushes.Layer1BorderBrush}}" />
+		<Setter Property="WatermarkTemplate" Value="{StaticResource DefaultXCWatermarkTemplate}" />
+		<Setter Property="BorderThickness" Value="0" />
+	</Style>
 	<Style x:Key="{x:Static xcthemes:ResourceKeys.SpinnerButtonStyleKey}" TargetType="RepeatButton">
 		<Setter Property="Background" Value="{DynamicResource {x:Static adonisUI:Brushes.Layer2BackgroundBrush}}" />
 		<Setter Property="Foreground" Value="{DynamicResource {x:Static adonisUI:Brushes.ForegroundBrush}}" />

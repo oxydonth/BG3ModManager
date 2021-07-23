@@ -48,6 +48,9 @@ namespace DivinityModManager.Views
 		public SettingsWindow SettingsWindow { get; set; }
 		public AboutWindow AboutWindow { get; set; }
 		public VersionGeneratorWindow VersionGeneratorWindow { get; set; }
+		public AppUpdateWindow UpdateWindow { get; set; }
+
+		public bool UserInvokedUpdate { get; set; } = false;
 
 		public event PropertyChangedEventHandler PropertyChanged;
 
@@ -101,6 +104,9 @@ namespace DivinityModManager.Views
 			};
 			SettingsWindow.Hide();
 
+			UpdateWindow = new AppUpdateWindow();
+			UpdateWindow.Hide();
+
 			ViewModel = new MainWindowViewModel();
 
 			if (File.Exists(Alphaleonis.Win32.Filesystem.Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "debug")))
@@ -116,6 +122,7 @@ namespace DivinityModManager.Views
 
 			AutoUpdater.ApplicationExitEvent += AutoUpdater_ApplicationExitEvent;
 			AutoUpdater.HttpUserAgent = "DivinityModManagerUser";
+			AutoUpdater.CheckForUpdateEvent += UpdateWindow.AutoUpdaterOnCheckForUpdateEvent;
 
 			var res = this.TryFindResource("ModUpdaterPanel");
 			if (res != null && res is ModUpdatesLayout modUpdaterPanel)
@@ -231,9 +238,19 @@ namespace DivinityModManager.Views
 				this.InputBindings.Add(keyBinding);
 			}
 
-			foreach (var entry in TopMenuBar.Items.Cast<MenuItem>())
+			foreach (var item in TopMenuBar.Items)
 			{
-				menuItems.Add((string)entry.Header, entry);
+				if(item is MenuItem entry)
+				{
+					if (entry.Header is string label)
+					{
+						menuItems.Add(label, entry);
+					}
+					else if (!String.IsNullOrWhiteSpace(entry.Name))
+					{
+						menuItems.Add(entry.Name, entry);
+					}
+				}
 			}
 
 			//Generating menu items
@@ -301,6 +318,10 @@ namespace DivinityModManager.Views
 			if(VersionGeneratorWindow != null)
 			{
 				ResourceLocator.SetColorScheme(VersionGeneratorWindow.Resources, !darkMode ? DivinityApp.LightTheme : DivinityApp.DarkTheme);
+			}
+			if(UpdateWindow != null)
+			{
+				ResourceLocator.SetColorScheme(UpdateWindow.Resources, !darkMode ? DivinityApp.LightTheme : DivinityApp.DarkTheme);
 			}
 			//if(ModUpdatesLayout.Instance != null)
 			//{

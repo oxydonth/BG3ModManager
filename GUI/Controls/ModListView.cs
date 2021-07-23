@@ -17,7 +17,6 @@ using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Concurrency;
 using System.Windows;
-using System.Windows.Controls.Primitives;
 using System.ComponentModel;
 
 namespace DivinityModManager.Controls
@@ -35,12 +34,10 @@ namespace DivinityModManager.Controls
 			getInfoMethod = typeof(ItemsControl).GetMethod("ItemInfoFromContainer", BindingFlags.NonPublic | BindingFlags.Instance);
 			updateAnchorMethod = typeof(ListBox).GetMethod("UpdateAnchorAndActionItem", BindingFlags.NonPublic | BindingFlags.Instance);
 
-			//AddHandler(Thumb.DragCompletedEvent, new DragCompletedEventHandler(ListViewHeader_DragCompleted), true);
-
 			Loaded += (o, e) =>
 			{
 				PropertyDescriptor pd = DependencyPropertyDescriptor.FromProperty(GridViewColumn.WidthProperty, typeof(GridViewColumn));
-				if(this.View is GridView grid)
+				if (this.View is GridView grid)
 				{
 					//Capture user-resizing of the name column to disable auto-resizing
 					var nameColumn = grid.Columns[1];
@@ -50,11 +47,6 @@ namespace DivinityModManager.Controls
 					}
 				}
 			};
-
-			//DataContextChanged += (o, e) =>
-			//{
-			//	UserResizedColumns = false;
-			//};
 		}
 
 		private void NameColumnWidthChanged(object sender, EventArgs e)

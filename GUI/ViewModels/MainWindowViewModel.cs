@@ -390,7 +390,6 @@ namespace DivinityModManager.ViewModels
 		public ICommand CheckForAppUpdatesCommand { get; set; }
 		public ICommand CancelMainProgressCommand { get; set; }
 		public ICommand CopyPathToClipboardCommand { get; set; }
-		public ICommand DownloadAndInstallScriptExtenderCommand { get; private set; }
 		public ICommand RenameSaveCommand { get; private set; }
 		public ICommand CopyOrderToClipboardCommand { get; private set; }
 		public ICommand OpenAdventureModInFileExplorerCommand { get; private set; }
@@ -693,7 +692,7 @@ namespace DivinityModManager.ViewModels
 					}
 					else
 					{
-						DivinityApp.Log($"'{extenderUpdaterPath}' isn't the BG3 Script Extender?");
+						DivinityApp.Log($"'{extenderUpdaterPath}' isn't the Script Extender?");
 					}
 				}
 				catch (System.IO.IOException ex)
@@ -711,7 +710,7 @@ namespace DivinityModManager.ViewModels
 			else
 			{
 				Settings.ExtenderSettings.ExtenderUpdaterIsAvailable = false;
-				DivinityApp.Log($"Extender {DivinityApp.EXTENDER_UPDATER_FILE} not found.");
+				DivinityApp.Log($"Extender updater {DivinityApp.EXTENDER_UPDATER_FILE} not found.");
 			}
 
 			string extenderAppFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), DivinityApp.EXTENDER_APPDATA_DLL);
@@ -852,7 +851,7 @@ namespace DivinityModManager.ViewModels
 			gameExeFoundObservable = this.WhenAnyValue(x => x.Settings.GameExecutablePath, (path) => path.IsExistingFile()).StartWith(false);
 			canInstallScriptExtender = this.WhenAnyValue(x => x.PathwayData.ScriptExtenderLatestReleaseUrl, x => x.Settings.GameExecutablePath,
 				(url, exe) => !String.IsNullOrWhiteSpace(url) && exe.IsExistingFile()).ObserveOn(RxApp.MainThreadScheduler).StartWith(false);
-			DownloadAndInstallScriptExtenderCommand = ReactiveCommand.Create(InstallScriptExtender_Start, canInstallScriptExtender).DisposeWith(Settings.Disposables);
+			Keys.DownloadScriptExtender.AddAction(() => InstallOsiExtender_Start(), canInstallScriptExtender, true);
 
 			Keys.OpenLogsFolder.AddAction(() =>
 			{
@@ -3868,7 +3867,7 @@ namespace DivinityModManager.ViewModels
 			CanCancelProgress = true;
 			MainProgressIsActive = true;
 
-			string dllDestination = Path.Combine(exeDir, "DXGI.dll");
+			string dllDestination = Path.Combine(exeDir, DivinityApp.EXTENDER_UPDATER_FILE);
 
 			RxApp.TaskpoolScheduler.ScheduleAsync(async (ctrl, t) =>
 			{
@@ -3888,7 +3887,7 @@ namespace DivinityModManager.ViewModels
 						foreach (ZipArchiveEntry entry in archive.Entries)
 						{
 							if (MainProgressToken.IsCancellationRequested) break;
-							if (entry.Name.Equals("DXGI.dll", StringComparison.OrdinalIgnoreCase))
+							if (entry.Name.Equals(DivinityApp.EXTENDER_UPDATER_FILE, StringComparison.OrdinalIgnoreCase))
 							{
 								unzippedEntryStream = entry.Open(); // .Open will return a stream
 								using (var fs = File.Create(dllDestination, 4096, FileOptions.Asynchronous))
@@ -3921,7 +3920,7 @@ namespace DivinityModManager.ViewModels
 				{
 					if (successes >= 3)
 					{
-						view.AlertBar.SetSuccessAlert($"Successfully installed the Script Extender DXGI.dll to '{exeDir}'.", 20);
+						view.AlertBar.SetSuccessAlert($"Successfully installed the Extender updater {DivinityApp.EXTENDER_UPDATER_FILE} to '{exeDir}'.", 20);
 						HighlightExtenderDownload = false;
 						Settings.ExtenderSettings.ExtenderUpdaterIsAvailable = true;
 						if (Settings.ExtenderSettings.ExtenderVersion <= -1)
@@ -3957,7 +3956,7 @@ namespace DivinityModManager.ViewModels
 					}
 					else
 					{
-						view.AlertBar.SetDangerAlert($"Error occurred when installing the Script Extender DXGI.dll. Check the log.", 30);
+						view.AlertBar.SetDangerAlert($"Error occurred when installing the Extender updater {DivinityApp.EXTENDER_UPDATER_FILE}. Check the log.", 30);
 					}
 				});
 
@@ -3978,9 +3977,15 @@ Download url:
 Directory the zip will be extracted to:
 {1}", PathwayData.ScriptExtenderLatestReleaseUrl, exeDir);
 
-				MessageBoxResult result = Xceed.Wpf.Toolkit.MessageBox.Show(view, messageText, "Download & Install the Script Extender?",
-					MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No, view.MainWindowMessageBox_OK.Style);
-				if (result == MessageBoxResult.Yes)
+				var result = AdonisUI.Controls.MessageBox.Show(new AdonisUI.Controls.MessageBoxModel
+				{
+					Text = messageText,
+					Caption = "Download & Install the Script Extender?",
+					Buttons = AdonisUI.Controls.MessageBoxButtons.YesNo(),
+					Icon = AdonisUI.Controls.MessageBoxImage.Question
+				});
+
+				if (result == AdonisUI.Controls.MessageBoxResult.Yes)
 				{
 					InstallScriptExtender_DownloadStart(exeDir);
 				}
@@ -4514,6 +4519,7 @@ Directory the zip will be extracted to:
 			var canCheckForUpdates = this.WhenAnyValue(x => x.MainProgressIsActive, b => b == false);
 			void checkForUpdatesAction()
 			{
+				view.UserInvokedUpdate = true;
 				CheckForUpdates(true);
 			}
 			CheckForAppUpdatesCommand = ReactiveCommand.Create(checkForUpdatesAction, canCheckForUpdates);

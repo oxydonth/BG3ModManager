@@ -102,7 +102,7 @@
 					x:Name="VersionNumberTextBox"
 					LostFocus="VersionNumberTextBox_LostFocus"
 					PreviewTextInput="VersionNumberTextBox_PreviewTextInput"
-					TextChanged="VersionNumberTextBox_TextChanged" />
+					LostFocus="VersionNumberTextBox_LostFocus" />
 			</StackPanel>
 			<StackPanel
 				Grid.Row="2"

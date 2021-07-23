@@ -22,8 +22,8 @@ using DynamicData.Binding;
 using System.Diagnostics;
 using System.Globalization;
 using DivinityModManager.Controls;
-using DivinityModManager.Converters;
 using Xceed.Wpf.Toolkit;
+using DivinityModManager.Converters;
 
 namespace DivinityModManager.Views
 {
