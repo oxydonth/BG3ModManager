@@ -18,8 +18,8 @@ namespace DivinityModManager
 	{
 		public const string DIR_DATA = "Data\\";
 		public const string URL_REPO = @"https://github.com/LaughingLeader/BG3ModManager";
-		public const string URL_CHANGELOG = @"https://github.com/LaughingLeader/BG3ModManager/blob/master/CHANGELOG.md";
-		public const string URL_CHANGELOG_RAW = @"https://raw.githubusercontent.com/LaughingLeader/BG3ModManager/master/CHANGELOG.md";
+		public const string URL_CHANGELOG = @"https://github.com/LaughingLeader/BG3ModManager/wiki/Changelog";
+		public const string URL_CHANGELOG_RAW = @"https://raw.githubusercontent.com/wiki/LaughingLeader/BG3ModManager/Changelog.md";
 		public const string URL_UPDATE = @"https://raw.githubusercontent.com/LaughingLeader/BG3ModManager/master/Update.xml";
 		public const string URL_AUTHOR = @"https://github.com/LaughingLeader";
 		public const string URL_ISSUES = @"https://github.com/LaughingLeader/BG3ModManager/issues";
