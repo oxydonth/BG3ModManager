@@ -11,5 +11,6 @@ IgnoredMods.json merge=ours
 MainWindow.xaml merge=ours
 MainWindow.xaml.cs merge=ours
 SettingsWindow.xaml merge=ours
+SettingsWindow.xaml.cs merge=ours
 Update.xml merge=ours
 VersionGeneratorWindow.xaml merge=ours
