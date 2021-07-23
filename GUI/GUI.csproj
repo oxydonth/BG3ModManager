@@ -231,6 +231,7 @@
     <Compile Include="Controls\HyperlinkText.xaml.cs">
       <DependentUpon>HyperlinkText.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Controls\Markdown.cs" />
     <Compile Include="Controls\ModEntryGrid.cs" />
     <Compile Include="Controls\ModListView.cs" />
     <Compile Include="Controls\SelectableTextBlock.cs" />
@@ -269,6 +270,9 @@
     <Compile Include="ViewModels\ModUpdatesViewData.cs" />
     <Compile Include="Views\AboutWindow.xaml.cs">
       <DependentUpon>AboutWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\AppUpdateWindow.xaml.cs">
+      <DependentUpon>AppUpdateWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Views\HideWindowBase.cs" />
     <Compile Include="Views\HorizontalModLayout.xaml.cs">
@@ -312,6 +316,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Themes\DefaultStyles\MarkdownStyle.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Themes\Light.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -326,6 +334,10 @@
     </Compile>
     <Compile Include="Converters\BoolToVisibilityConverter.cs" />
     <Page Include="Views\AboutWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Views\AppUpdateWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
