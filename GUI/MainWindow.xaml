@@ -381,23 +381,25 @@
 								ToolTip="Export Active Mods to Zip As...">
 								<controls:AutoGrayableImage Source="{StaticResource ZipFileAsImage}" />
 							</Button>
-							<Rectangle />
+							<Rectangle Visibility="Collapsed" />
 							<TextBlock
+								Visibility="Collapsed"
 								Padding="2,0,2,0"
-								Text="GM"
-								ToolTip="Enable Game Master Campaign Selection" />
+								Text="DM"
+								ToolTip="Enable Dungeon Master Campaign Selection" />
 							<CheckBox
+								Visibility="Collapsed"
 								x:Name="ToggleGMCheckbox"
 								HorizontalAlignment="Center"
 								VerticalAlignment="Center"
 								Command="{Binding SaveSettingsSilentlyCommand}"
 								IsChecked="{Binding Settings.GameMasterModeEnabled, Mode=TwoWay}"
-								ToolTip="Enable Game Master Campaign Selection" />
+								ToolTip="Enable Dungeon Master Campaign Selection" />
 							<Button
 								x:Name="LoadGameMasterModOrderButton"
 								Command="{Binding Keys.ImportOrderFromSelectedGMCampaign.Command}"
-								ToolTip="Load Mod Order from GM Campaign"
-								Visibility="{Binding GameMasterModeVisibility}">
+								ToolTip="Load Mod Order from DM Campaign"
+								Visibility="{Binding GameMasterModeVisibility, FallbackValue=Collapsed}">
 								<controls:AutoGrayableImage Source="{StaticResource LoadCampaignOrderImage}" />
 							</Button>
 							<Rectangle />
