@@ -138,6 +138,11 @@ namespace DivinityModManager.Models
 
 		public static DivinityModVersion2 FromInt(ulong vInt)
 		{
+			if(vInt == 1 || vInt == 268435456)
+			{
+				// 1.0.0.0
+				vInt = 36028797018963968;
+			}
 			return new DivinityModVersion2(vInt);
 		}
 
