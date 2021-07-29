@@ -55,7 +55,7 @@ namespace DivinityModManager.Models
 								{ "Name", new NodeAttribute(NodeAttribute.DataType.DT_FixedString) {Value = m.Name}},
 								{ "Version", new NodeAttribute(NodeAttribute.DataType.DT_Int) {Value = m.Version.VersionInt}},
 								{ "MD5", new NodeAttribute(NodeAttribute.DataType.DT_LSString) {Value = m.MD5}},
-								{ "Folder", new NodeAttribute(NodeAttribute.DataType.DT_LSWString) {Value = m.Folder}},
+								{ "Folder", new NodeAttribute(NodeAttribute.DataType.DT_LSString) {Value = m.Folder}},
 							};
 							var modNode = new Node()
 							{

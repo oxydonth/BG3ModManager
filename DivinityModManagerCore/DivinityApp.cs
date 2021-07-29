@@ -27,15 +27,18 @@ namespace DivinityModManager
 		public const string URL_DONATION = @"https://ko-fi.com/laughingleader";
 
 		public const string XML_MOD_ORDER_MODULE = @"<node id=""Module""><attribute id=""UUID"" value=""{0}"" type=""FixedString""/></node>";
-		public const string XML_MODULE_SHORT_DESC = @"<node id=""ModuleShortDesc""><attribute id=""Folder"" value=""{0}"" type=""LSWString""/><attribute id=""MD5"" value=""{1}"" type=""LSString""/><attribute id=""Name"" value=""{2}"" type=""FixedString""/><attribute id=""UUID"" value=""{3}"" type=""FixedString"" /><attribute id=""Version"" value=""{4}"" type=""int32""/></node>";
-		public const string XML_MOD_SETTINGS_TEMPLATE = @"<?xml version=""1.0"" encoding=""UTF-8""?><save><version major=""4"" minor=""0"" revision=""0"" build=""51""/><region id=""ModuleSettings""><node id=""root""><children><node id=""ModOrder""><children>{0}</children></node><node id=""Mods""><children>{1}</children></node></children></node></region></save>";
-		
+		public const string XML_MODULE_SHORT_DESC = @"<node id=""ModuleShortDesc""><attribute id=""Folder"" value=""{0}"" type=""LSString""/><attribute id=""MD5"" value=""{1}"" type=""LSString""/><attribute id=""Name"" value=""{2}"" type=""LSString""/><attribute id=""UUID"" value=""{3}"" type=""FixedString"" /><attribute id=""Version64"" value=""{4}"" type=""int64""/></node>";
+		public const string XML_MOD_SETTINGS_TEMPLATE = @"<?xml version=""1.0"" encoding=""UTF-8""?><save><version major=""4"" minor=""0"" revision=""4"" build=""602""/><region id=""ModuleSettings""><node id=""root""><children><node id=""ModOrder""><children>{0}</children></node><node id=""Mods""><children>{1}</children></node></children></node></region></save>";
+
 		public const string PATH_APP_FEATURES = @"Resources/AppFeatures.json";
 		public const string PATH_DEFAULT_PATHWAYS = @"Resources/DefaultPathways.json";
 		public const string PATH_IGNORED_MODS = @"Resources/IgnoredMods.json";
 
 		public const string ORIGINS_UUID = "991c9c7a-fb80-40cb-8f0d-b92d4e80e9b1";
 		public const string GAMEMASTER_UUID = "NotYetAvailableInBG3";
+		public static readonly string[] PLAYER_PROFILES_NAMES = new string[2] { "playerProfiles.lsb", "playerProfiles5.lsb" };
+
+
 		public static readonly Uri LightTheme = new Uri("pack://application:,,,/DivinityModManager;component/Themes/Light.xaml", UriKind.Absolute);
 		public static readonly Uri DarkTheme = new Uri("pack://application:,,,/DivinityModManager;component/Themes/Dark.xaml", UriKind.Absolute);
 

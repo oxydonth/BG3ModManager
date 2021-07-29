@@ -1190,16 +1190,29 @@ namespace DivinityModManager.Util
 			});
 		}
 
+		private static FileInfo GetPlayerProfilesFile(string profilePath)
+		{
+			var files = Directory.EnumerateFiles(profilePath, new DirectoryEnumerationFilters()
+			{
+				InclusionFilter = (f) =>
+				{
+					return DivinityApp.PLAYER_PROFILES_NAMES.Any(x => f.FileName.Equals(x, StringComparison.OrdinalIgnoreCase));
+				}
+			}).Select(x => new FileInfo(x)).OrderBy(x => x.LastWriteTime).ToList();
+			return files.FirstOrDefault();
+		}
+
 		public static string GetSelectedProfileUUID(string profilePath)
 		{
-			var playerprofilesFile = Path.Combine(profilePath, "playerprofiles.lsb");
+			
+			FileInfo playerprofilesFile = GetPlayerProfilesFile(profilePath);
 			string activeProfileUUID = "";
-			if (File.Exists(playerprofilesFile))
+			if (playerprofilesFile != null)
 			{
 				try
 				{
-					DivinityApp.Log($"Loading playerprofiles.lsb at '{playerprofilesFile}'");
-					var res = ResourceUtils.LoadResource(playerprofilesFile, LSLib.LS.Enums.ResourceFormat.LSB);
+					DivinityApp.Log($"Loading playerprofiles.lsb at '{playerprofilesFile.FullName}'");
+					var res = ResourceUtils.LoadResource(playerprofilesFile.FullName, LSLib.LS.Enums.ResourceFormat.LSB);
 					if (res != null && res.Regions.TryGetValue("UserProfiles", out var region))
 					{
 						DivinityApp.Log($"ActiveProfile | Getting root node '{String.Join(";", region.Attributes.Keys)}'");
@@ -1221,42 +1234,42 @@ namespace DivinityModManager.Util
 
 		public static bool ExportedSelectedProfile(string profilePath, string profileUUID)
 		{
-			var playerprofilesFile = Path.Combine(profilePath, "playerprofiles.lsb");
-			if (File.Exists(playerprofilesFile))
+			FileInfo playerprofilesFile = GetPlayerProfilesFile(profilePath);
+			if (playerprofilesFile != null)
 			{
 				try
 				{
-					var res = ResourceUtils.LoadResource(playerprofilesFile, LSLib.LS.Enums.ResourceFormat.LSB);
+					var res = ResourceUtils.LoadResource(playerprofilesFile.FullName, LSLib.LS.Enums.ResourceFormat.LSB);
 					if (res != null && res.Regions.TryGetValue("UserProfiles", out var region))
 					{
 						if (region.Attributes.TryGetValue("ActiveProfile", out var att))
 						{
 							att.Value = profileUUID;
-							ResourceUtils.SaveResource(res, playerprofilesFile, LSLib.LS.Enums.ResourceFormat.LSB);
+							ResourceUtils.SaveResource(res, playerprofilesFile.FullName, LSLib.LS.Enums.ResourceFormat.LSB);
 							return true;
 						}
 					}
 				}
 				catch (Exception ex)
 				{
-					DivinityApp.Log($"Error saving {playerprofilesFile}: {ex}");
+					DivinityApp.Log($"Error saving {playerprofilesFile.FullName}: {ex}");
 				}
 			}
 			else
 			{
-				DivinityApp.Log($"[*WARNING*] '{playerprofilesFile}' does not exist. Skipping selected profile saving.");
+				DivinityApp.Log($"[*WARNING*] playerProfiles.lsb/playerProfiles5.lsb does not exist. Skipping selected profile saving.");
 			}
 			return false;
 		}
 
 		public static async Task<string> GetSelectedProfileUUIDAsync(string profilePath)
 		{
-			var playerprofilesFile = Path.Combine(profilePath, "playerprofiles.lsb");
 			string activeProfileUUID = "";
-			if (File.Exists(playerprofilesFile))
+			FileInfo playerprofilesFile = GetPlayerProfilesFile(profilePath);
+			if (playerprofilesFile != null)
 			{
-				DivinityApp.Log($"Loading playerprofiles.lsb at '{playerprofilesFile}'");
-				var res = await LoadResourceAsync(playerprofilesFile, LSLib.LS.Enums.ResourceFormat.LSB);
+				DivinityApp.Log($"Loading playerprofiles.lsb at '{playerprofilesFile.FullName}'");
+				var res = await LoadResourceAsync(playerprofilesFile.FullName, LSLib.LS.Enums.ResourceFormat.LSB);
 				if (res != null && res.Regions.TryGetValue("UserProfiles", out var region))
 				{
 					//DivinityApp.LogMessage($"ActiveProfile | Getting root node '{String.Join(";", region.Attributes.Keys)}'");
