@@ -948,12 +948,12 @@ namespace DivinityModManager.Util
 					string profileUUID = "";
 
 					//Console.WriteLine($"Folder: {Path.GetFileName(folder)} Blacklisted: {IgnoredMods.Any(m => Path.GetFileName(folder).Equals(m.Folder, StringComparison.OrdinalIgnoreCase))}");
-					var profileFile = Path.Combine(folder, "profile.lsb");
-					if (File.Exists(profileFile))
+					var profileFile = GetProfileFile(folder);
+					if (profileFile != null)
 					{
 						try
 						{
-							var profileRes = ResourceUtils.LoadResource(profileFile, LSLib.LS.Enums.ResourceFormat.LSB);
+							var profileRes = ResourceUtils.LoadResource(profileFile.FullName, LSLib.LS.Enums.ResourceFormat.LSB);
 							if (profileRes != null && profileRes.Regions.TryGetValue("PlayerProfile", out var region))
 							{
 								if (region.Attributes.TryGetValue("PlayerProfileDisplayName", out var profileDisplayNameAtt))
@@ -1064,10 +1064,10 @@ namespace DivinityModManager.Util
 					string profileUUID = "";
 
 					//Console.WriteLine($"Folder: {Path.GetFileName(folder)} Blacklisted: {IgnoredMods.Any(m => Path.GetFileName(folder).Equals(m.Folder, StringComparison.OrdinalIgnoreCase))}");
-					var profileFile = Path.Combine(folder, "profile.lsb");
-					if (File.Exists(profileFile))
+					var profileFile = GetProfileFile(folder);
+					if (profileFile != null)
 					{
-						var profileRes = await LoadResourceAsync(profileFile, LSLib.LS.Enums.ResourceFormat.LSB);
+						var profileRes = await LoadResourceAsync(profileFile.FullName, LSLib.LS.Enums.ResourceFormat.LSB);
 						if (profileRes != null && profileRes.Regions.TryGetValue("PlayerProfile", out var region))
 						{
 							if (region.Attributes.TryGetValue("PlayerProfileDisplayName", out var profileDisplayNameAtt))
@@ -1190,13 +1190,35 @@ namespace DivinityModManager.Util
 			});
 		}
 
-		private static FileInfo GetPlayerProfilesFile(string profilePath)
+		private static FileInfo GetProfileFile(string path)
 		{
-			var files = Directory.EnumerateFiles(profilePath, new DirectoryEnumerationFilters()
+			var files = Directory.EnumerateFiles(path, DirectoryEnumerationOptions.Files, new DirectoryEnumerationFilters()
 			{
 				InclusionFilter = (f) =>
 				{
-					return DivinityApp.PLAYER_PROFILES_NAMES.Any(x => f.FileName.Equals(x, StringComparison.OrdinalIgnoreCase));
+					if (f.FileName.IndexOf("profile", StringComparison.OrdinalIgnoreCase) > -1
+						&& f.Extension.Equals(".lsb", StringComparison.OrdinalIgnoreCase))
+					{
+						return true;
+					}
+					return false;
+				}
+			}).Select(x => new FileInfo(x)).OrderBy(x => x.LastWriteTime).ToList();
+			return files.FirstOrDefault();
+		}
+
+		private static FileInfo GetPlayerProfilesFile(string path)
+		{
+			var files = Directory.EnumerateFiles(path, DirectoryEnumerationOptions.Files, new DirectoryEnumerationFilters()
+			{
+				InclusionFilter = (f) =>
+				{
+					if(f.FileName.IndexOf("playerProfiles", StringComparison.OrdinalIgnoreCase) > -1 
+						&& f.Extension.Equals(".lsb", StringComparison.OrdinalIgnoreCase))
+					{
+						return true;
+					}
+					return false;
 				}
 			}).Select(x => new FileInfo(x)).OrderBy(x => x.LastWriteTime).ToList();
 			return files.FirstOrDefault();

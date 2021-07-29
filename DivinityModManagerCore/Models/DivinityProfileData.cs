@@ -11,7 +11,7 @@ namespace DivinityModManager.Models
 		public string Name { get; set; }
 
 		/// <summary>
-		/// The stored name in the profile.lsb file.
+		/// The stored name in the profile.lsb or profile5.lsb file.
 		/// </summary>
 		public string ProfileName { get; set; }
 		public string UUID { get; set; }
