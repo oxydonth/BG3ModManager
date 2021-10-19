@@ -1197,7 +1197,8 @@ namespace DivinityModManager.Util
 				InclusionFilter = (f) =>
 				{
 					if (f.FileName.IndexOf("profile", StringComparison.OrdinalIgnoreCase) > -1
-						&& f.Extension.Equals(".lsb", StringComparison.OrdinalIgnoreCase))
+						&& (f.Extension.Equals(".lsb", StringComparison.OrdinalIgnoreCase) 
+						|| f.Extension.Equals(".lsf", StringComparison.OrdinalIgnoreCase)))
 					{
 						return true;
 					}
@@ -1213,8 +1214,9 @@ namespace DivinityModManager.Util
 			{
 				InclusionFilter = (f) =>
 				{
-					if(f.FileName.IndexOf("playerProfiles", StringComparison.OrdinalIgnoreCase) > -1 
-						&& f.Extension.Equals(".lsb", StringComparison.OrdinalIgnoreCase))
+					if(f.FileName.IndexOf("playerProfiles", StringComparison.OrdinalIgnoreCase) > -1
+						&& (f.Extension.Equals(".lsb", StringComparison.OrdinalIgnoreCase)
+						|| f.Extension.Equals(".lsf", StringComparison.OrdinalIgnoreCase)))
 					{
 						return true;
 					}
@@ -1233,8 +1235,8 @@ namespace DivinityModManager.Util
 			{
 				try
 				{
-					DivinityApp.Log($"Loading playerprofiles.lsb at '{playerprofilesFile.FullName}'");
-					var res = ResourceUtils.LoadResource(playerprofilesFile.FullName, LSLib.LS.Enums.ResourceFormat.LSB);
+					DivinityApp.Log($"Loading playerprofiles at '{playerprofilesFile.FullName}'");
+					var res = ResourceUtils.LoadResource(playerprofilesFile.FullName);
 					if (res != null && res.Regions.TryGetValue("UserProfiles", out var region))
 					{
 						DivinityApp.Log($"ActiveProfile | Getting root node '{String.Join(";", region.Attributes.Keys)}'");
@@ -1262,13 +1264,13 @@ namespace DivinityModManager.Util
 				var conversionParams = ResourceConversionParameters.FromGameVersion(LSLib.LS.Enums.Game.BaldursGate3);
 				try
 				{
-					var res = ResourceUtils.LoadResource(playerprofilesFile.FullName, LSLib.LS.Enums.ResourceFormat.LSB);
+					var res = ResourceUtils.LoadResource(playerprofilesFile.FullName);
 					if (res != null && res.Regions.TryGetValue("UserProfiles", out var region))
 					{
 						if (region.Attributes.TryGetValue("ActiveProfile", out var att))
 						{
 							att.Value = profileUUID;
-							ResourceUtils.SaveResource(res, playerprofilesFile.FullName, LSLib.LS.Enums.ResourceFormat.LSB, conversionParams);
+							ResourceUtils.SaveResource(res, playerprofilesFile.FullName, conversionParams);
 							return true;
 						}
 					}
@@ -1280,7 +1282,7 @@ namespace DivinityModManager.Util
 			}
 			else
 			{
-				DivinityApp.Log($"[*WARNING*] playerProfiles.lsb/playerProfiles5.lsb does not exist. Skipping selected profile saving.");
+				DivinityApp.Log($"[*WARNING*] playerProfiles.lsb/playerProfiles5.lsb/playerprofiles6.lsf does not exist. Skipping selected profile saving.");
 			}
 			return false;
 		}
@@ -1291,8 +1293,9 @@ namespace DivinityModManager.Util
 			FileInfo playerprofilesFile = GetPlayerProfilesFile(profilePath);
 			if (playerprofilesFile != null)
 			{
-				DivinityApp.Log($"Loading playerprofiles.lsb at '{playerprofilesFile.FullName}'");
-				var res = await LoadResourceAsync(playerprofilesFile.FullName, LSLib.LS.Enums.ResourceFormat.LSB);
+				var resourceType = playerprofilesFile.Extension.Equals(".lsf", StringComparison.OrdinalIgnoreCase) ? LSLib.LS.Enums.ResourceFormat.LSF : LSLib.LS.Enums.ResourceFormat.LSB;
+				DivinityApp.Log($"Loading playerprofiles at '{playerprofilesFile.FullName}'");
+				var res = await LoadResourceAsync(playerprofilesFile.FullName, resourceType);
 				if (res != null && res.Regions.TryGetValue("UserProfiles", out var region))
 				{
 					//DivinityApp.LogMessage($"ActiveProfile | Getting root node '{String.Join(";", region.Attributes.Keys)}'");
