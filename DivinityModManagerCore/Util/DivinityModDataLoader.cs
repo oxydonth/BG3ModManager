@@ -841,7 +841,7 @@ namespace DivinityModManager.Util
 			InclusionFilter = CanProcessGMMetaFile
 		};
 
-		public static async Task<List<DivinityGameMasterCampaign>> LoadGameMasterDataAsync(string folderPath, CancellationToken? token = null)
+		public static List<DivinityGameMasterCampaign> LoadGameMasterData(string folderPath, CancellationToken? token = null)
 		{
 			List<DivinityGameMasterCampaign> campaignEntries = new List<DivinityGameMasterCampaign>();
 
@@ -1259,6 +1259,7 @@ namespace DivinityModManager.Util
 			FileInfo playerprofilesFile = GetPlayerProfilesFile(profilePath);
 			if (playerprofilesFile != null)
 			{
+				var conversionParams = ResourceConversionParameters.FromGameVersion(LSLib.LS.Enums.Game.BaldursGate3);
 				try
 				{
 					var res = ResourceUtils.LoadResource(playerprofilesFile.FullName, LSLib.LS.Enums.ResourceFormat.LSB);
@@ -1267,7 +1268,7 @@ namespace DivinityModManager.Util
 						if (region.Attributes.TryGetValue("ActiveProfile", out var att))
 						{
 							att.Value = profileUUID;
-							ResourceUtils.SaveResource(res, playerprofilesFile.FullName, LSLib.LS.Enums.ResourceFormat.LSB);
+							ResourceUtils.SaveResource(res, playerprofilesFile.FullName, LSLib.LS.Enums.ResourceFormat.LSB, conversionParams);
 							return true;
 						}
 					}
@@ -1978,6 +1979,7 @@ namespace DivinityModManager.Util
 			{
 				var modResources = new ModResources();
 				var modHelper = new ModPathVisitor(modResources);
+				modHelper.Game = LSLib.LS.Story.Compiler.TargetGame.BG3;
 				modHelper.CollectGlobals = false;
 				modHelper.CollectLevels = false;
 				modHelper.CollectStoryGoals = false;
