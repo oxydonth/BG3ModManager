@@ -2120,7 +2120,7 @@ namespace DivinityModManager.ViewModels
 		{
 			DivinityApp.Log($"Refreshing data asynchronously...");
 
-			double taskStepAmount = 1.0 / 11;
+			double taskStepAmount = 1.0 / 10;
 
 			List<DivinityLoadOrderEntry> lastActiveOrder = null;
 			string lastOrderName = "";
@@ -2160,9 +2160,9 @@ namespace DivinityModManager.ViewModels
 					await IncreaseMainProgressValueAsync(taskStepAmount);
 				}
 
-				await SetMainProgressTextAsync("Loading GM Campaigns...");
-				var loadedGMCampaigns = await LoadGameMasterCampaignsAsync(taskStepAmount);
-				await IncreaseMainProgressValueAsync(taskStepAmount);
+				//await SetMainProgressTextAsync("Loading GM Campaigns...");
+				//var loadedGMCampaigns = await LoadGameMasterCampaignsAsync(taskStepAmount);
+				//await IncreaseMainProgressValueAsync(taskStepAmount);
 
 				await SetMainProgressTextAsync("Loading external load orders...");
 				var savedModOrderList = await RunTask(LoadExternalLoadOrdersAsync(), new List<DivinityLoadOrder>());
@@ -2182,7 +2182,7 @@ namespace DivinityModManager.ViewModels
 				await Observable.Start(() => {
 					LoadAppConfig();
 					SetLoadedMods(loadedMods);
-					SetLoadedGMCampaigns(loadedGMCampaigns);
+					//SetLoadedGMCampaigns(loadedGMCampaigns);
 
 					Profiles.AddRange(loadedProfiles);
 
@@ -4234,7 +4234,7 @@ Directory the zip will be extracted to:
 
 					if (result == AdonisUI.Controls.MessageBoxResult.Yes)
 					{
-						InstallOsiExtender_DownloadStart(exeDir);
+						InstallScriptExtender_DownloadStart(exeDir);
 					}
 				}
 				else
