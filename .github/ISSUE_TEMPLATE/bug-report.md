@@ -9,9 +9,8 @@ assignees: ''
 
 **Basic Information**
 Provide the following information:
-- BG3 Mod Manager version
-- Baldur's Gate 3 version
-- Any error messages/screenshots if relevant
+- BG3 Mod Manager version: 
+- Baldur's Gate 3 version: 
 
 **To Reproduce**
 Steps to reproduce the behavior:
@@ -21,7 +20,7 @@ Steps to reproduce the behavior:
 4. See error
 
 **Screenshots**
-If applicable, add screenshots to help explain your problem.
+If applicable, add screenshots of the error/issue.
 
 **Additional context**
 Add any other context about the problem here.
