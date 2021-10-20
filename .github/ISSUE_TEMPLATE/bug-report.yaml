@@ -32,3 +32,12 @@ body:
       value: 
     validations:
       required: true
+  - type: textarea
+    id: links
+    attributes:
+      label: Links
+      description: Links to any screenshots, pastes for files etc that are too big to be attached.
+      placeholder: Debug log: https://gist.github.com/MyUserName/SomeLink
+      value: 
+    validations:
+      required: false
