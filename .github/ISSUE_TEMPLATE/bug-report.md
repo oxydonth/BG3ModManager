@@ -1,26 +1,34 @@
----
 name: Bug Report
-about: Create a bug report to resolve an issue
-title: ''
-labels: ''
-assignees: ''
-
----
-
-**Basic Information**
-Provide the following information:
-- BG3 Mod Manager version: 
-- Baldur's Gate 3 version: 
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
-
-**Screenshots**
-If applicable, add screenshots of the error/issue.
-
-**Additional context**
-Add any other context about the problem here.
+description: File a bug report
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+  - type: input
+    id: version
+    attributes:
+      label: BG3 Mod Manager Version
+      description: The version of the mod manager when you encountered this issue (visible on the window title bar).
+      placeholder: 1.0.4.1
+    validations:
+      required: true
+  - type: input
+    id: game-version
+    attributes:
+      label: BG3 Game Version
+      description: The version of Baldur's Gate 3 when you encountered this issue.
+      placeholder: Patch 6
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: Bug Summary
+      description: Describe what the bug is, and how to reproduce it.
+      placeholder: Describe the bug here.
+      value: 
+    validations:
+      required: true
