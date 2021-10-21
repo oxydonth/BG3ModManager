@@ -49,14 +49,23 @@ namespace DivinityModManager.Models
 		[SettingsEntry("Enable Internal Log", "Enable the log for the mod manager.")]
 		[DataMember] [Reactive] public bool LogEnabled { get; set; } = false;
 
-		[SettingsEntry("Auto Add Missing Dependencies When Exporting", "Automatically add dependency mods above their dependents in the exported load order, if omitted from the active order.")]
-		[DataMember] [Reactive] public bool AutoAddDependenciesWhenExporting { get; set; } = true;
-
 		[SettingsEntry("Enable Automatic Updates", "Automatically check for updates when the program starts.")]
 		[DataMember] [Reactive] public bool CheckForUpdates { get; set; } = true;
 
-		[SettingsEntry("Automatically Load GM Campaign Mods", "When a GM campaign is selected, its dependency mods will automatically be loaded without needing to manually import them.")]
-		[DataMember] [Reactive] public bool AutomaticallyLoaGMCampaignMods { get; set; } = false;
+		[SettingsEntry("Add Dependencies When Exporting", "Automatically add dependency mods above their dependents in the exported load order, if omitted from the active order.")]
+		[DataMember] [Reactive] public bool AutoAddDependenciesWhenExporting { get; set; } = true;
+
+		[SettingsEntry("Disable Missing Mod Warnings", "If a load order is missing mods, no warnings will be displayed.")]
+		[DataMember] [Reactive] public bool DisableMissingModWarnings { get; set; } = false;
+
+		[SettingsEntry("Shift Focus on Swap", "When moving selected mods to the opposite list with Enter, move focus to that list as well.")]
+		[DataMember] [Reactive] public bool ShiftListFocusOnSwap { get; set; } = false;
+
+		//[SettingsEntry("Disable Checking for Steam Workshop Tags", "The mod manager will try and find mod tags from the workshop by default.")]
+		[DataMember] [Reactive] public bool DisableWorkshopTagCheck { get; set; } = false;
+
+		//[SettingsEntry("Automatically Load GM Campaign Mods", "When a GM campaign is selected, its dependency mods will automatically be loaded without needing to manually import them.")]
+		[Reactive] public bool AutomaticallyLoadGMCampaignMods { get; set; } = false;
 
 		[DataMember][Reactive] public long LastUpdateCheck { get; set; } = -1;
 		private string lastOrder = "";
@@ -95,9 +104,6 @@ namespace DivinityModManager.Models
 			set { this.RaiseAndSetIfChanged(ref darkThemeEnabled, value); }
 		}
 
-		[SettingsEntry("Shift Focus on Swap", "When moving selected mods to the opposite list with Enter, move focus to that list as well.")]
-		[DataMember] [Reactive] public bool ShiftListFocusOnSwap { get; set; } = false;
-
 		private ScriptExtenderSettings extenderSettings;
 
 		[DataMember]
@@ -130,12 +136,6 @@ namespace DivinityModManager.Models
 			set { this.RaiseAndSetIfChanged(ref actionOnGameLaunch, value); }
 		}
 
-		[SettingsEntry("Disable Missing Mod Warnings", "If a load order is missing mods, no warnings will be displayed.")]
-		[DataMember] [Reactive] public bool DisableMissingModWarnings { get; set; } = false;
-
-		[SettingsEntry("Disable Checking for Steam Workshop Tags", "The mod manager will try and find mod tags from the workshop by default.")]
-		[DataMember] [Reactive] public bool DisableWorkshopTagCheck { get; set; } = false;
-
 		[DataMember] [Reactive] public bool ExportDefaultExtenderSettings { get; set; } = false;
 
 		//Not saved for now
@@ -164,7 +164,7 @@ namespace DivinityModManager.Models
 
 		[Reactive] [DataMember] public string GameLaunchParams { get; set; }
 
-		[Reactive] [DataMember] public bool GameMasterModeEnabled { get; set; } = false;
+		[Reactive] public bool GameMasterModeEnabled { get; set; } = false;
 		[Reactive] public bool ExtenderTabIsVisible { get; set; } = false;
 
 		[Reactive] public bool KeybindingsTabIsVisible { get; set; } = false;
