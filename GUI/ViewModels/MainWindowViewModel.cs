@@ -2601,11 +2601,13 @@ namespace DivinityModManager.ViewModels
 				displayExtenderModWarning = true;
 			}
 
+			/*
+			// Disabled missing extender warning for now, as it hasn't been updated yet for Patch6 - 10/22/2021
 			if (AppSettings.FeatureEnabled("ScriptExtender"))
 			{
 				if (displayExtenderModWarning)
 				{
-					//DivinityApp.LogMessage($"Mod Order: {String.Join("\n", order.Order.Select(x => x.Name))}");
+					DivinityApp.LogMessage($"Mod Order: {String.Join("\n", order.Order.Select(x => x.Name))}");
 					DivinityApp.Log("Checking mods for extender requirements.");
 					List<DivinityMissingModData> extenderRequiredMods = new List<DivinityMissingModData>();
 					for (int i = 0; i < order.Order.Count; i++)
@@ -2631,7 +2633,7 @@ namespace DivinityModManager.ViewModels
 									foreach (var dependency in mod.Dependencies.Items)
 									{
 										var dependencyMod = mods.Items.FirstOrDefault(m => m.UUID == dependency.UUID);
-										// Dependencies not in the order that require the extender
+										 Dependencies not in the order that require the extender
 										if (dependencyMod.ExtenderModStatus == DivinityExtenderModStatus.REQUIRED_DISABLED || dependencyMod.ExtenderModStatus == DivinityExtenderModStatus.REQUIRED_MISSING)
 										{
 											extenderRequiredMods.Add(new DivinityMissingModData
@@ -2657,7 +2659,7 @@ namespace DivinityModManager.ViewModels
 							"Mods Require the Script Extender - Install it with the Tools menu!", MessageBoxButton.OK, MessageBoxImage.Error, MessageBoxResult.OK);
 					}
 				}
-			}
+			}*/
 		}
 
 		private DivinityProfileActiveModData ProfileActiveModDataFromUUID(string uuid)
