@@ -2727,12 +2727,13 @@ namespace DivinityModManager.ViewModels
 
 					return Unit.Default;
 				}, RxApp.MainThreadScheduler);
-				return true;
 
 				if (!DivinityModDataLoader.ExportedSelectedProfile(PathwayData.DocumentsProfilesPath, SelectedProfile.UUID))
 				{
-					ShowAlert("Failed to save active profile.", AlertType.Warning);
+					ShowAlert($"Failed to export active profile to {PathwayData.DocumentsProfilesPath}.", AlertType.Warning);
 				}
+
+				return true;
 			}
 			else
 			{
