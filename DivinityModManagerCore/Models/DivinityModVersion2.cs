@@ -124,7 +124,7 @@ namespace DivinityModManager.Models
 			*/
 			major = versionInt >> 55;
 			minor = (versionInt >> 47) & 0xFF;
-			revision = (versionInt >> 31) & 0x7FFFF;
+			revision = (versionInt >> 31) & 0xFFFF;
 			build = versionInt & 0x7FFFFFFFUL;
 			if (update)
 			{
