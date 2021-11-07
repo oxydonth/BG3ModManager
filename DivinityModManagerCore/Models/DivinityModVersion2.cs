@@ -1,5 +1,7 @@
 ﻿using Newtonsoft.Json;
+
 using ReactiveUI;
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -80,7 +82,7 @@ namespace DivinityModManager.Models
 			set
 			{
 				value = Math.Max(ulong.MinValue, Math.Min(value, ulong.MaxValue));
-				if(versionInt != value)
+				if (versionInt != value)
 				{
 					ParseInt(versionInt);
 					this.RaisePropertyChanged("VersionInt");
@@ -92,7 +94,7 @@ namespace DivinityModManager.Models
 		{
 			Version = String.Format("{0}.{1}.{2}.{3}", Major, Minor, Revision, Build);
 			var nextVersion = ToInt();
-			if(nextVersion != versionInt)
+			if (nextVersion != versionInt)
 			{
 				versionInt = ToInt();
 				this.RaisePropertyChanged("VersionInt");
@@ -109,9 +111,9 @@ namespace DivinityModManager.Models
 			return String.Format("{0}.{1}.{2}.{3}", Major, Minor, Revision, Build);
 		}
 
-		public void ParseInt(ulong vInt, bool update=true)
+		public void ParseInt(ulong vInt, bool update = true)
 		{
-			if(versionInt != vInt)
+			if (versionInt != vInt)
 			{
 				versionInt = vInt;
 				this.RaisePropertyChanged("VersionInt");
@@ -138,7 +140,7 @@ namespace DivinityModManager.Models
 
 		public static DivinityModVersion2 FromInt(ulong vInt)
 		{
-			if(vInt == 1 || vInt == 268435456)
+			if (vInt == 1 || vInt == 268435456)
 			{
 				// 1.0.0.0
 				vInt = 36028797018963968;
