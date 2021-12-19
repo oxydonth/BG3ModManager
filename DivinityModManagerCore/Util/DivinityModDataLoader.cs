@@ -71,6 +71,19 @@ namespace DivinityModManager.Util
 			return fallbackValue;
 		}
 
+		private static string GetAttributeWithId(XElement node, string[] ids, string fallbackValue = "")
+		{
+			foreach (var id in ids)
+			{
+				var att = node.Descendants("attribute").FirstOrDefault(a => a.Attribute("id")?.Value == id)?.Attribute("value")?.Value;
+				if (att != null)
+				{
+					return att;
+				}
+			}
+			return fallbackValue;
+		}
+
 		private static bool TryGetAttribute(XElement node, string id, out string value, string fallbackValue = "")
 		{
 			var att = node.Attributes().FirstOrDefault(a => a.Name == id);
@@ -142,6 +155,9 @@ namespace DivinityModManager.Util
 			return str;
 		}
 
+		private static readonly string[] VersionAttributes = new string[] { "Version64", "Version" };
+
+
 		private static DivinityModData ParseMetaFile(string metaContents, bool isBaseGameMod = false)
 		{
 			try
@@ -199,7 +215,7 @@ namespace DivinityModManager.Util
 						UUID = uuid,
 						Name = name,
 						Author = author,
-						Version = DivinityModVersion2.FromInt(SafeConvertStringUnsigned(GetAttributeWithId(moduleInfoNode, "Version64", ""))),
+						Version = DivinityModVersion2.FromInt(SafeConvertStringUnsigned(GetAttributeWithId(moduleInfoNode, VersionAttributes, ""))),
 						Folder = GetAttributeWithId(moduleInfoNode, "Folder", ""),
 						Description = description,
 						MD5 = GetAttributeWithId(moduleInfoNode, "MD5", ""),
@@ -223,7 +239,7 @@ namespace DivinityModManager.Util
 							{
 								UUID = GetAttributeWithId(node, "UUID", ""),
 								Name = UnescapeXml(GetAttributeWithId(node, "Name", "")),
-								Version = DivinityModVersion2.FromInt(SafeConvertStringUnsigned(GetAttributeWithId(node, "Version64", ""))),
+								Version = DivinityModVersion2.FromInt(SafeConvertStringUnsigned(GetAttributeWithId(node, VersionAttributes, ""))),
 								Folder = GetAttributeWithId(node, "Folder", ""),
 								MD5 = GetAttributeWithId(node, "MD5", "")
 							};
@@ -238,7 +254,7 @@ namespace DivinityModManager.Util
 					var publishVersionNode = moduleInfoNode.Descendants("node").Where(n => n.Attribute("id")?.Value == "PublishVersion").FirstOrDefault();
 					if (publishVersionNode != null)
 					{
-						var publishVersion = DivinityModVersion2.FromInt(SafeConvertStringUnsigned(GetAttributeWithId(publishVersionNode, "Version64", "")));
+						var publishVersion = DivinityModVersion2.FromInt(SafeConvertStringUnsigned(GetAttributeWithId(publishVersionNode, VersionAttributes, "")));
 						modData.PublishVersion = publishVersion;
 						//DivinityApp.LogMessage($"{modData.Folder} PublishVersion is {publishVersion.Version}");
 					}
@@ -1225,7 +1241,7 @@ namespace DivinityModManager.Util
 			{
 				InclusionFilter = (f) =>
 				{
-					if(f.FileName.IndexOf("playerprofiles", SCOMP) > -1 && LarianFileTypes.Any(e => e.Equals(f.Extension, SCOMP)))
+					if (f.FileName.IndexOf("playerprofiles", SCOMP) > -1 && LarianFileTypes.Any(e => e.Equals(f.Extension, SCOMP)))
 					{
 						return true;
 					}
@@ -1237,7 +1253,7 @@ namespace DivinityModManager.Util
 
 		public static string GetSelectedProfileUUID(string profilePath)
 		{
-			
+
 			FileInfo playerprofilesFile = GetPlayerProfilesFile(profilePath);
 			string activeProfileUUID = "";
 			if (playerprofilesFile != null)
