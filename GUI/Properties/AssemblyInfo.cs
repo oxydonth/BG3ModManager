@@ -7,7 +7,7 @@ using System.Windows;
 [assembly: AssemblyTitle("BG3ModManager")]
 [assembly: AssemblyDescription("A mod manager for Baldur's Gate 3.")]
 #if DEBUG
- [assembly: AssemblyConfiguration("Debug")]
+[assembly: AssemblyConfiguration("Debug")]
 #else
 [assembly: AssemblyConfiguration("Release")]
 #endif
@@ -25,4 +25,4 @@ using System.Windows;
 	ResourceDictionaryLocation.SourceAssembly
 )]
 
-[assembly: AssemblyVersion("1.0.5.1")]
+[assembly: AssemblyVersion("1.0.5.2")] 
