@@ -1536,7 +1536,9 @@ namespace DivinityModManager.Util
 		public static async Task<bool> SetTelemetryAsync(bool enabled)
 		{
 			Dictionary<string, object> settings = null;
-			var settingsFilePath = Path.Combine(Environment.GetEnvironmentVariable("LocalAppData"), @"LarianStudios\Launcher\Settings\preferences.json");
+			//Patch 7 changes this to "Larian Studios" instead of "LarianStudios"
+			var folderDir = Path.Combine(System.Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"Larian Studios\Launcher\Settings");
+			var settingsFilePath = Path.Combine(folderDir, "preferences.json");
 			if (File.Exists(settingsFilePath))
 			{
 				settings = DivinityJsonUtils.SafeDeserializeFromPath<Dictionary<string, object>>(settingsFilePath);
@@ -1544,6 +1546,10 @@ namespace DivinityModManager.Util
 			if (settings == null)
 			{
 				settings = new Dictionary<string, object>();
+				if (!Directory.Exists(folderDir))
+				{
+					Directory.CreateDirectory(folderDir);
+				}
 			}
 			settings["SendStats"] = enabled;
 			string contents = JsonConvert.SerializeObject(settings, Newtonsoft.Json.Formatting.Indented);
@@ -1560,7 +1566,7 @@ namespace DivinityModManager.Util
 		public static void SetTelemetry(bool enabled)
 		{
 			Dictionary<string, object> settings = null;
-			var settingsFilePath = Path.Combine(Environment.GetEnvironmentVariable("LocalAppData"), @"LarianStudios\Launcher\Settings\preferences.json");
+			var settingsFilePath = Path.Combine(System.Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"Larian Studios\Launcher\Settings\preferences.json");
 			if (File.Exists(settingsFilePath))
 			{
 				settings = DivinityJsonUtils.SafeDeserializeFromPath<Dictionary<string, object>>(settingsFilePath);

@@ -1,51 +1,51 @@
 ﻿{
   "IgnoreDependencies": [
-    "ed539163-bb70-431b-96a7-f5b2eda5376b",
-    "991c9c7a-fb80-40cb-8f0d-b92d4e80e9b1",
-    "e5c9077e-1fca-4f24-b55d-464f512c98a8",
-    "9dff4c3b-fda7-43de-a763-ce1383039999"
+	"ed539163-bb70-431b-96a7-f5b2eda5376b",
+	"991c9c7a-fb80-40cb-8f0d-b92d4e80e9b1",
+	"e5c9077e-1fca-4f24-b55d-464f512c98a8",
+	"9dff4c3b-fda7-43de-a763-ce1383039999"
   ],
   "Mods": [
-    {
-      "Name": "Story",
-      "UUID": "991c9c7a-fb80-40cb-8f0d-b92d4e80e9b1",
-      "Folder": "Gustav",
-      "Version": 36029074044363636,
-      "Type": "Adventure",
-      "Targets": "Story",
-      "Author": "Larian Studios",
-      "Description": "The main story campaign.",
-      "Tags": "Campaign"
-    },
-    {
-      "Name": "Shared",
-      "UUID": "ed539163-bb70-431b-96a7-f5b2eda5376b",
-      "Folder": "Shared",
-      "Version": 36029069749392629,
-      "Type": "Add-on",
-      "Targets": "Story",
-      "Author": "Larian Studios",
-      "Description": ""
-    },
-    {
-      "Name": "FW3",
-      "UUID": "e5c9077e-1fca-4f24-b55d-464f512c98a8",
-      "Folder": "FW3",
-      "Version": 268435456,
-      "Type": "Add-on",
-      "Targets": "Story",
-      "Author": "Larian Studios",
-      "Description": "DOS2 Shared project"
-    },
-    {
-      "Name": "Engine",
-      "UUID": "9dff4c3b-fda7-43de-a763-ce1383039999",
-      "Folder": "Engine",
-      "Version": 36028797018963968,
-      "Type": "Add-on",
-      "Targets": "Story",
-      "Author": "Larian Studios",
-      "Description": ""
-    }
+	{
+	  "Name": "Story",
+	  "UUID": "991c9c7a-fb80-40cb-8f0d-b92d4e80e9b1",
+	  "Folder": "Gustav",
+	  "Version": 36029110551578356,
+	  "Type": "Adventure",
+	  "Targets": "Story",
+	  "Author": "Larian Studios",
+	  "Description": "The main story campaign.",
+	  "Tags": "Campaign"
+	},
+	{
+	  "Name": "Shared",
+	  "UUID": "ed539163-bb70-431b-96a7-f5b2eda5376b",
+	  "Folder": "Shared",
+	  "Version": 36029101961650768,
+	  "Type": "Add-on",
+	  "Targets": "Story",
+	  "Author": "Larian Studios",
+	  "Description": ""
+	},
+	{
+	  "Name": "FW3",
+	  "UUID": "e5c9077e-1fca-4f24-b55d-464f512c98a8",
+	  "Folder": "FW3",
+	  "Version": 268435456,
+	  "Type": "Add-on",
+	  "Targets": "Story",
+	  "Author": "Larian Studios",
+	  "Description": "Shared project"
+	},
+	{
+	  "Name": "Engine",
+	  "UUID": "9dff4c3b-fda7-43de-a763-ce1383039999",
+	  "Folder": "Engine",
+	  "Version": 36028797018963968,
+	  "Type": "Add-on",
+	  "Targets": "Story",
+	  "Author": "Larian Studios",
+	  "Description": ""
+	}
   ]
 }
