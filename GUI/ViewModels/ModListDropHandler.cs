@@ -16,7 +16,7 @@ namespace DivinityModManager.ViewModels
 {
 	public class ManualDropInfo : IDropInfo
 	{
-		public object Data { get; }
+		public object Data { get; private set; }
 		public IDragInfo DragInfo { get; }
 		public Point DropPosition { get; }
 		public Type DropTargetAdorner { get; set; }
@@ -37,7 +37,14 @@ namespace DivinityModManager.ViewModels
 		public bool NotHandled { get; set; }
 		public bool IsSameDragDropContextAsSource { get; }
 		public EventType EventType { get; }
-		object IDropInfo.Data { get; set; }
+		object IDropInfo.Data
+		{
+			get => this.Data;
+			set
+			{
+				this.Data = value;
+			}
+		}
 		ScrollViewer IDropInfo.TargetScrollViewer { get; }
 		ScrollingMode IDropInfo.TargetScrollingMode { get; }
 
