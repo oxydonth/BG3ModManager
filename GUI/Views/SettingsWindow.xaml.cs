@@ -49,6 +49,7 @@ namespace DivinityModManager.Views
 			int count = ExtenderSettingsAutoGrid.RowCount + props.Count();
 			int row = ExtenderSettingsAutoGrid.RowCount + 1;
 
+			ExtenderSettingsAutoGrid.Children.Clear();
 			ExtenderSettingsAutoGrid.RowCount = count;
 			ExtenderSettingsAutoGrid.Rows = String.Join(",", Enumerable.Repeat("auto", count));
 			DivinityApp.Log($"{count} = {ExtenderSettingsAutoGrid.Rows}");
@@ -72,6 +73,13 @@ namespace DivinityModManager.Views
 						Converter = boolToVisibilityConverter,
 						FallbackValue = Visibility.Collapsed
 					});
+				}
+
+				var propType = Type.GetTypeCode(prop.Property.PropertyType);
+
+				if (prop.Attribute.DisplayName == "Osiris Debugger Flags")
+				{
+					propType = TypeCode.String;
 				}
 
 				switch (Type.GetTypeCode(prop.Property.PropertyType))
@@ -132,6 +140,7 @@ namespace DivinityModManager.Views
 						ud.ToolTip = prop.Attribute.Tooltip;
 						ud.VerticalAlignment = VerticalAlignment.Center;
 						ud.HorizontalAlignment = HorizontalAlignment.Left;
+						ud.Padding = new Thickness(4, 2, 4, 2);
 						ud.AllowTextInput = true;
 						ud.SetBinding(IntegerUpDown.ValueProperty, new Binding(prop.Property.Name)
 						{
@@ -219,15 +228,24 @@ namespace DivinityModManager.Views
 
 		private void SettingsWindow_KeyDown(object sender, KeyEventArgs e)
 		{
-			if(isSettingKeybinding)
+			if (isSettingKeybinding)
 			{
 				return;
 			}
-			else if(e.Key == Key.Left && (Keyboard.Modifiers & ModifierKeys.Control) != 0)
+			else if (e.Key == Key.S && (Keyboard.Modifiers & ModifierKeys.Control) != 0)
+			{
+				ViewModel.SaveSettingsCommand.Execute(null);
+				if (ViewModel.ExtenderTabIsVisible)
+				{
+					ViewModel.ExportExtenderSettingsCommand.Execute(null);
+				}
+				e.Handled = true;
+			}
+			else if (e.Key == Key.Left && (Keyboard.Modifiers & ModifierKeys.Control) != 0)
 			{
 				int current = PreferencesTabControl.SelectedIndex;
 				int nextIndex = current - 1;
-				if(nextIndex < 0)
+				if (nextIndex < 0)
 				{
 					nextIndex = PreferencesTabControl.Items.Count - 1;
 				}
@@ -235,11 +253,11 @@ namespace DivinityModManager.Views
 				Keyboard.Focus((FrameworkElement)PreferencesTabControl.SelectedContent);
 				MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
 			}
-			else if(e.Key == Key.Right && (Keyboard.Modifiers & ModifierKeys.Control) != 0)
+			else if (e.Key == Key.Right && (Keyboard.Modifiers & ModifierKeys.Control) != 0)
 			{
 				int current = PreferencesTabControl.SelectedIndex;
 				int nextIndex = current + 1;
-				if(nextIndex >= PreferencesTabControl.Items.Count)
+				if (nextIndex >= PreferencesTabControl.Items.Count)
 				{
 					nextIndex = 0;
 				}
