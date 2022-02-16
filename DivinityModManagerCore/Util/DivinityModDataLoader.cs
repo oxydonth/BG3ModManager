@@ -1948,6 +1948,7 @@ namespace DivinityModManager.Util
 			{
 				var modResources = new ModResources();
 				var modHelper = new ModPathVisitor(modResources);
+				modHelper.Game = LSLib.LS.Story.Compiler.TargetGame.BG3;
 				modHelper.CollectGlobals = false;
 				modHelper.CollectLevels = false;
 				modHelper.CollectStoryGoals = false;
