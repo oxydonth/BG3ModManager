@@ -37,6 +37,9 @@ namespace DivinityModManager.ViewModels
 		public bool NotHandled { get; set; }
 		public bool IsSameDragDropContextAsSource { get; }
 		public EventType EventType { get; }
+		object IDropInfo.Data { get; set; }
+		ScrollViewer IDropInfo.TargetScrollViewer { get; }
+		ScrollingMode IDropInfo.TargetScrollingMode { get; }
 
 		public ManualDropInfo(List<DivinityModData> data, int index, UIElement visualTarget, System.Collections.IEnumerable targetCollection, System.Collections.IEnumerable sourceCollection)
 		{
