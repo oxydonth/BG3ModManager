@@ -23,13 +23,10 @@ namespace DivinityModManager.Models
 	public class DivinityModManagerSettings : ReactiveObject, IDisposable
 	{
 		[SettingsEntry("Game Data Path", "The path to the Data folder, for loading editor mods.\nExample: Baldur's Gate 3/Data")]
-
-		[DataMember][Reactive]
-		public string GameDataPath { get; set; } = "";
+		[DataMember][Reactive] public string GameDataPath { get; set; } = "";
 
 		[SettingsEntry("Game Executable Path", "The path to bg3.exe.")]
-		[DataMember][Reactive]
-		public string GameExecutablePath { get; set; } = "";
+		[DataMember][Reactive] public string GameExecutablePath { get; set; } = "";
 
 		[SettingsEntry("Enable Story Log", "When launching the game, enable the Osiris story log (osiris.log).")]
 		[DataMember][Reactive] public bool GameStoryLogEnabled { get; set; } = false;
@@ -40,7 +37,7 @@ namespace DivinityModManager.Models
 		[SettingsEntry("Enable DirectX 11 Mode", "If enabled, when launching the game, bg3_dx11.exe is used instead.")]
 		[DataMember][Reactive] public bool LaunchDX11 { get; set; } = false;
 
-		[SettingsEntry("Workshop Path", "The workshop folder.&#x0a;Used for detecting mod updates and new mods to be copied into the local mods folder.")]
+		[SettingsEntry("Workshop Path", "The workshop folder.\nUsed for detecting mod updates and new mods to be copied into the local mods folder.")]
 		[DataMember][Reactive] public string WorkshopPath { get; set; } = "";
 
 		[SettingsEntry("Saved Load Orders Path", "The folder containing mod load orders.")]
