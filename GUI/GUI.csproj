@@ -30,8 +30,8 @@
 		<ApplicationVersion>1.1.0.%2a</ApplicationVersion>
 		<UseApplicationTrust>false</UseApplicationTrust>
 		<BootstrapperEnabled>true</BootstrapperEnabled>
-		<NuGetPackageImportStamp>
-		</NuGetPackageImportStamp>
+		<SupportedCultures>en-US</SupportedCultures>
+		<SatelliteResourceLanguages>en</SatelliteResourceLanguages>
 	</PropertyGroup>
 	<PropertyGroup>
 		<ApplicationIcon>BG3ModManager.ico</ApplicationIcon>
@@ -586,9 +586,10 @@
 	</PropertyGroup>
 	<Target Name="AfterBuild">
 		<ItemGroup>
-			<MoveToLibFolder Include="$(OutputPath)*.dll ; $(OutputPath)*.pdb ; $(OutputPath)*.xml" />
+			<MoveToLibFolder Include="$(OutputPath)*.dll ; $(OutputPath)*.pdb ; $(OutputPath)*.xml ; $(OutputPath)runtimes/win-x64/native/*.dll" />
 		</ItemGroup>
 		<Move SourceFiles="@(MoveToLibFolder)" DestinationFolder="$(OutputPath)_Lib" OverwriteReadOnlyFiles="true" />
+		<RemoveDir Directories="$(OutputPath)de;$(OutputPath)en;$(OutputPath)es;$(OutputPath)fr;$(OutputPath)it;$(OutputPath)ja;$(OutputPath)ko;$(OutputPath)ru;$(OutputPath)zh-Hans;$(OutputPath)zh-Hant;$(OutputPath)cs-CZ;$(OutputPath)hu;$(OutputPath)ja-JP;$(OutputPath)pt-BR;$(OutputPath)ro;$(OutputPath)runtimes;$(OutputPath)sv" />
 	</Target>
 	<Target Name="AfterAfterBuild" AfterTargets="AfterBuild" Condition="'$(Configuration)|$(Platform)' == 'Publish|x64'">
 		<GetAssemblyIdentity AssemblyFiles="$(TargetPath)">

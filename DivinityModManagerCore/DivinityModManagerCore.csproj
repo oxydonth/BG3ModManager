@@ -6,6 +6,7 @@
     <Platforms>AnyCPU;x64</Platforms>
     <Configurations>Debug;Release;Publish</Configurations>
 	<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+	<SupportedCultures>en-US</SupportedCultures>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -53,4 +54,12 @@
 	    <LastGenOutput>Resources.Designer.cs</LastGenOutput>
 	  </EmbeddedResource>
 	</ItemGroup>
+	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
+		<ItemGroup>
+		  <FilesToMove Include="$(OutputPath)$(AssemblyName).dll" />
+		  <LSLib Include="$(OutputPath)LSLib.dll;$(OutputPath)LSLibNative.dll;$(OutputPath)LZ4.dll;$(OutputPath)OpenTK.dll;$(OutputPath)QUT.ShiftReduceParser.dll;$(OutputPath)zlib.net.dll" />
+		</ItemGroup>
+		<Copy SourceFiles="@(FilesToMove)" DestinationFolder="$(SolutionDir)bin\$(Configuration)\Modules\" OverwriteReadOnlyFiles="true" />
+		<Copy SourceFiles="@(LSLib)" DestinationFolder="$(SolutionDir)bin\$(Configuration)\_Lib\" OverwriteReadOnlyFiles="true" />
+	</Target>
 </Project>
