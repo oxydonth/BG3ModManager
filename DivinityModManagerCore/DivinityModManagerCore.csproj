@@ -59,7 +59,7 @@
 		  <FilesToMove Include="$(OutputPath)$(AssemblyName).dll" />
 		  <LSLib Include="$(OutputPath)LSLib.dll;$(OutputPath)LSLibNative.dll;$(OutputPath)LZ4.dll;$(OutputPath)OpenTK.dll;$(OutputPath)QUT.ShiftReduceParser.dll;$(OutputPath)zlib.net.dll" />
 		</ItemGroup>
-		<Copy SourceFiles="@(FilesToMove)" DestinationFolder="$(SolutionDir)bin\$(Configuration)\Modules\" OverwriteReadOnlyFiles="true" />
+		<Copy SourceFiles="@(FilesToMove)" DestinationFolder="$(SolutionDir)bin\$(Configuration)\_Lib\" OverwriteReadOnlyFiles="true" />
 		<Copy SourceFiles="@(LSLib)" DestinationFolder="$(SolutionDir)bin\$(Configuration)\_Lib\" OverwriteReadOnlyFiles="true" />
 	</Target>
 </Project>
