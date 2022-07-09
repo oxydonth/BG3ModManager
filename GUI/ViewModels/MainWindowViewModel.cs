@@ -1732,6 +1732,105 @@ namespace DivinityModManager.ViewModels
 			return index > -1 ? index : 99999999;
 		}
 
+		private async Task<bool> AddModFromFile(string filePath, CancellationToken t)
+		{
+			bool success = false;
+			if (Path.GetExtension(filePath).Equals(".pak", StringComparison.OrdinalIgnoreCase))
+			{
+				try
+				{
+					using (System.IO.FileStream sourceStream = File.Open(filePath, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.Read, 8192, true))
+					{
+						using (System.IO.FileStream destinationStream = File.Create(Path.Combine(PathwayData.DocumentsModsPath, Path.GetFileName(filePath))))
+						{
+							await sourceStream.CopyToAsync(destinationStream, 8192, t);
+							success = true;
+						}
+					}
+				}
+				catch (System.IO.IOException ex)
+				{
+					DivinityApp.Log($"File may be in use by another process:\n{ex}");
+					ShowAlert($"Failed to copy file '{Path.GetFileName(filePath)}. It may be locked by another process.'", AlertType.Danger);
+				}
+				catch (Exception ex)
+				{
+					DivinityApp.Log($"Error reading file ({filePath}):\n{ex}");
+				}
+			}
+			else
+			{
+				success = await ImportOrderZipFileAsync(filePath, t);
+			}
+			return success;
+		}
+
+		private void OpenModImportDialog()
+		{
+			var dialog = new OpenFileDialog();
+			dialog.CheckFileExists = true;
+			dialog.CheckPathExists = true;
+			dialog.DefaultExt = ".zip";
+			dialog.Filter = "All formats (*.pak;*.zip;*.7z)|*.pak;.zip;*.7z;*.7zip;*.tar;*.bzip2;*.gzip;*.lzip|Mod package (*.pak)|*.pak|Archive file (*.zip;*.7z)|*.zip;*.7z;*.7zip;*.tar;*.bzip2;*.gzip;*.lzip|All files (*.*)|*.*";
+			dialog.Title = "Import Mods from Archive...";
+			dialog.ValidateNames = true;
+			dialog.ReadOnlyChecked = true;
+			dialog.Multiselect = true;
+
+			if (!String.IsNullOrEmpty(PathwayData.LastSaveFilePath) && Directory.Exists(PathwayData.LastSaveFilePath))
+			{
+				dialog.InitialDirectory = PathwayData.LastSaveFilePath;
+			}
+
+			if (dialog.ShowDialog(view) == true)
+			{
+				MainProgressTitle = "Importing mods.";
+				MainProgressWorkText = "";
+				MainProgressValue = 0d;
+				MainProgressIsActive = true;
+				RxApp.TaskpoolScheduler.ScheduleAsync(async (ctrl, t) =>
+				{
+					MainProgressToken = new CancellationTokenSource();
+					int successes = 0;
+					int total = 0;
+					foreach (var f in dialog.FileNames)
+					{
+						total++;
+						if (await AddModFromFile(f, MainProgressToken.Token))
+						{
+							successes++;
+						}
+					}
+
+					await ctrl.Yield();
+					RxApp.MainThreadScheduler.Schedule(_ =>
+					{
+						OnMainProgressComplete();
+						if (successes == total)
+						{
+							if (total > 1)
+							{
+								view.AlertBar.SetSuccessAlert($"Successfully imported {total} mods.", 20);
+							}
+							else if (total == 1)
+							{
+								view.AlertBar.SetSuccessAlert($"Successfully imported '{dialog.FileName}'.", 20);
+							}
+							else
+							{
+								view.AlertBar.SetSuccessAlert("Skipped importing mod.", 20);
+							}
+						}
+						else
+						{
+							//view.AlertBar.SetDangerAlert($"Only imported {successes}/{total} mods. Check the log.", 20);
+						}
+					});
+					return Disposable.Empty;
+				});
+			}
+		}
+
 		private void AddNewModOrder(DivinityLoadOrder newOrder = null)
 		{
 			var lastIndex = SelectedModOrderIndex;
@@ -2969,7 +3068,14 @@ namespace DivinityModManager.ViewModels
 					var extension = Path.GetExtension(archivePath);
 					if (extension.Equals(".7z", StringComparison.OrdinalIgnoreCase) || extension.Equals(".7zip", StringComparison.OrdinalIgnoreCase))
 					{
-						success = await ImportSevenZipArchiveAsync(outputDirectory, fileStream, jsonFiles, t);
+						if (SevenZipArchive.IsSevenZipFile(fileStream))
+						{
+							success = await ImportSevenZipArchiveAsync(outputDirectory, fileStream, jsonFiles, t);
+						}
+						else
+						{
+							DivinityApp.Log($"File ({archivePath}) is not a 7z archive.");
+						}
 					}
 					else
 					{
@@ -4476,6 +4582,7 @@ Directory the zip will be extracted to:
 
 			var canExecuteSaveAsCommand = this.WhenAnyValue(x => x.CanSaveOrder, x => x.MainProgressIsActive, (canSave, p) => canSave && !p);
 			Keys.SaveAs.AddAction(SaveLoadOrderAs, canExecuteSaveAsCommand);
+			Keys.ImportMod.AddAction(OpenModImportDialog);
 			Keys.NewOrder.AddAction(() => AddNewModOrder());
 			Keys.ExportOrderToGame.AddAction(ExportLoadOrder);
 
