@@ -576,15 +576,13 @@
 	<PropertyGroup>
 		<PreBuildEvent>rd /s /q $(TargetDir)_Lib</PreBuildEvent>
 	</PropertyGroup>
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Publish|x64'">
-		<PostBuildEvent>
-			copy "$(TargetPath)" "BG3ModManager.exe"
-			del "$(TargetPath)"
-			copy "$(TargetPath).config" "BG3ModManager.exe.config"
-			del "$(TargetPath).config"
-		</PostBuildEvent>
-	</PropertyGroup>
-	<Target Name="AfterBuild">
+	<!-- <Target Name="AfterBuild"> -->
+		<!-- <Move SourceFiles="$(TargetPath)" DestinationFolder="$(OutputPath)BG3ModManager.exe" OverwriteReadOnlyFiles="true" /> -->
+		<!-- <Move SourceFiles="$(TargetPath).config" DestinationFolder="$(OutputPath)BG3ModManager.exe.config" OverwriteReadOnlyFiles="true" /> -->
+		<!-- <Delete Files="$(TargetPath)" /> -->
+		<!-- <Delete Files="$(TargetPath).config" /> -->
+	<!-- </Target> -->
+	<Target Name="AfterBuild" Condition="'$(Configuration)|$(Platform)' == 'Publish|x64'">
 		<ItemGroup>
 			<MoveToLibFolder Include="$(OutputPath)*.dll ; $(OutputPath)*.pdb ; $(OutputPath)*.xml ; $(OutputPath)runtimes/win-x64/native/*.dll" />
 		</ItemGroup>
