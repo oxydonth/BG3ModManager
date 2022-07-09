@@ -1305,7 +1305,7 @@ namespace DivinityModManager.Util
 			}
 			else
 			{
-				DivinityApp.Log($"[*WARNING*] playerProfiles.lsb/playerProfiles5.lsb/playerprofiles6.lsf does not exist. Skipping selected profile saving.");
+				DivinityApp.Log($"[*WARNING*] No playerProfiles file found. Skipping selected profile saving.");
 			}
 			return false;
 		}
@@ -2038,8 +2038,8 @@ namespace DivinityModManager.Util
 									if (modData != null)
 									{
 										DivinityApp.Log($"Added base mod: Name({modData.Name}) UUID({modData.UUID}) Author({modData.Author}) Version({modData.Version.VersionInt})");
-										modData.IsLarianMod = true;
-										modData.IsHidden = true;
+										modData.IsLarianMod = DivinityApp.IgnoredMods.Any(x => x.UUID == modData.UUID) || modData.Author.Contains("Larian");
+										modData.IsHidden = modData.IsLarianMod;
 										baseMods.Add(modData);
 									}
 								}

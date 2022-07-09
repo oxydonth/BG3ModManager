@@ -1444,6 +1444,10 @@ namespace DivinityModManager.ViewModels
 				DivinityApp.Log($"Loading base game mods from '{Settings.GameDataPath}'.");
 				baseMods = DivinityModDataLoader.LoadBuiltinMods(Settings.GameDataPath);
 			}
+			else
+			{
+				DivinityApp.Log($"Game data directory not found at '{Settings.GameDataPath}'.");
+			}
 
 			if (baseMods != null) MergeModLists(finalMods, baseMods);
 			if (modPakData != null) MergeModLists(finalMods, modPakData);
@@ -1541,11 +1545,16 @@ namespace DivinityModManager.ViewModels
 					await IncreaseMainProgressValueAsync(taskStepAmount);
 				}
 
+				DivinityApp.Log($"Loading base game mods from '{Settings.GameDataPath}'.");
 				await SetMainProgressTextAsync("Loading base game mods from data folder...");
 				cancelTokenSource = GetCancellationToken(30000);
 				baseMods = await RunTask(DivinityModDataLoader.LoadBuiltinModsAsync(Settings.GameDataPath, cancelTokenSource.Token), null);
 				cancelTokenSource = GetCancellationToken(int.MaxValue);
 				await IncreaseMainProgressValueAsync(taskStepAmount);
+			}
+			else
+			{
+				DivinityApp.Log($"Game data directory not found at '{Settings.GameDataPath}'.");
 			}
 
 			if (baseMods != null) MergeModLists(finalMods, baseMods);
