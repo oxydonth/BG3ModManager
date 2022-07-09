@@ -12,6 +12,7 @@ GUI.csproj merge=ours
 IgnoredMods.json merge=ours
 MainWindow.xaml merge=ours
 MainWindow.xaml.cs merge=ours
+MainWindowViewModel.cs merge=ours
 ScriptExtenderSettings.cs merge=ours
 SettingsWindow.xaml merge=ours
 SettingsWindow.xaml.cs merge=ours
