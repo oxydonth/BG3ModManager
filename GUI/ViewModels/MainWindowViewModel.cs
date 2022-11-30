@@ -1769,7 +1769,7 @@ namespace DivinityModManager.ViewModels
 			}
 			else
 			{
-				success = await ImportOrderZipFileAsync(filePath, t);
+				success = await ImportOrderZipFileAsync(filePath, true, t);
 			}
 			return success;
 		}
@@ -1780,7 +1780,7 @@ namespace DivinityModManager.ViewModels
 			dialog.CheckFileExists = true;
 			dialog.CheckPathExists = true;
 			dialog.DefaultExt = ".zip";
-			dialog.Filter = "All formats (*.pak;*.zip;*.7z)|*.pak;.zip;*.7z;*.7zip;*.tar;*.bzip2;*.gzip;*.lzip|Mod package (*.pak)|*.pak|Archive file (*.zip;*.7z)|*.zip;*.7z;*.7zip;*.tar;*.bzip2;*.gzip;*.lzip|All files (*.*)|*.*";
+			dialog.Filter = "All formats (*.pak;*.zip;*.7z)|*.pak;*.zip;*.7z;*.7zip;*.tar;*.bzip2;*.gzip;*.lzip|Mod package (*.pak)|*.pak|Archive file (*.zip;*.7z)|*.zip;*.7z;*.7zip;*.tar;*.bzip2;*.gzip;*.lzip|All files (*.*)|*.*";
 			dialog.Title = "Import Mods from Archive...";
 			dialog.ValidateNames = true;
 			dialog.ReadOnlyChecked = true;
@@ -2924,7 +2924,7 @@ namespace DivinityModManager.ViewModels
 				RxApp.TaskpoolScheduler.ScheduleAsync(async (ctrl, t) =>
 				{
 					MainProgressToken = new CancellationTokenSource();
-					bool success = await ImportOrderZipFileAsync(dialog.FileName, MainProgressToken.Token);
+					bool success = await ImportOrderZipFileAsync(dialog.FileName, false, MainProgressToken.Token);
 					await ctrl.Yield();
 					RxApp.MainThreadScheduler.Schedule(_ =>
 					{
@@ -2943,6 +2943,7 @@ namespace DivinityModManager.ViewModels
 		{
 			int successes = 0;
 			int total = 0;
+			stream.Position = 0;
 			using (var archiveStream = SevenZipArchive.Open(stream))
 			{
 				foreach (var entry in archiveStream.Entries)
@@ -3003,6 +3004,7 @@ namespace DivinityModManager.ViewModels
 		{
 			int successes = 0;
 			int total = 0;
+			stream.Position = 0;
 			using (var reader = SharpCompress.Readers.ReaderFactory.Open(stream))
 			{
 				while (reader.MoveToNextEntry())
@@ -3059,7 +3061,7 @@ namespace DivinityModManager.ViewModels
 			return successes >= total;
 		}
 
-		private async Task<bool> ImportOrderZipFileAsync(string archivePath, CancellationToken t)
+		private async Task<bool> ImportOrderZipFileAsync(string archivePath, bool onlyMods, CancellationToken t)
 		{
 			System.IO.FileStream fileStream = null;
 			string outputDirectory = PathwayData.DocumentsModsPath;
@@ -3108,7 +3110,7 @@ namespace DivinityModManager.ViewModels
 				if (fileStream != null) fileStream.Close();
 				IncreaseMainProgressValue(taskStepAmount);
 
-				if (jsonFiles.Count > 0)
+				if (!onlyMods && jsonFiles.Count > 0)
 				{
 					RxApp.MainThreadScheduler.Schedule(_ =>
 					{
@@ -3170,7 +3172,7 @@ namespace DivinityModManager.ViewModels
 					{
 						baseOrderName = $"{SelectedProfile.Name}_{SelectedModOrder.Name}";
 					}
-					outputPath = $"Export/{baseOrderName}-{ DateTime.Now.ToString(sysFormat + "_HH-mm-ss")}.zip";
+					outputPath = $"Export/{baseOrderName}-{DateTime.Now.ToString(sysFormat + "_HH-mm-ss")}.zip";
 
 					var exportDirectory = Path.Combine(appDir, "Export");
 					if (!Directory.Exists(exportDirectory))
@@ -3323,7 +3325,7 @@ namespace DivinityModManager.ViewModels
 				{
 					baseOrderName = $"{SelectedProfile.Name}_{SelectedModOrder.Name}";
 				}
-				string outputName = $"{baseOrderName}-{ DateTime.Now.ToString(sysFormat + "_HH-mm-ss")}.zip";
+				string outputName = $"{baseOrderName}-{DateTime.Now.ToString(sysFormat + "_HH-mm-ss")}.zip";
 
 				//dialog.RestoreDirectory = true;
 				dialog.FileName = DivinityModDataLoader.MakeSafeFilename(outputName, '_');
@@ -3374,7 +3376,7 @@ namespace DivinityModManager.ViewModels
 				{
 					baseOrderName = $"{SelectedProfile.Name}_{SelectedModOrder.Name}";
 				}
-				string outputName = $"{baseOrderName}-{ DateTime.Now.ToString(sysFormat + "_HH-mm-ss")}.txt";
+				string outputName = $"{baseOrderName}-{DateTime.Now.ToString(sysFormat + "_HH-mm-ss")}.txt";
 
 				//dialog.RestoreDirectory = true;
 				dialog.FileName = DivinityModDataLoader.MakeSafeFilename(outputName, '_');
