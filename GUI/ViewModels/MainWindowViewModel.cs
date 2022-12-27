@@ -4697,6 +4697,16 @@ Directory the zip will be extracted to:
 				Process.Start(PathwayData.DocumentsModsPath);
 			}, canOpenModsFolder);
 
+			var canOpenGameFolder = this.WhenAnyValue(x => x.Settings.GameExecutablePath, (p) => !String.IsNullOrEmpty(p) && File.Exists(p));
+			Keys.OpenGameFolder.AddAction(() =>
+			{
+				var folder = Path.GetDirectoryName(Settings.GameExecutablePath);
+				if (Directory.Exists(folder))
+				{
+					Process.Start(folder);
+				}
+			}, canOpenGameFolder);
+
 			RenameSaveCommand = ReactiveCommand.Create(RenameSave_Start, canOpenDialogWindow);
 
 			CopyOrderToClipboardCommand = ReactiveCommand.Create(() =>
