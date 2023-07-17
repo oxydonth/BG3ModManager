@@ -1,34 +1,35 @@
 ﻿using Alphaleonis.Win32.Filesystem;
+
 using DivinityModManager.Models;
-using DivinityModManager.Models.App;
 using DivinityModManager.ViewModels;
+
 using ReactiveUI;
+
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Reactive;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Input;
 
 namespace DivinityModManager.Util
 {
-	public class DivinityGlobalCommands
+	public class DivinityGlobalCommands : ReactiveObject
 	{
 		private IDivinityAppViewModel _viewModel;
+
+		public IDivinityAppViewModel ViewModel => _viewModel;
 
 		public void SetViewModel(IDivinityAppViewModel vm)
 		{
 			_viewModel = vm;
+			this.RaisePropertyChanged(nameof(ViewModel));
 		}
 
 		public ReactiveCommand<string, Unit> OpenFileCommand { get; private set; }
 		public ReactiveCommand<string, Unit> OpenInFileExplorerCommand { get; private set; }
-		public ICommand ClearMissingModsCommand { get; private set; }
+		public ReactiveCommand<Unit, Unit> ClearMissingModsCommand { get; private set; }
 		public ReactiveCommand<DivinityModData, Unit> ToggleNameDisplayCommand { get; private set; }
 		public ReactiveCommand<string, Unit> CopyToClipboardCommand { get; private set; }
+		public ReactiveCommand<DivinityModData, Unit> DeleteModCommand { get; private set; }
 
 		public void OpenFile(string path)
 		{
@@ -38,7 +39,7 @@ namespace DivinityModManager.Util
 				{
 					Process.Start(Path.GetFullPath(path));
 				}
-				catch(System.ComponentModel.Win32Exception ex) // No File Association
+				catch (System.ComponentModel.Win32Exception ex) // No File Association
 				{
 					Process.Start("explorer.exe", $"\"{Path.GetFullPath(path)}\"");
 				}
@@ -55,11 +56,11 @@ namespace DivinityModManager.Util
 
 		public void OpenInFileExplorer(string path)
 		{
-			if(File.Exists(path))
+			if (File.Exists(path))
 			{
 				Process.Start("explorer.exe", $"/select, \"{Path.GetFullPath(path)}\"");
 			}
-			else if(Directory.Exists(path))
+			else if (Directory.Exists(path))
 			{
 				Process.Start("explorer.exe", $"\"{Path.GetFullPath(path)}\"");
 			}
@@ -84,39 +85,39 @@ namespace DivinityModManager.Util
 
 		public void ClearMissingMods()
 		{
-			if (_viewModel != null)
-			{
-				_viewModel.ClearMissingMods();
-			}
+			_viewModel.ClearMissingMods();
 		}
 
 		public DivinityGlobalCommands()
 		{
-			OpenFileCommand = ReactiveCommand.Create<string>(OpenFile);
-			OpenInFileExplorerCommand = ReactiveCommand.Create<string>(OpenInFileExplorer);
-			ClearMissingModsCommand = ReactiveCommand.Create(ClearMissingMods);
+			var canExecuteViewModelCommands = this.WhenAnyValue(x => x.ViewModel, x => x.ViewModel.IsLocked, (vm, b) => vm != null && !b);
+
+			OpenFileCommand = ReactiveCommand.Create<string>(OpenFile, canExecuteViewModelCommands);
+			OpenInFileExplorerCommand = ReactiveCommand.Create<string>(OpenInFileExplorer, canExecuteViewModelCommands);
+			ClearMissingModsCommand = ReactiveCommand.Create(ClearMissingMods, canExecuteViewModelCommands);
+
 			ToggleNameDisplayCommand = ReactiveCommand.Create<DivinityModData>((mod) =>
 			{
 				mod.DisplayFileForName = !mod.DisplayFileForName;
-				if (_viewModel != null)
+				var b = mod.DisplayFileForName;
+				foreach (var m in _viewModel.Mods)
 				{
-					if (_viewModel.ActiveSelected > 1 && _viewModel.ActiveMods.Contains(mod))
+					if (m.IsSelected)
 					{
-						foreach(var m in _viewModel.ActiveMods.Where(x => x.IsSelected))
-						{
-							m.DisplayFileForName = mod.DisplayFileForName;
-						}
-					}
-					else if (_viewModel.InactiveSelected > 1 && _viewModel.InactiveMods.Contains(mod))
-					{
-						foreach (var m in _viewModel.InactiveMods.Where(x => x.IsSelected))
-						{
-							m.DisplayFileForName = mod.DisplayFileForName;
-						}
+						m.DisplayFileForName = b;
 					}
 				}
-			});
-			CopyToClipboardCommand = ReactiveCommand.Create<string>(CopyToClipboard);
+			}, canExecuteViewModelCommands);
+
+			CopyToClipboardCommand = ReactiveCommand.Create<string>(CopyToClipboard, canExecuteViewModelCommands);
+
+			DeleteModCommand = ReactiveCommand.Create<DivinityModData>((mod) =>
+			{
+				if (mod.CanDelete && _viewModel != null)
+				{
+					_viewModel.DeleteMod(mod);
+				}
+			}, canExecuteViewModelCommands);
 		}
 	}
 }

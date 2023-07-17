@@ -1,50 +1,47 @@
-﻿using DivinityModManager.ViewModels;
+﻿using DivinityModManager.Controls;
+using DivinityModManager.Converters;
+using DivinityModManager.Models;
+using DivinityModManager.ViewModels;
+
+using DynamicData.Binding;
+
+using GongSolutions.Wpf.DragDrop.Utilities;
+
 using ReactiveUI;
+
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Globalization;
+using System.IO.Packaging;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Reactive;
+using System.Reactive.Concurrency;
+using System.Reactive.Disposables;
+using System.Reactive.Linq;
 using System.Windows;
+using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
-using System.Reactive;
-using System.Reactive.Disposables;
-using System.Reactive.Concurrency;
-using System.Reactive.Linq;
-using DivinityModManager.Models;
-using DynamicData.Binding;
-using GongSolutions.Wpf.DragDrop;
-using System.Windows.Automation.Peers;
-using DivinityModManager.Util;
-using System.Timers;
-using DivinityModManager.Controls;
-using GongSolutions.Wpf.DragDrop.Utilities;
 
 namespace DivinityModManager.Views
 {
 	public interface ModViewLayout
 	{
 		void UpdateViewSelection(IEnumerable<ISelectable> dataList, ListView listView = null);
+		void SelectMods(IEnumerable<ISelectable> dataList, bool activeMods);
 		void FixActiveModsScrollbar();
 	}
+
+	public class HorizontalModLayoutBase : ReactiveUserControl<MainWindowViewModel> { }
+
 	/// <summary>
 	/// Interaction logic for HorizonalModLayout.xaml
 	/// </summary>
-	public partial class HorizontalModLayout : UserControl, IViewFor<MainWindowViewModel>, ModViewLayout
+	public partial class HorizontalModLayout : HorizontalModLayoutBase, ModViewLayout
 	{
-		public MainWindowViewModel ViewModel { get; set; }
-		object IViewFor.ViewModel { get; set; }
-
 		private object _focusedList = null;
 
 		private bool ListHasFocus(ListView listView)
@@ -113,37 +110,13 @@ namespace DivinityModManager.Views
 			listView.CommandBindings.Add(new CommandBinding(ApplicationCommands.SelectAll, (_sender, _e) =>
 			{
 				listView.SelectAll();
-				//if(listView.ItemsSource is IEnumerable<ISelectable> mods)
-				//{
-				//	foreach(var mod in mods)
-				//	{
-				//		mod.IsSelected = true;
-				//	}
-				//	UpdateViewSelection(mods, listView);
-				//}
 			}));
 
 			listView.InputBindings.Add(new KeyBinding(ReactiveCommand.Create(() =>
 			{
 				listView.SelectedItems.Clear();
-				//if (listView.ItemsSource is IEnumerable<ISelectable> mods)
-				//{
-				//	foreach (var mod in mods)
-				//	{
-				//		mod.IsSelected = false;
-				//	}
-				//	UpdateViewSelection(mods, listView);
-				//}
 
 			}), new KeyGesture(Key.D, ModifierKeys.Control)));
-
-			//listView.PreviewMouseLeftButtonDown += (s, e) =>
-			//{
-			//	if(!Keyboard.Modifiers.HasFlag(ModifierKeys.Control) && !Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
-			//	{
-
-			//	}
-			//};
 
 			listView.ItemContainerStyle = this.FindResource("ListViewItemMouseEvents") as Style;
 			listView.GotFocus += (object sender, RoutedEventArgs e) =>
@@ -161,10 +134,9 @@ namespace DivinityModManager.Views
 
 		public void FixActiveModsScrollbar()
 		{
-			ScrollViewer myViewer = ActiveModsListView.FindVisualChildren<ScrollViewer>().FirstOrDefault();
-			if (myViewer != null)
+			if (ActiveModsListView.FindVisualChildren<ScrollViewer>().FirstOrDefault() is ScrollViewer sv)
 			{
-				myViewer.ScrollToHorizontalOffset(0d);
+				sv.ScrollToHorizontalOffset(0d);
 			}
 		}
 
@@ -186,14 +158,20 @@ namespace DivinityModManager.Views
 
 				if (listView != null && dataList.Count() > 0)
 				{
+					IInputElement focusedItem = FocusManager.GetFocusedElement(listView);
 					foreach (var mod in dataList)
 					{
 						var listItem = (ListViewItem)listView.ItemContainerGenerator.ContainerFromItem(mod);
 						if (listItem != null)
 						{
-							if (mod.Visibility == Visibility.Visible)
+							if(mod.Visibility == Visibility.Visible)
 							{
 								listItem.IsSelected = mod.IsSelected;
+								if(listView.IsFocused && focusedItem == null && mod.IsSelected)
+								{
+									focusedItem = listItem;
+									FocusManager.SetFocusedElement(listView, focusedItem);
+								}
 							}
 							else
 							{
@@ -205,17 +183,39 @@ namespace DivinityModManager.Views
 			}
 		}
 
-		private void UpdateIsSelected(SelectionChangedEventArgs e, ObservableCollectionExtended<DivinityModData> list)
+		public void SelectMods(IEnumerable<ISelectable> dataList, bool activeMods)
+		{
+			if (dataList != null)
+			{
+				var listView = activeMods ? ActiveModsListView : InactiveModsListView;
+				foreach (var mod in dataList)
+				{
+					var listItem = (ListViewItem)listView.ItemContainerGenerator.ContainerFromItem(mod);
+					if (listItem != null)
+					{
+						listItem.IsSelected = mod.Visibility == Visibility.Visible;
+					}
+				}
+			}
+		}
+
+		private void UpdateIsSelected(SelectionChangedEventArgs e, IEnumerable<DivinityModData> list)
 		{
 			if (e != null && list != null)
 			{
+				var targetUUIDs = list.Select(x => x.UUID).ToHashSet();
+
 				if (e.RemovedItems != null && e.RemovedItems.Count > 0)
 				{
 					foreach (var removedItem in e.RemovedItems.Cast<DivinityModData>())
 					{
-						if (list != null && list.Contains(removedItem)) removedItem.IsSelected = false;
+						if(targetUUIDs.Contains(removedItem.UUID))
+						{
+							removedItem.IsSelected = false;
+						}
 					}
 				}
+
 				if (e.AddedItems != null && e.AddedItems.Count > 0)
 				{
 					foreach (var addedItem in e.AddedItems.Cast<DivinityModData>())
@@ -229,7 +229,7 @@ namespace DivinityModManager.Views
 		private IDisposable updatingActiveViewSelection;
 		private IDisposable updatingInactiveViewSelection;
 
-		private void ActiveModListView_ItemContainerStatusChanged(object s, EventArgs e)
+		private void ActiveModListView_ItemContainerStatusChanged(EventArgs e)
 		{
 			if (ActiveModsListView.ItemContainerGenerator.Status == System.Windows.Controls.Primitives.GeneratorStatus.ContainersGenerated)
 			{
@@ -245,7 +245,7 @@ namespace DivinityModManager.Views
 			}
 		}
 
-		private void InactiveModListView_ItemContainerStatusChanged(object s, EventArgs e)
+		private void InactiveModListView_ItemContainerStatusChanged(EventArgs e)
 		{
 			if (InactiveModsListView.ItemContainerGenerator.Status == System.Windows.Controls.Primitives.GeneratorStatus.ContainersGenerated)
 			{
@@ -262,34 +262,18 @@ namespace DivinityModManager.Views
 			}
 		}
 
-		private bool canMoveSelectedMods = true;
+		private IDisposable _updateScroll;
 
 		private void MoveSelectedMods()
 		{
-			List<DivinityModData> selectedMods = new List<DivinityModData>();
-			int nextIndex = -1;
-			DivinityModData targetMod = null;
-			//DivinityApp.Log($"ListHasFocus(ActiveModsListView) = {ListHasFocus(ActiveModsListView)} | ListHasFocus(InactiveModsListView) = {ListHasFocus(InactiveModsListView)}");
 			if (ListHasFocus(ActiveModsListView))
 			{
-				//var selectedMods = ViewModel.ActiveMods.Where(x => x.IsSelected).ToList();
-				//for (int i = 0; i < selectedMods.Count; i++)
-				//{
-				//	ViewModel.ActiveMods.Remove(selectedMods[i]);
-				//	ViewModel.InactiveMods.Add(selectedMods[i]);
-				//}
+				var selectedMods = ViewModel.ActiveMods.Where(x => x.IsSelected).ToList();
 
-				foreach (var m in ViewModel.ActiveMods.Where(x => x.IsSelected))
-				{
-					nextIndex = Math.Min(m.Index + 1, ViewModel.ActiveMods.Count - 1);
-					selectedMods.Add(m);
-				}
-				if (nextIndex > -1)
-				{
-					targetMod = ViewModel.ActiveMods.ElementAtOrDefault(nextIndex);
-					DivinityApp.Log($"nextIndex({nextIndex}) targetMod({targetMod})");
-				}
+				var selectedMod = selectedMods.First();
+				var nextSelectedIndex = ViewModel.ActiveMods.IndexOf(selectedMod);
 
+				var scrollTargetIndex = InactiveModsListView.SelectedIndex;
 				var dropInfo = new ManualDropInfo(selectedMods, InactiveModsListView.SelectedIndex, InactiveModsListView, ViewModel.InactiveMods, ViewModel.ActiveMods);
 				InactiveModsListView.UnselectAll();
 				ViewModel.DropHandler.Drop(dropInfo);
@@ -297,42 +281,48 @@ namespace DivinityModManager.Views
 				string text = $"Moved {selectedMods.Count} {countSuffix} to the inactive mods list.";
 				ScreenReaderHelper.Speak(text);
 				ViewModel.ShowAlert(text, AlertType.Info, 10);
-				canMoveSelectedMods = false;
+				ViewModel.CanMoveSelectedMods = false;
 
 				if (ViewModel.Settings.ShiftListFocusOnSwap)
 				{
 					InactiveModsListView.Focus();
 				}
-				else
-				{
-					ActiveModsListView.Focus();
-				}
 
-				if (targetMod != null && targetMod.IsActive)
+				_updateScroll?.Dispose();
+
+				_updateScroll = RxApp.MainThreadScheduler.Schedule(TimeSpan.FromMilliseconds(250), _ =>
 				{
-					ActiveModsListView.UnselectAll();
-					ActiveModsListView.SelectedItem = targetMod;
-					targetMod.IsSelected = true;
-				}
+					//InactiveModsListView.UpdateLayout();
+					if (scrollTargetIndex <= 0)
+					{
+						ScrollToTop(InactiveModsListView);
+					}
+					else if (scrollTargetIndex >= InactiveModsListView.Items.Count)
+					{
+						ScrollToBottom(InactiveModsListView);
+					}
+					else
+					{
+						ScrollToMod(InactiveModsListView, selectedMod);
+						//FocusMod(InactiveModsListView, selectedMod);
+					}
+
+					if (nextSelectedIndex >= ViewModel.ActiveMods.Count)
+					{
+						nextSelectedIndex = ViewModel.ActiveMods.Count - 1;
+					}
+
+					ActiveModsListView.SelectedIndex = nextSelectedIndex;
+					//FocusMod(ActiveModsListView, ActiveModsListView.SelectedItem);
+				});
 			}
 			else if (ListHasFocus(InactiveModsListView))
 			{
-				//var selectedMods = ViewModel.InactiveMods.Where(x => x.IsSelected).ToList();
-				//for (int i = 0; i < selectedMods.Count; i++)
-				//{
-				//	ViewModel.InactiveMods.Remove(selectedMods[i]);
-				//	ViewModel.ActiveMods.Add(selectedMods[i]);
-				//}
-				foreach (var m in ViewModel.InactiveMods.Where(x => x.IsSelected))
-				{
-					nextIndex = Math.Min(ViewModel.InactiveMods.IndexOf(m) + 1, ViewModel.InactiveMods.Count - 1);
-					selectedMods.Add(m);
-				}
-				if (nextIndex > -1)
-				{
-					targetMod = ViewModel.InactiveMods.FirstOrDefault(x => ViewModel.InactiveMods.IndexOf(x) == nextIndex && !x.IsClassicMod);
-				}
+				var selectedMods = ViewModel.InactiveMods.Where(x => x.IsSelected).ToList();
 
+				var nextSelectedIndex = ViewModel.InactiveMods.IndexOf(selectedMods.First());
+
+				var scrollTargetIndex = ActiveModsListView.SelectedIndex;
 				var dropInfo = new ManualDropInfo(selectedMods, ActiveModsListView.SelectedIndex, ActiveModsListView, ViewModel.ActiveMods, ViewModel.InactiveMods);
 				ActiveModsListView.UnselectAll();
 				ViewModel.DropHandler.Drop(dropInfo);
@@ -341,23 +331,42 @@ namespace DivinityModManager.Views
 				string text = $"Moved {selectedMods.Count} {countSuffix} to the active mods list.";
 				ScreenReaderHelper.Speak(text);
 				ViewModel.ShowAlert(text, AlertType.Info, 10);
-				canMoveSelectedMods = false;
+				ViewModel.CanMoveSelectedMods = false;
 
 				if (ViewModel.Settings.ShiftListFocusOnSwap)
 				{
 					ActiveModsListView.Focus();
 				}
-				else
-				{
-					InactiveModsListView.Focus();
-				}
 
-				if (targetMod != null && !targetMod.IsActive)
+				_updateScroll?.Dispose();
+
+				var selectedMod = selectedMods.First();
+
+				_updateScroll = RxApp.MainThreadScheduler.Schedule(TimeSpan.FromMilliseconds(250), _ =>
 				{
-					InactiveModsListView.UnselectAll();
-					InactiveModsListView.SelectedItem = targetMod;
-					targetMod.IsSelected = true;
-				}
+					//ActiveModsListView.UpdateLayout();
+					if (scrollTargetIndex <= 0)
+					{
+						ScrollToTop(ActiveModsListView);
+					}
+					else if (scrollTargetIndex >= ActiveModsListView.Items.Count)
+					{
+						ScrollToBottom(ActiveModsListView);
+					}
+					else
+					{
+						ScrollToMod(ActiveModsListView, selectedMod);
+						//FocusMod(ActiveModsListView, selectedMod);
+					}
+
+					if (nextSelectedIndex >= ViewModel.InactiveMods.Count)
+					{
+						nextSelectedIndex = ViewModel.InactiveMods.Count - 1;
+					}
+
+					InactiveModsListView.SelectedIndex = nextSelectedIndex;
+					//FocusMod(InactiveModsListView, InactiveModsListView.SelectedItem);
+				});
 			}
 		}
 
@@ -381,6 +390,43 @@ namespace DivinityModManager.Views
 			}
 		}
 
+		public bool FocusMod(ModListView modListView, object mod)
+		{
+			if (modListView.ItemContainerGenerator.ContainerFromItem(mod) is ListViewItem item)
+			{
+				FocusManager.SetFocusedElement(modListView, item);
+				//item.BringIntoView();
+				return true;
+			}
+			return false;
+		}
+
+		public void ScrollToMod(ModListView modListView, DivinityModData mod)
+		{
+			var index = modListView.Items.IndexOf(mod);
+			if(index > -1)
+			{
+				modListView.UpdateLayout();
+				modListView.ScrollIntoView(modListView.Items[index]);
+			}
+		}
+
+		public void ScrollToTop(ModListView modListView)
+		{
+			if(modListView.GetVisualDescendent<ScrollViewer>() is ScrollViewer scrollViewer)
+			{
+				scrollViewer.ScrollToTop();
+			}
+		}
+
+		public void ScrollToBottom(ModListView modListView)
+		{
+			if(modListView.GetVisualDescendent<ScrollViewer>() is ScrollViewer scrollViewer)
+			{
+				scrollViewer.ScrollToBottom();
+			}
+		}
+
 		public HorizontalModLayout()
 		{
 			InitializeComponent();
@@ -388,63 +434,101 @@ namespace DivinityModManager.Views
 			SetupListView(ActiveModsListView);
 			SetupListView(InactiveModsListView);
 
-			ActiveModsListView.SelectionChanged += (object sender, SelectionChangedEventArgs e) =>
-			{
-				if (ActiveModsListView.Items.Count == 0) return;
-				UpdateIsSelected(e, ViewModel.ActiveMods);
-			};
-
-			InactiveModsListView.SelectionChanged += (object sender, SelectionChangedEventArgs e) =>
-			{
-				if (InactiveModsListView.Items.Count == 0) return;
-				UpdateIsSelected(e, ViewModel.InactiveMods);
-			};
-
-			ActiveModsListView.ItemContainerGenerator.StatusChanged += ActiveModListView_ItemContainerStatusChanged;
-			InactiveModsListView.ItemContainerGenerator.StatusChanged += InactiveModListView_ItemContainerStatusChanged;
-
-			this.KeyDown += HorizontalModLayout_KeyDown;
-			this.KeyUp += HorizontalModLayout_KeyUp;
-			this.LostFocus += (o, e) =>
-			{
-				canMoveSelectedMods = true;
-			};
-
 			bool setInitialFocus = true;
-			this.Loaded += (o, e) =>
-			{
-				if (setInitialFocus)
-				{
-					this.ActiveModsListView.Focus();
-					setInitialFocus = false;
-				}
-			};
 
-			DataContextChanged += (o, e) =>
-			{
-				if (e.NewValue != null && e.NewValue is MainWindowViewModel vm)
-				{
-					ViewModel = vm;
-					BindingOperations.SetBinding(ActiveModsListView, ListView.ItemsSourceProperty, new Binding { Path = new PropertyPath("ActiveMods"), Source = ViewModel });
-					BindingOperations.SetBinding(InactiveModsListView, ListView.ItemsSourceProperty, new Binding { Path = new PropertyPath("InactiveMods"), Source = ViewModel });
-				}
-			};
-
-			this.WhenActivated((d) =>
+			this.WhenActivated(d =>
 			{
 				if (ViewModel != null)
 				{
-					ViewModel.OnOrderChanged += AutoSizeNameColumn_ActiveMods;
-					ViewModel.OnOrderChanged += AutoSizeNameColumn_InactiveMods;
+					d(this.Events().KeyUp.Select(e => e.Key != Key.System ? e.Key : e.SystemKey).Subscribe(ViewModel.OnKeyUp));
+					d(this.Events().KeyDown.Select(e => e.Key != Key.System ? e.Key : e.SystemKey).Subscribe(key =>
+					{
+						ViewModel.OnKeyDown(key);
+						HorizontalModLayout_KeyDown(key);
+					}));
+					d(this.Events().LostFocus.Subscribe((e) => ViewModel.CanMoveSelectedMods = true));
+					d(this.Events().Loaded.ObserveOn(RxApp.MainThreadScheduler).Subscribe((e) =>
+					{
+						if (setInitialFocus)
+						{
+							this.ActiveModsListView.Focus();
+							setInitialFocus = false;
+						}
+					}));
+
+					d(this.ActiveModsListView.ItemContainerGenerator.Events().StatusChanged.ObserveOn(RxApp.MainThreadScheduler).Subscribe(ActiveModListView_ItemContainerStatusChanged));
+					d(this.InactiveModsListView.ItemContainerGenerator.Events().StatusChanged.ObserveOn(RxApp.MainThreadScheduler).Subscribe(InactiveModListView_ItemContainerStatusChanged));
+
+					d(Observable.FromEventPattern<SelectionChangedEventArgs>(ActiveModsListView, "SelectionChanged")
+					.ObserveOn(RxApp.MainThreadScheduler)
+					.Subscribe((e) =>
+					{
+						UpdateIsSelected(e.EventArgs, ViewModel.ActiveMods);
+					}));
+
+					d(Observable.FromEventPattern<SelectionChangedEventArgs>(InactiveModsListView, "SelectionChanged")
+					.ObserveOn(RxApp.MainThreadScheduler)
+					.Subscribe((e) =>
+					{
+						UpdateIsSelected(e.EventArgs, ViewModel.InactiveMods);
+					}));
+
+					d(this.ViewModel.WhenAnyValue(x => x.OrderJustLoaded).ObserveOn(RxApp.MainThreadScheduler).Subscribe((b) =>
+					{
+						if(b)
+						{
+							this.AutoSizeNameColumn_ActiveMods();
+							this.AutoSizeNameColumn_InactiveMods();
+						}
+					}));
+
 					ViewModel.Layout = this;
 
-					//ViewModel.Keys.Confirm.AddAction(() =>
-					//{
-					//	if(ListHasFocus(ActiveModsListView) || ListHasFocus(InactiveModsListView))
-					//	{
-					//		//MoveSelectedMods();
-					//	}
-					//});
+					d(this.OneWayBind(ViewModel, vm => vm.ActiveMods, v => v.ActiveModsListView.ItemsSource));
+					d(this.OneWayBind(ViewModel, vm => vm.InactiveMods, v => v.InactiveModsListView.ItemsSource));
+					d(this.OneWayBind(ViewModel, vm => vm.ForceLoadedMods, v => v.ForceLoadedModsListView.ItemsSource));
+
+					d(this.OneWayBind(ViewModel, vm => vm.HasForceLoadedMods, v => v.ForceLoadedModsListView.Visibility, BoolToVisibilityConverter.FromBool));
+					d(this.OneWayBind(ViewModel, vm => vm.HasForceLoadedMods, v => v.ActiveModListViewGridSplitter.Visibility, BoolToVisibilityConverter.FromBool));
+
+					d(this.Bind(ViewModel, vm => vm.ActiveModFilterText, v => v.ActiveModsFilterTextBox.Text));
+					d(this.Bind(ViewModel, vm => vm.InactiveModFilterText, v => v.InactiveModsFilterTextBox.Text));
+
+					d(this.OneWayBind(ViewModel, vm => vm.ActiveModsFilterResultText, v => v.ActiveModsFilterResultText.Text));
+					d(this.OneWayBind(ViewModel, vm => vm.InactiveModsFilterResultText, v => v.InactiveModsFilterResultText.Text));
+					d(this.OneWayBind(ViewModel, vm => vm.TotalActiveModsHidden, v => v.ActiveModsFilterResultText.Visibility, IntToVisibilityConverter.FromInt));
+					d(this.OneWayBind(ViewModel, vm => vm.TotalInactiveModsHidden, v => v.InactiveModsFilterResultText.Visibility, IntToVisibilityConverter.FromInt));
+
+					d(this.OneWayBind(ViewModel, vm => vm.ActiveSelectedText, v => v.ActiveSelectedText.Text));
+					d(this.OneWayBind(ViewModel, vm => vm.ActiveSelected, v => v.ActiveSelectedText.Visibility, IntToVisibilityConverter.FromInt));
+					d(this.OneWayBind(ViewModel, vm => vm.InactiveSelectedText, v => v.InactiveSelectedText.Text));
+					d(this.OneWayBind(ViewModel, vm => vm.InactiveSelected, v => v.InactiveSelectedText.Visibility, IntToVisibilityConverter.FromInt));
+
+					var gridLengthConverter = new GridLengthConverter();
+					var zeroHeight = (GridLength)gridLengthConverter.ConvertFrom(0);
+					var forceModsHeight = (GridLength)gridLengthConverter.ConvertFrom("1*");
+
+					d(ViewModel.WhenAnyValue(x => x.HasForceLoadedMods).ObserveOn(RxApp.MainThreadScheduler).Subscribe((b) =>
+					{
+						foreach(var row in this.ActiveModListGrid.RowDefinitions.Where(x => x.Name != "ActiveModsListRow"))
+						{
+							if (b)
+							{
+								if(row.Name == "ActiveModsListGridRow")
+								{
+									row.Height = GridLength.Auto;
+								}
+								else if(row.Name == "ActiveModsListForcedModsRow")
+								{
+									row.Height = forceModsHeight;
+								}
+							}
+							else
+							{
+								row.Height = zeroHeight;
+							}
+						}
+					}));
 
 					ViewModel.Keys.MoveFocusLeft.AddAction(() =>
 					{
@@ -522,7 +606,7 @@ namespace DivinityModManager.Views
 
 					//ActiveModsListView.InputBindings.Add(new InputBinding(ViewModel.MoveRightCommand, new KeyGesture(Key.Right)));
 
-					ViewModel.WhenAnyValue(x => x.ActiveSelected).Subscribe((c) =>
+					d(ViewModel.WhenAnyValue(x => x.ActiveSelected).Subscribe((c) =>
 					{
 						if (c > 1 && DivinityApp.IsScreenReaderActive())
 						{
@@ -533,9 +617,9 @@ namespace DivinityModManager.Views
 							}
 							peer.RaiseAutomationEvent(AutomationEvents.LiveRegionChanged);
 						}
-					}).DisposeWith(d);
+					}));
 
-					ViewModel.WhenAnyValue(x => x.InactiveSelected).Subscribe((c) =>
+					d(ViewModel.WhenAnyValue(x => x.InactiveSelected).Subscribe((c) =>
 					{
 						if (c > 1 && DivinityApp.IsScreenReaderActive())
 						{
@@ -546,60 +630,33 @@ namespace DivinityModManager.Views
 							}
 							peer.RaiseAutomationEvent(AutomationEvents.LiveRegionChanged);
 						}
-					}).DisposeWith(d);
+					}));
 				}
 				//BindingHelper.CreateCommandBinding(ViewModel.View.EditFocusActiveListMenuItem, "MoveLeftCommand", ViewModel);
-
-
-				// when the ViewModel gets deactivated
-				Disposable.Create(() =>
-				{
-					if (ViewModel != null)
-					{
-						ViewModel.OnOrderChanged -= AutoSizeNameColumn_ActiveMods;
-						ViewModel.OnOrderChanged -= AutoSizeNameColumn_InactiveMods;
-					}
-				}).DisposeWith(d);
 			});
 		}
 
-		private void HorizontalModLayout_KeyDown(object sender, KeyEventArgs e)
+		private void HorizontalModLayout_KeyDown(Key key)
 		{
-			var key = e.Key != Key.System ? e.Key : e.SystemKey;
-			switch (key)
-			{
-				case Key.Up:
-				case Key.Right:
-				case Key.Down:
-				case Key.Left:
-					DivinityApp.IsKeyboardNavigating = true;
-					break;
-			}
-
-			var keyIsDown = e.Key == ViewModel.Keys.Confirm.Key && (ViewModel.Keys.Confirm.Modifiers == ModifierKeys.None || Keyboard.Modifiers.HasFlag(ViewModel.Keys.Confirm.Modifiers));
+			var keyIsDown = key == ViewModel.Keys.Confirm.Key && (ViewModel.Keys.Confirm.Modifiers == ModifierKeys.None || Keyboard.Modifiers.HasFlag(ViewModel.Keys.Confirm.Modifiers));
 			if (!keyIsDown && (Keyboard.IsKeyDown(Key.LeftAlt) || Keyboard.IsKeyDown(Key.RightAlt)))
 			{
-				if (e.SystemKey == Key.Right && ActiveModsListView.IsKeyboardFocusWithin)
+				if (key == Key.Right && ActiveModsListView.IsKeyboardFocusWithin)
 				{
 					keyIsDown = true;
 				}
-				else if (e.SystemKey == Key.Left && InactiveModsListView.IsKeyboardFocusWithin)
+				else if (key == Key.Left && InactiveModsListView.IsKeyboardFocusWithin)
 				{
 					keyIsDown = true;
 				}
 			}
-			if (canMoveSelectedMods && keyIsDown)
+			if (ViewModel.CanMoveSelectedMods && keyIsDown)
 			{
 				DivinityApp.IsKeyboardNavigating = true;
-				MoveSelectedMods();
-			}
-		}
-
-		private void HorizontalModLayout_KeyUp(object sender, KeyEventArgs e)
-		{
-			if (e.Key == ViewModel.Keys.Confirm.Key)
-			{
-				canMoveSelectedMods = true;
+				if(ViewModel.ActiveSelected > 0 || ViewModel.InactiveSelected > 0)
+				{
+					MoveSelectedMods();
+				}
 			}
 		}
 
@@ -678,7 +735,7 @@ namespace DivinityModManager.Views
 
 		private int _FontSizeMeasurePadding = 36;
 
-		public void AutoSizeNameColumn_ActiveMods(object sender, EventArgs e)
+		public void AutoSizeNameColumn_ActiveMods()
 		{
 			if (ViewModel == null || ActiveModsListView.UserResizedColumns) return;
 			if (ViewModel.ActiveMods.Count > 0 && ActiveModsListView.View is GridView gridView && gridView.Columns.Count >= 2)
@@ -691,7 +748,7 @@ namespace DivinityModManager.Views
 						if (!String.IsNullOrEmpty(longestName))
 						{
 							//DivinityApp.LogMessage($"Autosizing active mods grid for name {longestName}");
-							var targetWidth = MeasureText(longestName,
+							var targetWidth = MeasureText(ActiveModsListView, longestName,
 								ActiveModsListView.FontFamily,
 								ActiveModsListView.FontStyle,
 								ActiveModsListView.FontWeight,
@@ -708,7 +765,7 @@ namespace DivinityModManager.Views
 			}
 		}
 
-		public void AutoSizeNameColumn_InactiveMods(object sender, EventArgs e)
+		public void AutoSizeNameColumn_InactiveMods()
 		{
 			if (ViewModel == null || InactiveModsListView.UserResizedColumns) return;
 			if (ViewModel.InactiveMods.Count > 0 && InactiveModsListView.View is GridView gridView && gridView.Columns.Count >= 2)
@@ -718,7 +775,7 @@ namespace DivinityModManager.Views
 				{
 					InactiveModsListView.Resizing = true;
 					//DivinityApp.LogMessage($"Autosizing inactive mods grid for name {longestName}");
-					gridView.Columns[0].Width = MeasureText(longestName,
+					gridView.Columns[0].Width = MeasureText(InactiveModsListView, longestName,
 						InactiveModsListView.FontFamily,
 						InactiveModsListView.FontStyle,
 						InactiveModsListView.FontWeight,
@@ -729,15 +786,15 @@ namespace DivinityModManager.Views
 		}
 
 		// Source: https://stackoverflow.com/a/22420728
-		private static Size MeasureTextSize(string text, FontFamily fontFamily, FontStyle fontStyle,
+		private static Size MeasureTextSize(Visual target, string text, FontFamily fontFamily, FontStyle fontStyle,
 			FontWeight fontWeight, FontStretch fontStretch, double fontSize)
 		{
 			var typeFace = new Typeface(fontFamily, fontStyle, fontWeight, fontStretch);
-			FormattedText ft = new FormattedText(text, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, typeFace, fontSize, Brushes.Black);
+			var ft = new FormattedText(text, CultureInfo.GetCultureInfo("en-us"), FlowDirection.LeftToRight, typeFace, fontSize, Brushes.Black, VisualTreeHelper.GetDpi(target).PixelsPerDip);
 			return new Size(ft.Width, ft.Height);
 		}
 
-		private static Size MeasureText(string text,
+		private static Size MeasureText(Visual target, string text,
 			FontFamily fontFamily,
 			FontStyle fontStyle,
 			FontWeight fontWeight,
@@ -748,7 +805,7 @@ namespace DivinityModManager.Views
 
 			if (!typeface.TryGetGlyphTypeface(out glyphTypeface))
 			{
-				return MeasureTextSize(text, fontFamily, fontStyle, fontWeight, fontStretch, fontSize);
+				return MeasureTextSize(target, text, fontFamily, fontStyle, fontWeight, fontStretch, fontSize);
 			}
 
 			double totalWidth = 0;

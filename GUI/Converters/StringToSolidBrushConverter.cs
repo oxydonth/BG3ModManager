@@ -4,22 +4,21 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Windows;
 using System.Windows.Data;
+using System.Windows.Media;
 
 namespace DivinityModManager.Converters
 {
-	public class IntToVisibilityConverter : IValueConverter
+	public class StringToSolidBrushConverter : IValueConverter
 	{
-		public static Visibility FromInt(int v) => v > 0 ? Visibility.Visible : Visibility.Collapsed;
-
 		public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
 		{
-			if(value is int intVal)
+			if (value is string str)
 			{
-				return intVal == 0 ? Visibility.Collapsed : Visibility.Visible;
+				var color = (Color)ColorConverter.ConvertFromString(str);
+				return new SolidColorBrush(color);
 			}
-			return Visibility.Visible;
+			return null;
 		}
 
 		public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

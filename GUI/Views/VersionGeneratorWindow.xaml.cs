@@ -20,92 +20,90 @@ using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Concurrency;
 using ReactiveUI.Fody.Helpers;
+using System.Reactive.Linq;
+using DivinityModManager.Controls;
+using Xceed.Wpf.Toolkit;
 
 namespace DivinityModManager.Views
 {
-	public class VersionGeneratorData : ReactiveObject
+	public class VersionGeneratorViewModel : ReactiveObject
 	{
-		[Reactive] public long VersionNumber { get; set; }
+		[Reactive] public DivinityModVersion Version { get; set; }
+		[Reactive] public string Text { get; set; }
 
-		[Reactive] public long Major { get; set; }
+		public ICommand CopyCommand { get; private set; }
+		public ICommand ResetCommand { get; private set; }
+		public ReactiveCommand<KeyboardFocusChangedEventArgs, Unit> UpdateVersionFromTextCommand { get; private set; }
 
-		[Reactive] public long Minor { get; set; }
+		public VersionGeneratorViewModel(AlertBar alert)
+		{
+			Version = new DivinityModVersion(268435456);
 
-		[Reactive] public long Revision { get; set; }
+			CopyCommand = ReactiveCommand.Create(() =>
+			{
+				Clipboard.SetText(Version.VersionInt.ToString());
+				alert.SetSuccessAlert($"Copied {Version.VersionInt} to the clipboard.");
+			});
 
-		[Reactive] public long Build { get; set; }
+			ResetCommand = ReactiveCommand.Create(() =>
+			{
+				Version.ParseInt(268435456);
+				Text = "268435456";
+				alert.SetWarningAlert($"Reset version number.");
+			});
+
+			UpdateVersionFromTextCommand = ReactiveCommand.Create<KeyboardFocusChangedEventArgs, Unit>(e =>
+			{
+				if (Int32.TryParse(Text, out int version))
+				{
+					Version.ParseInt(version);
+				}
+				else
+				{
+					Version.ParseInt(268435456);
+				}
+				return Unit.Default;
+			});
+
+			this.WhenAnyValue(x => x.Version.VersionInt).Throttle(TimeSpan.FromMilliseconds(50)).ObserveOn(RxApp.MainThreadScheduler).Subscribe(v =>
+			{
+				Text = v.ToString();
+			});
+		}
 	}
+
+	public class VersionGeneratorWindowBase : HideWindowBase<VersionGeneratorViewModel> { }
 
 	/// <summary>
 	/// Interaction logic for VersionGenerator.xaml
 	/// </summary>
-	public partial class VersionGeneratorWindow : HideWindowBase
+	public partial class VersionGeneratorWindow : VersionGeneratorWindowBase
 	{
-		public DivinityModVersion2 VersionData { get; set; } = new DivinityModVersion2(36028797018963968UL);
+		private static readonly Regex _numberOnlyRegex = new Regex("[^0-9]+");
 
 		public VersionGeneratorWindow()
 		{
 			InitializeComponent();
 
-			DataContext = VersionData;
-		}
+			ViewModel = new VersionGeneratorViewModel(AlertBar);
 
-		private Regex _numberOnlyRegex = new Regex("[^0-9]+");
-		private void VersionNumberTextBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
-		{
-			e.Handled = _numberOnlyRegex.IsMatch(e.Text);
-		}
-
-		private void VersionNumberTextBox_TextChanged(object sender, TextChangedEventArgs e)
-		{
-			
-		}
-
-		private void NumberSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
-		{
-			if (VersionNumberTextBox != null)
+			this.WhenActivated(d =>
 			{
-				RxApp.MainThreadScheduler.Schedule(TimeSpan.FromMilliseconds(50), _ =>
-				{
-					VersionNumberTextBox.Text = VersionData.VersionInt.ToString();
-				});
-			}
-		}
+				d(this.Bind(ViewModel, vm => vm.Text, v => v.VersionNumberTextBox.Text));
+				d(this.Bind(ViewModel, vm => vm.Version.Major, v => v.MajorIntegerUpDown.Value));
+				d(this.Bind(ViewModel, vm => vm.Version.Minor, v => v.MinorIntegerUpDown.Value));
+				d(this.Bind(ViewModel, vm => vm.Version.Revision, v => v.RevisionIntegerUpDown.Value));
+				d(this.Bind(ViewModel, vm => vm.Version.Build, v => v.BuildIntegerUpDown.Value));
+				d(this.BindCommand(ViewModel, vm => vm.CopyCommand, v => v.CopyButton));
+				d(this.BindCommand(ViewModel, vm => vm.ResetCommand, v => v.ResetButton));
 
-		private void CopyButton_Click(object sender, RoutedEventArgs e)
-		{
-			Clipboard.SetText(VersionData.VersionInt.ToString());
-			AlertBar.SetSuccessAlert($"Copied {VersionData.VersionInt} to the clipboard.");
-		}
-		private void ResetButton_Click(object sender, RoutedEventArgs e)
-		{
-			VersionData.ParseInt(36028797018963968UL);
-			VersionNumberTextBox.Text = "36028797018963968";
-			AlertBar.SetWarningAlert($"Reset version number.");
-		}
-
-		private void NumberSlider_LostFocus(object sender, RoutedEventArgs e)
-		{
-			if (VersionNumberTextBox != null)
-			{
-				VersionNumberTextBox.Text = VersionData.VersionInt.ToString();
-			}
-		}
-
-		private void VersionNumberTextBox_LostFocus(object sender, RoutedEventArgs e)
-		{
-			if (sender is TextBox tb)
-			{
-				if (UInt64.TryParse(tb.Text, out ulong version))
+				var tbEvents = this.VersionNumberTextBox.Events();
+				d(tbEvents.LostKeyboardFocus.ObserveOn(RxApp.MainThreadScheduler).InvokeCommand(ViewModel.UpdateVersionFromTextCommand));
+				d(tbEvents.PreviewTextInput.ObserveOn(RxApp.MainThreadScheduler).Subscribe((e) =>
 				{
-					VersionData.ParseInt(version);
-				}
-				else
-				{
-					VersionData.ParseInt(36028797018963968UL);
-					tb.Text = "36028797018963968";
-				}
-			}
+					e.Handled = _numberOnlyRegex.IsMatch(e.Text);
+				}));
+			});
 		}
 	}
 }

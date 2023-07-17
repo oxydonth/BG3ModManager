@@ -20,6 +20,7 @@ using System.Runtime.Serialization;
 using System.Windows;
 using System.Windows.Automation.Peers;
 using System.Windows.Input;
+using System.Reflection;
 
 namespace DivinityModManager.Models
 {
@@ -27,7 +28,7 @@ namespace DivinityModManager.Models
 	[ScreenReaderHelper(Name = "DisplayName", HelpText = "HelpText")]
 	public class DivinityModData : DivinityBaseModData, ISelectable
 	{
-		[Reactive][DataMember] public int Index { get; set; } = -1;
+		[Reactive][DataMember] public int Index { get; set; }
 
 		[DataMember(Name = "FileName")]
 		public string OutputPakName
@@ -45,7 +46,8 @@ namespace DivinityModManager.Models
 			}
 		}
 
-		[Reactive][DataMember] public string Type { get; set; }
+		[Reactive][DataMember(Name = "Type")] public string ModType { get; set; }
+
 		[DataMember] public List<string> Modes { get; set; } = new List<string>();
 
 		[DataMember] public string Targets { get; set; }
@@ -53,19 +55,21 @@ namespace DivinityModManager.Models
 
 		private DivinityExtenderModStatus extenderModStatus = DivinityExtenderModStatus.NONE;
 
+		public static int CurrentExtenderVersion { get; set; } = -1;
+
 		public DivinityExtenderModStatus ExtenderModStatus
 		{
 			get => extenderModStatus;
 			set
 			{
 				this.RaiseAndSetIfChanged(ref extenderModStatus, value);
-				UpdateScriptExtenderToolTip();
+				UpdateOsirisExtenderToolTip(CurrentExtenderVersion);
 			}
 		}
 
 		public string ScriptExtenderSupportToolTipText { get; private set; }
 
-		public void UpdateScriptExtenderToolTip()
+		public void UpdateOsirisExtenderToolTip(int currentVersion = -1)
 		{
 			switch (ExtenderModStatus)
 			{
@@ -110,7 +114,7 @@ namespace DivinityModManager.Models
 					}
 					else
 					{
-						ScriptExtenderSupportToolTipText = $"Supports the Script Extender";
+						OsirisExtenderSupportToolTipText = "Supports the Osiris Extender";
 					}
 					break;
 				case DivinityExtenderModStatus.NONE:
@@ -118,7 +122,19 @@ namespace DivinityModManager.Models
 					ScriptExtenderSupportToolTipText = "";
 					break;
 			}
-			this.RaisePropertyChanged("ScriptExtenderSupportToolTipText");
+			if (OsirisExtenderSupportToolTipText != "")
+			{
+				OsirisExtenderSupportToolTipText += Environment.NewLine;
+			}
+			if (currentVersion > -1)
+			{
+				OsirisExtenderSupportToolTipText += $"(Currently installed version is v{currentVersion})";
+			}
+			else
+			{
+				OsirisExtenderSupportToolTipText += "(No installed extender version found)";
+			}
+			this.RaisePropertyChanged("OsirisExtenderSupportToolTipText");
 		}
 
 		[DataMember] public DivinityModScriptExtenderConfig ScriptExtenderData { get; set; }
@@ -146,25 +162,26 @@ namespace DivinityModManager.Models
 			}
 		}
 
-		private ObservableAsPropertyHelper<bool> hasToolTip;
+		private readonly ObservableAsPropertyHelper<bool> hasToolTip;
 
 		public bool HasToolTip => hasToolTip.Value;
 
-		private ObservableAsPropertyHelper<int> dependencyCount;
+		private readonly ObservableAsPropertyHelper<int> dependencyCount;
 		public int TotalDependencies => dependencyCount.Value;
 
-		private ObservableAsPropertyHelper<bool> hasDependencies;
+		private readonly ObservableAsPropertyHelper<bool> hasDependencies;
 
 		public bool HasDependencies => hasDependencies.Value;
 
-		private ObservableAsPropertyHelper<Visibility> dependencyVisibility;
+		private readonly ObservableAsPropertyHelper<Visibility> dependencyVisibility;
 		public Visibility DependencyVisibility => dependencyVisibility.Value;
 
-		[Reactive] public bool HasScriptExtenderSettings { get; set; } = false;
+		[Reactive] public bool HasOsirisExtenderSettings { get; set; }
 
-		[Reactive] public bool IsEditorMod { get; set; } = false;
+		[Reactive] public bool IsEditorMod { get; set; }
+		[Reactive] public bool IsForcedLoaded { get; set; }
 
-		[Reactive] public bool IsActive { get; set; } = false;
+		[Reactive] public bool IsActive { get; set; }
 
 		private bool isSelected = false;
 
@@ -181,9 +198,20 @@ namespace DivinityModManager.Models
 			}
 		}
 
-		[Reactive] public bool CanDrag { get; set; } = true;
+		private readonly ObservableAsPropertyHelper<bool> canDelete;
+		public bool CanDelete => canDelete.Value;
 
-		[Reactive] public bool DeveloperMode { get; set; } = false;
+		private readonly ObservableAsPropertyHelper<bool> canAddToLoadOrder;
+		public bool CanAddToLoadOrder => canAddToLoadOrder.Value;
+
+
+		[Reactive] public bool CanDrag { get; set; }
+
+		[Reactive] public bool DeveloperMode { get; set; }
+
+		[Reactive] public bool HasColorOverride { get; set; }
+		[Reactive] public string SelectedColor { get; set; }
+		[Reactive] public string ListColor { get; set; }
 
 		private DivinityModWorkshopData workshopData = new DivinityModWorkshopData();
 
@@ -195,12 +223,20 @@ namespace DivinityModManager.Models
 
 		//public DivinityModWorkshopData WorkshopData { get; private set; } = new DivinityModWorkshopData();
 		public ICommand OpenWorkshopPageCommand { get; private set; }
+		public ICommand OpenWorkshopPageInSteamCommand { get; private set; }
 
-		public string GetURL()
+		public string GetURL(bool asSteamBrowserProtocol = false)
 		{
 			if (WorkshopData != null && WorkshopData.ID != "")
 			{
-				return $"https://steamcommunity.com/sharedfiles/filedetails/?id={WorkshopData.ID}";
+				if (!asSteamBrowserProtocol)
+				{
+					return $"https://steamcommunity.com/sharedfiles/filedetails/?id={WorkshopData.ID}";
+				}
+				else
+				{
+					return $"steam://url/CommunityFilePage/{WorkshopData.ID}";
+				}
 			}
 			return "";
 		}
@@ -211,6 +247,17 @@ namespace DivinityModManager.Models
 			if (!String.IsNullOrEmpty(url))
 			{
 				System.Diagnostics.Process.Start(url);
+
+			}
+		}
+
+		public void OpenSteamWorkshopPageInSteam()
+		{
+			var url = GetURL(true);
+			if (!String.IsNullOrEmpty(url))
+			{
+				System.Diagnostics.Process.Start(url);
+
 			}
 		}
 
@@ -242,21 +289,57 @@ namespace DivinityModManager.Models
 
 		public DivinityModData(bool isBaseGameMod = false) : base()
 		{
+			Index = -1;
+			CanDrag = true;
+
 			var connection = this.Dependencies.Connect().ObserveOn(RxApp.MainThreadScheduler);
 			connection.Bind(out displayedDependencies).DisposeMany().Subscribe();
 			dependencyCount = connection.Count().StartWith(0).ToProperty(this, nameof(TotalDependencies));
 			hasDependencies = this.WhenAnyValue(x => x.TotalDependencies, c => c > 0).StartWith(false).ToProperty(this, nameof(HasDependencies));
 			dependencyVisibility = this.WhenAnyValue(x => x.HasDependencies, b => b ? Visibility.Visible : Visibility.Collapsed).StartWith(Visibility.Collapsed).ToProperty(this, nameof(DependencyVisibility));
-			this.WhenAnyValue(x => x.IsActive, x => x.IsClassicMod).Subscribe((b) =>
+			this.WhenAnyValue(x => x.IsActive, x => x.IsClassicMod, x => x.IsForcedLoaded).Subscribe((b) =>
 			{
-				if (b.Item1)
+				if (b.Item3)
 				{
-					//Allow removing a classic mod from the active list.
-					CanDrag = true;
+					CanDrag = false;
 				}
 				else
 				{
-					CanDrag = !b.Item2;
+					if (b.Item1)
+					{
+						//Allow removing a classic mod from the active list.
+						CanDrag = true;
+					}
+					else
+					{
+						CanDrag = !b.Item2;
+					}
+				}
+			});
+
+			this.WhenAnyValue(x => x.IsClassicMod, x => x.IsForcedLoaded, x => x.IsEditorMod).Subscribe((b) =>
+			{
+				if (b.Item1)
+				{
+					this.SelectedColor = "#32BF0808";
+					this.ListColor = "#32FA0202";
+					HasColorOverride = true;
+				}
+				else if (b.Item2)
+				{
+					this.SelectedColor = "#32F38F00";
+					this.ListColor = "#32C17200";
+					HasColorOverride = true;
+				}
+				else if (b.Item3)
+				{
+					this.SelectedColor = "#6400ED48";
+					this.ListColor = "#0C00FF4D";
+					HasColorOverride = true;
+				}
+				else
+				{
+					HasColorOverride = false;
 				}
 			});
 
@@ -272,6 +355,7 @@ namespace DivinityModManager.Models
 			{
 				var canOpenWorkshopLink = this.WhenAnyValue(x => x.WorkshopData.ID, (id) => !String.IsNullOrEmpty(id));
 				OpenWorkshopPageCommand = ReactiveCommand.Create(OpenSteamWorkshopPage, canOpenWorkshopLink);
+				OpenWorkshopPageInSteamCommand = ReactiveCommand.Create(OpenSteamWorkshopPageInSteam, canOpenWorkshopLink);
 			}
 			else
 			{
@@ -283,6 +367,11 @@ namespace DivinityModManager.Models
 			hasToolTip = this.WhenAnyValue(x => x.Description, x => x.HasDependencies, x => x.UUID).
 				Select(x => !DivinityApp.IsScreenReaderActive() && (
 				!String.IsNullOrEmpty(x.Item1) || x.Item2 || !String.IsNullOrEmpty(x.Item3))).StartWith(true).ToProperty(this, nameof(HasToolTip));
+
+			canDelete = this.WhenAnyValue(x => x.IsEditorMod, x => x.IsLarianMod, x => x.FilePath,
+				(a, b, c) => !a && !b && File.Exists(c)).StartWith(false).ToProperty(this, nameof(CanDelete));
+			canAddToLoadOrder = this.WhenAnyValue(x => x.ModType, x => x.IsLarianMod, x => x.IsForcedLoaded,
+				(a, b, c) => a != "Adventure" && !b && !c).StartWith(true).ToProperty(this, nameof(CanAddToLoadOrder));
 		}
 	}
 }
