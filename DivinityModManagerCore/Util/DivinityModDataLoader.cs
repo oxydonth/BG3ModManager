@@ -1176,7 +1176,7 @@ namespace DivinityModManager.Util
 
 		public static bool ExportedSelectedProfile(string profilePath, string profileUUID)
 		{
-			var conversionParams = ResourceConversionParameters.FromGameVersion(LSLib.LS.Enums.Game.DivinityOriginalSin2DE);
+			var conversionParams = ResourceConversionParameters.FromGameVersion(DivinityApp.GAME);
 			var playerprofilesFile = Path.Combine(profilePath, "playerprofiles.lsb");
 			if (File.Exists(playerprofilesFile))
 			{
@@ -1904,12 +1904,14 @@ namespace DivinityModManager.Util
 			try
 			{
 				var modResources = new ModResources();
-				var modHelper = new ModPathVisitor(modResources);
-				modHelper.Game = LSLib.LS.Story.Compiler.TargetGame.BG3;
-				modHelper.CollectGlobals = false;
-				modHelper.CollectLevels = false;
-				modHelper.CollectStoryGoals = false;
-				modHelper.CollectStats = false;
+				var modHelper = new ModPathVisitor(modResources)
+				{
+					Game = DivinityApp.GAME_COMPILER,
+					CollectGlobals = false,
+					CollectLevels = false,
+					CollectStoryGoals = false,
+					CollectStats = false
+				};
 
 				modHelper.DiscoverBuiltinPackages(gameDataPath);
 
@@ -1995,7 +1997,7 @@ namespace DivinityModManager.Util
 				var modResources = new ModResources();
 				var modHelper = new ModPathVisitor(modResources)
 				{
-					Game = LSLib.LS.Story.Compiler.TargetGame.BG3,
+					Game = DivinityApp.GAME_COMPILER,
 					CollectGlobals = false,
 					CollectLevels = false,
 					CollectStoryGoals = false,

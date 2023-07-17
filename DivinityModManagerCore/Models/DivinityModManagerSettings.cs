@@ -42,7 +42,7 @@ namespace DivinityModManager.Models
 		[SettingsEntry("Enable DirectX 11 Mode", "If enabled, when launching the game, bg3_dx11.exe is used instead")]
 		[DataMember][Reactive] public bool LaunchDX11 { get; set; } = false;
 
-		[SettingsEntry("Workshop Path", "The Steam Workshop folder for Divinity: Original Sin 2\nUsed for detecting mod updates and new mods to be copied into the local mods folder\nExample: Steam/steamapps/workshop/content/435150")]
+		[SettingsEntry("Workshop Path", "The Steam Workshop folder for Baldur's Gate 3\nUsed for detecting mod updates and new mods to be copied into the local mods folder\nExample: Steam/steamapps/workshop/content/1086940")]
 		[DataMember][Reactive] public string WorkshopPath { get; set; }
 
 

@@ -34,7 +34,7 @@ namespace DivinityModManager.Models
 		[Reactive] public string DocumentsProfilesPath { get; set; }
 
 		/// <summary>
-		/// The path to %LOCALAPPDATA%\Larian Studios\Divinity Original Sin 2 Definitive Edition\GMCampaigns
+		/// The path to %LOCALAPPDATA%\Larian Studios\Baldur's Gate 3\DMCampaigns
 		/// </summary>
 		[Reactive] public string DocumentsGMCampaignsPath { get; set; }
 
