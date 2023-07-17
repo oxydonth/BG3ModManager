@@ -63,13 +63,13 @@ namespace DivinityModManager.Models
 			set
 			{
 				this.RaiseAndSetIfChanged(ref extenderModStatus, value);
-				UpdateOsirisExtenderToolTip(CurrentExtenderVersion);
+				UpdateScriptExtenderToolTip(CurrentExtenderVersion);
 			}
 		}
 
 		public string ScriptExtenderSupportToolTipText { get; private set; }
 
-		public void UpdateOsirisExtenderToolTip(int currentVersion = -1)
+		public void UpdateScriptExtenderToolTip(int currentVersion = -1)
 		{
 			switch (ExtenderModStatus)
 			{
@@ -114,7 +114,7 @@ namespace DivinityModManager.Models
 					}
 					else
 					{
-						OsirisExtenderSupportToolTipText = "Supports the Osiris Extender";
+						ScriptExtenderSupportToolTipText = "Supports the Script Extender";
 					}
 					break;
 				case DivinityExtenderModStatus.NONE:
@@ -122,19 +122,19 @@ namespace DivinityModManager.Models
 					ScriptExtenderSupportToolTipText = "";
 					break;
 			}
-			if (OsirisExtenderSupportToolTipText != "")
+			if (ScriptExtenderSupportToolTipText != "")
 			{
-				OsirisExtenderSupportToolTipText += Environment.NewLine;
+				ScriptExtenderSupportToolTipText += Environment.NewLine;
 			}
 			if (currentVersion > -1)
 			{
-				OsirisExtenderSupportToolTipText += $"(Currently installed version is v{currentVersion})";
+				ScriptExtenderSupportToolTipText += $"(Currently installed version is v{currentVersion})";
 			}
 			else
 			{
-				OsirisExtenderSupportToolTipText += "(No installed extender version found)";
+				ScriptExtenderSupportToolTipText += "(No installed extender version found)";
 			}
-			this.RaisePropertyChanged("OsirisExtenderSupportToolTipText");
+			this.RaisePropertyChanged("ScriptExtenderSupportToolTipText");
 		}
 
 		[DataMember] public DivinityModScriptExtenderConfig ScriptExtenderData { get; set; }
@@ -176,7 +176,7 @@ namespace DivinityModManager.Models
 		private readonly ObservableAsPropertyHelper<Visibility> dependencyVisibility;
 		public Visibility DependencyVisibility => dependencyVisibility.Value;
 
-		[Reactive] public bool HasOsirisExtenderSettings { get; set; }
+		[Reactive] public bool HasScriptExtenderSettings { get; set; }
 
 		[Reactive] public bool IsEditorMod { get; set; }
 		[Reactive] public bool IsForcedLoaded { get; set; }

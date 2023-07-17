@@ -1,4 +1,4 @@
-﻿<local:HideWindowBase
+﻿<local:SettingsWindowBase
 	x:Class="DivinityModManager.Views.SettingsWindow"
 	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -100,7 +100,7 @@
 						Margin="10,0"
 						ChildMargin="4"
 						ColumnCount="2"
-						Columns="*,*"
+						Columns="auto,*"
 						RowCount="11"
 						RowHeight="*"
 						Rows="auto,auto,auto,auto,auto,auto,auto,auto,auto,auto,auto">
@@ -114,11 +114,19 @@
 							VerticalAlignment="Center"
 							Text="{Binding GameDataPath, UpdateSourceTrigger=PropertyChanged, FallbackValue=''}"
 							TextAlignment="Left" />
-						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="GameExecutablePath" Text="Game Executable Path" ToolTip="The path to bg3.exe." />
+						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="GameExecutablePath" />
 						<controls:UnfocusableTextBox
 							VerticalAlignment="Center"
 							Text="{Binding GameExecutablePath, UpdateSourceTrigger=PropertyChanged, FallbackValue=''}"
 							TextAlignment="Left" />
+						<!--<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="WorkshopPath" />
+						<controls:UnfocusableTextBox
+							x:Name="WorkshopPathTextbox"
+							VerticalAlignment="Center"
+							GotFocus="WorkshopPathTextbox_GotFocus"
+							LostFocus="WorkshopPathTextbox_LostFocus"
+							Text="{Binding WorkshopPath, UpdateSourceTrigger=PropertyChanged, FallbackValue=''}"
+							TextAlignment="Left" />-->
 						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="LoadOrderPath" />
 						<controls:UnfocusableTextBox
 							VerticalAlignment="Center"
@@ -134,8 +142,12 @@
 						<CheckBox VerticalAlignment="Center" IsChecked="{Binding CheckForUpdates, UpdateSourceTrigger=PropertyChanged}" />
 						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="DisableMissingModWarnings" />
 						<CheckBox VerticalAlignment="Center" IsChecked="{Binding DisableMissingModWarnings, UpdateSourceTrigger=PropertyChanged}" />
+						<!--<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="DisableWorkshopTagCheck" />
+						<CheckBox VerticalAlignment="Center" IsChecked="{Binding DisableWorkshopTagCheck, UpdateSourceTrigger=PropertyChanged}" />-->
 						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="ShiftListFocusOnSwap" />
 						<CheckBox VerticalAlignment="Center" IsChecked="{Binding ShiftListFocusOnSwap, UpdateSourceTrigger=PropertyChanged}" />
+						<!--<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="AutomaticallyLoadDMCampaignMods" />
+						<CheckBox VerticalAlignment="Center" IsChecked="{Binding AutomaticallyLoadDMCampaignMods, UpdateSourceTrigger=PropertyChanged}" />-->
 						<TextBlock Text="On Game Launch" />
 						<ComboBox
 							DisplayMemberPath="Description"
@@ -147,35 +159,6 @@
 						<CheckBox VerticalAlignment="Center" IsChecked="{Binding LaunchDX11, UpdateSourceTrigger=PropertyChanged}" />
 					</autogrid:AutoGrid>
 				</ScrollViewer>
-			</TabItem>
-			<!--Visibility="{Binding ExtenderSettings.ExtenderIsAvailable, Converter={StaticResource BoolToVisibilityConverter}}"-->
-			<TabItem
-				x:Name="ScriptExtenderTab"
-				FocusManager.FocusedElement="{Binding ElementName=ExtenderSettingsAutoGrid}"
-				Header="Script Extender">
-				<Grid>
-					<Grid.RowDefinitions>
-						<RowDefinition Height="*" />
-						<RowDefinition Height="auto" />
-					</Grid.RowDefinitions>
-					<ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-						<autogrid:AutoGrid
-							x:Name="ExtenderSettingsAutoGrid"
-							Margin="10,0"
-							ChildMargin="4"
-							ColumnCount="2"
-							Columns="*,*"
-							RowCount="1"
-							RowHeight="*"
-							Rows="auto">
-							<TextBlock Text="Export Default Values" ToolTip="Export all values, even if it matches a default extender value." />
-							<CheckBox
-								VerticalAlignment="Center"
-								IsChecked="{Binding ExportDefaultExtenderSettings, UpdateSourceTrigger=PropertyChanged}"
-								ToolTip="Default: False (Unchecked)" />
-						</autogrid:AutoGrid>
-					</ScrollViewer>
-				</Grid>
 			</TabItem>
 			<TabItem
 				x:Name="KeybindingsTabItem"
@@ -257,7 +240,7 @@
 						Margin="10,0"
 						ChildMargin="2"
 						ColumnCount="2"
-						Columns="*,*"
+						Columns="auto,*"
 						RowCount="4"
 						RowHeight="*"
 						Rows="auto,auto,auto,auto">
@@ -269,7 +252,7 @@
 							VerticalAlignment="Center"
 							IsChecked="{Binding DebugModeEnabled, UpdateSourceTrigger=PropertyChanged}"
 							ToolTip="{Binding ElementName=DebugModeTextBlock, Path=ToolTip}" />
-						<TextBlock Text="Enable Mod Manager Logs" ToolTip="Automatically save logs to _Logs." />
+						<TextBlock Text="Enable Mod Manager Logs" ToolTip="Automatically save logs to _Logs" />
 						<CheckBox VerticalAlignment="Center" IsChecked="{Binding LogEnabled, UpdateSourceTrigger=PropertyChanged}" />
 						<Menu>
 							<Menu.Resources>
@@ -282,9 +265,9 @@
 								Command="{x:Null}"
 								CommandParameter="{x:Null}"
 								Header="Game Launch Params"
-								ToolTip="Parameters to pass to the game executable when launching the game through the mod manager.">
-								<MenuItem Header="-storylog 1" ToolTip="Enables the story log." />
-								<MenuItem Header="--logPath &quot;&quot;" ToolTip="A directory to write story logs to." />
+								ToolTip="Parameters to pass to the game executable when launching the game through the mod manager">
+								<MenuItem Header="-storylog 1" ToolTip="Enables the story log" />
+								<MenuItem Header="--logPath &quot;&quot;" ToolTip="A directory to write story logs to" />
 								<MenuItem Header="-asserts 1" ToolTip="Purpose unknown." />
 								<MenuItem Header="-stats 1" ToolTip="Purpose unknown." />
 								<MenuItem Header="-dynamicStory 1" ToolTip="Purpose unknown." />
@@ -299,26 +282,24 @@
 									Command="{Binding ClearLaunchParamsCommand}"
 									CommandParameter="{x:Null}"
 									Header="Clear"
-									ToolTip="Clear all current params." />
+									ToolTip="Clear current params" />
 							</MenuItem>
 						</Menu>
 						<TextBox
 							VerticalAlignment="Center"
 							Text="{Binding GameLaunchParams, UpdateSourceTrigger=PropertyChanged}"
 							TextWrapping="Wrap"
-							ToolTip="Parameters to pass to the game executable when launching the game through the mod manager." />
+							ToolTip="Parameters to pass to the game executable when launching the game through the mod manager" />
 						<TextBlock
 							x:Name="ClearCacheTextBlock"
 							Text="Clear Workshop Cache"
-							ToolTip="Delete the local workshop cache used for tag display, located at Data\workshopdata.json."
-							Visibility="Collapsed" />
+							ToolTip="Delete the local workshop cache used for tag display, located at Data\workshopdata.json" />
 						<Button
 							HorizontalAlignment="Left"
 							VerticalAlignment="Center"
 							Command="{Binding ClearWorkshopCacheCommand}"
 							Content="Delete Cache"
-							ToolTip="{Binding ElementName=ClearCacheTextBlock, Path=ToolTip}"
-							Visibility="Collapsed" />
+							ToolTip="{Binding ElementName=ClearCacheTextBlock, Path=ToolTip}" />
 					</autogrid:AutoGrid>
 				</ScrollViewer>
 			</TabItem>
@@ -330,18 +311,11 @@
 			</Grid.ColumnDefinitions>
 			<Grid Margin="4,0,4,0" Background="{DynamicResource {x:Static adonisUI:Brushes.Layer0BackgroundBrush}}">
 				<Button
-					x:Name="ExportExtenderSettingsButton"
-					HorizontalAlignment="Center"
-					Command="{Binding ExportExtenderSettingsCommand}"
-					Content="Save ScriptExtenderSettings.json"
-					ToolTip="Export Settings to DefEd\bin\ScriptExtenderSettings.json (CTRL + S)"
-					Visibility="{Binding ExtenderTabIsVisible, Converter={StaticResource BoolToVisibilityConverter}, FallbackValue=Collapsed}" />
-				<Button
 					x:Name="ResetKeybindingsButton"
 					HorizontalAlignment="Center"
 					Command="{Binding ResetKeybindingsCommand}"
 					Content="Reset to Default"
-					ToolTip="Reset all keybindings to their default value."
+					ToolTip="Reset all keybindings to their default value"
 					Visibility="{Binding KeybindingsTabIsVisible, Converter={StaticResource BoolToVisibilityConverter}, FallbackValue=Collapsed}" />
 			</Grid>
 			<Grid Grid.Column="1">
@@ -353,4 +327,4 @@
 			</Grid>
 		</Grid>
 	</Grid>
-</local:HideWindowBase>
+</local:SettingsWindowBase>

@@ -41,29 +41,41 @@ namespace DivinityModManager.Models
 
 		readonly ObservableAsPropertyHelper<string> fileName;
 		public string FileName => fileName.Value;
-		[Reactive] [DataMember] public string UUID { get; set; }
-		[Reactive] [DataMember] public string Folder { get; set; }
-		[Reactive] [DataMember] public string Name { get; set; }
+		[Reactive][DataMember] public string UUID { get; set; }
+		[Reactive][DataMember] public string Folder { get; set; }
+		[Reactive][DataMember] public string Name { get; set; }
 
 		readonly ObservableAsPropertyHelper<string> displayName;
 		public string DisplayName => displayName.Value;
-		[Reactive] [DataMember] public string Description { get; set; }
-		[Reactive] [DataMember] public string Author { get; set; }
+		[Reactive][DataMember] public string Description { get; set; }
+		[Reactive][DataMember] public string Author { get; set; }
 		[Reactive] public string MD5 { get; set; }
-		[Reactive] [DataMember] public DivinityModVersion2 Version { get; set; }
+		[Reactive][DataMember] public DivinityModVersion2 Version { get; set; }
 		[Reactive] public DivinityModVersion2 HeaderVersion { get; set; }
 		[Reactive] public DivinityModVersion2 PublishVersion { get; set; }
 		[Reactive] public DateTime? LastModified { get; set; }
 
-		[Reactive] public bool DisplayFileForName { get; set; } = false;
-		[Reactive] public bool IsHidden { get; set; } = false;
-		[Reactive] public bool IsLarianMod { get; set; } = false;
-		[Reactive] public bool IsClassicMod { get; set; } = false;
-		[Reactive] public string HelpText { get; set; } = "";
+		[Reactive] public bool DisplayFileForName { get; set; }
+		[Reactive] public bool IsHidden { get; set; }
+
+		/// <summary>True if this mod is in DivinityApp.IgnoredMods, or the author is Larian. Larian mods are hidden from the load order.</summary>
+		[Reactive] public bool IsLarianMod { get; set; }
+
+		/// <summary>Mods with a header version from the non-DE version are considered "classic", and can't be loaded in the DE version.</summary>
+		[Reactive] public bool IsClassicMod { get; set; }
+
+		/// <summary>Whether the mod was loaded from the user's mods directory.</summary>
+		[Reactive] public bool IsUserMod { get; set; }
+
+		/// <summary>True if the mod has a base game mod directory. This data is always loaded regardless if the mod is enabled or not.</summary>
+		[Reactive] public bool HasBuiltinOverride { get; set; }
+		[Reactive] public string BuiltinOverrideModsText { get; set; }
+
+		[Reactive] public string HelpText { get; set; }
 
 		public List<string> Tags { get; set; } = new List<string>();
 
-		[Reactive] public Visibility Visibility { get; set; } = Visibility.Visible;
+		[Reactive] public Visibility Visibility { get; set; }
 
 		readonly ObservableAsPropertyHelper<Visibility> descriptionVisibility;
 		public Visibility DescriptionVisibility => descriptionVisibility.Value;
@@ -112,8 +124,39 @@ namespace DivinityModManager.Models
 			}
 		}
 
+		public bool PakEquals(string fileName, StringComparison comparison = StringComparison.Ordinal)
+		{
+			string outputPackage = Path.ChangeExtension(Folder, "pak");
+			//Imported Classic Projects
+			if (!Folder.Contains(UUID))
+			{
+				outputPackage = Path.ChangeExtension(Path.Combine(Folder + "_" + UUID), "pak");
+			}
+			return outputPackage.Equals(fileName, comparison);
+		}
+
+		public bool IsNewerThan(DateTime date)
+		{
+			if (LastModified.HasValue)
+			{
+				return LastModified.Value > date;
+			}
+			return false;
+		}
+
+		public bool IsNewerThan(DivinityBaseModData mod)
+		{
+			if (LastModified.HasValue && mod.LastModified.HasValue)
+			{
+				return LastModified.Value > mod.LastModified.Value;
+			}
+			return false;
+		}
+
 		public DivinityBaseModData()
 		{
+			HelpText = "";
+			Visibility = Visibility.Visible;
 			fileName = this.WhenAnyValue(x => x.FilePath).Select(f => Path.GetFileName(f)).ToProperty(this, nameof(FileName));
 			displayName = this.WhenAnyValue(x => x.Name, x => x.FilePath, x => x.DisplayFileForName).Select(x => this.GetDisplayName()).ToProperty(this, nameof(DisplayName));
 			descriptionVisibility = this.WhenAnyValue(x => x.Description).Select(x => !String.IsNullOrWhiteSpace(x) ? Visibility.Visible : Visibility.Collapsed).StartWith(Visibility.Visible).ToProperty(this, nameof(DescriptionVisibility));

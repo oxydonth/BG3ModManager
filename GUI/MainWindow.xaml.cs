@@ -1,39 +1,33 @@
-﻿using DivinityModManager.Models;
+﻿using AdonisUI;
+using AdonisUI.Controls;
+
+using Alphaleonis.Win32.Filesystem;
+
+using AutoUpdaterDotNET;
+
+using DivinityModManager.Converters;
+using DivinityModManager.Models.App;
 using DivinityModManager.Util;
+using DivinityModManager.Util.ScreenReader;
 using DivinityModManager.ViewModels;
+
+using DynamicData;
+
 using ReactiveUI;
+
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Globalization;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Reactive.Concurrency;
+using System.Reactive.Linq;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
-using System.Reactive;
-using System.Reactive.Disposables;
-using System.Reactive.Concurrency;
-using DynamicData;
-using DynamicData.Binding;
-using System.Diagnostics;
-using System.Globalization;
-using AutoUpdaterDotNET;
-using System.Windows.Threading;
-using AdonisUI.Controls;
-using Alphaleonis.Win32.Filesystem;
-using DivinityModManager.WinForms;
-using AdonisUI;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
-using DivinityModManager.Util.ScreenReader;
-using System.Reflection;
-using DivinityModManager.Models.App;
 
 namespace DivinityModManager.Views
 {
@@ -50,7 +44,7 @@ namespace DivinityModManager.Views
 		public VersionGeneratorWindow VersionGeneratorWindow { get; set; }
 		public AppUpdateWindow UpdateWindow { get; set; }
 
-		public bool UserInvokedUpdate { get; set; } = false;
+		public bool UserInvokedUpdate { get; set; }
 
 		public event PropertyChangedEventHandler PropertyChanged;
 
@@ -75,6 +69,13 @@ namespace DivinityModManager.Views
 		private Dictionary<string, MenuItem> menuItems = new Dictionary<string, MenuItem>();
 		public Dictionary<string, MenuItem> MenuItems => menuItems;
 
+		public HorizontalModLayout GetModLayout()
+		{
+			return MainContentPresenter.FindVisualChildren<HorizontalModLayout>().FirstOrDefault();
+		}
+
+		private System.Windows.Interop.WindowInteropHelper _hwnd;
+
 		public MainWindow()
 		{
 			InitializeComponent();
@@ -93,7 +94,7 @@ namespace DivinityModManager.Views
 			SettingsWindow = new SettingsWindow();
 			SettingsWindow.OnWorkshopPathChanged += delegate
 			{
-				RxApp.MainThreadScheduler.Schedule(TimeSpan.FromMilliseconds(50), _ => ViewModel.LoadWorkshopMods());
+				RxApp.TaskpoolScheduler.ScheduleAsync(TimeSpan.FromMilliseconds(50), async (sch, cts) => await ViewModel.LoadWorkshopModsAsync(cts));
 			};
 			SettingsWindow.Closed += delegate
 			{
@@ -122,7 +123,6 @@ namespace DivinityModManager.Views
 
 			AutoUpdater.ApplicationExitEvent += AutoUpdater_ApplicationExitEvent;
 			AutoUpdater.HttpUserAgent = "DivinityModManagerUser";
-			AutoUpdater.CheckForUpdateEvent += UpdateWindow.AutoUpdaterOnCheckForUpdateEvent;
 
 			var res = this.TryFindResource("ModUpdaterPanel");
 			if (res != null && res is ModUpdatesLayout modUpdaterPanel)
@@ -136,11 +136,61 @@ namespace DivinityModManager.Views
 
 			this.WhenActivated(d =>
 			{
+				this.WhenAnyValue(x => x.ViewModel.MainProgressIsActive).Take(1).Delay(TimeSpan.FromMilliseconds(25)).ObserveOn(RxApp.MainThreadScheduler).Subscribe(b =>
+				{
+					this.MainBusyIndicator.Visibility = Visibility.Visible;
+				});
 				ViewModel.OnViewActivated(this);
 				RegisterBindings();
+
+				this.DeleteFilesView.ViewModel.FileDeletionComplete += (o, e) =>
+				{
+					if (e.TotalFilesDeleted > 0)
+					{
+						var deletedUUIDs = e.DeletedFiles.Where(x => !x.IsWorkshop).Select(x => x.UUID).ToHashSet();
+						var deletedWorkshopUUIDs = e.DeletedFiles.Where(x => x.IsWorkshop).Select(x => x.UUID).ToHashSet();
+						ViewModel.RemoveDeletedMods(deletedUUIDs, deletedWorkshopUUIDs, e.RemoveFromLoadOrder);
+						this.Activate();
+					}
+				};
 			});
 
 			AddHandler(UIElement.GotFocusEvent, new RoutedEventHandler(OnGotFocus));
+
+			_hwnd = new System.Windows.Interop.WindowInteropHelper(this);
+		}
+
+		void OnStateChanged(object sender, EventArgs e)
+		{
+			var windowSettings = ViewModel.Settings.Window;
+			windowSettings.Maximized = WindowState == WindowState.Maximized;
+			var screen = System.Windows.Forms.Screen.FromHandle(_hwnd.Handle);
+			windowSettings.Screen = System.Windows.Forms.Screen.AllScreens.IndexOf(screen);
+			ViewModel.QueueSave();
+		}
+
+		void OnLocationChanged(object sender, EventArgs e)
+		{
+			var windowSettings = ViewModel.Settings.Window;
+			var screen = System.Windows.Forms.Screen.FromHandle(_hwnd.Handle);
+			windowSettings.X = Left - screen.WorkingArea.Left;
+			windowSettings.Y = Top - screen.WorkingArea.Top;
+			windowSettings.Screen = System.Windows.Forms.Screen.AllScreens.IndexOf(screen);
+			ViewModel.QueueSave();
+		}
+
+		public void ToggleWindowPositionSaving(bool b)
+		{
+			if (b)
+			{
+				StateChanged += OnStateChanged;
+				LocationChanged += OnLocationChanged;
+			}
+			else
+			{
+				StateChanged -= OnStateChanged;
+				LocationChanged -= OnLocationChanged;
+			}
 		}
 
 		void OnGotFocus(object sender, RoutedEventArgs e)
@@ -187,25 +237,21 @@ namespace DivinityModManager.Views
 			}
 		}
 
+		private static System.Windows.Shell.TaskbarItemProgressState BoolToTaskbarItemProgressState(bool b)
+		{
+			return b ? System.Windows.Shell.TaskbarItemProgressState.Normal : System.Windows.Shell.TaskbarItemProgressState.None;
+		}
+
 		private void RegisterBindings()
 		{
+			this.OneWayBind(ViewModel, vm => vm.HideModList, view => view.ModListRectangle.Visibility, BoolToVisibilityConverter.FromBool);
 			this.WhenAnyValue(x => x.ViewModel.Title).BindTo(this, view => view.Title);
+			this.OneWayBind(ViewModel, vm => vm.MainProgressIsActive, view => view.TaskbarItemInfo.ProgressState, BoolToTaskbarItemProgressState);
+			this.OneWayBind(ViewModel, vm => vm.MainProgressIsActive, view => view.MainBusyIndicator.IsBusy);
 
 			ViewModel.Keys.OpenPreferences.AddAction(() => OpenPreferences(false));
 			ViewModel.Keys.OpenKeybindings.AddAction(() => OpenPreferences(true));
 			ViewModel.Keys.OpenAboutWindow.AddAction(ToggleAboutWindow);
-
-			this.WhenAnyValue(x => x.ViewModel.MainProgressIsActive).Subscribe((b) =>
-			{
-				if (b)
-				{
-					this.TaskbarItemInfo.ProgressState = System.Windows.Shell.TaskbarItemProgressState.Normal;
-				}
-				else
-				{
-					this.TaskbarItemInfo.ProgressState = System.Windows.Shell.TaskbarItemProgressState.None;
-				}
-			});
 
 			ViewModel.Keys.ToggleVersionGeneratorWindow.AddAction(() =>
 			{
@@ -232,15 +278,26 @@ namespace DivinityModManager.Views
 			foreach (var key in ViewModel.Keys.All)
 			{
 				var keyBinding = new KeyBinding(key.Command, key.Key, key.Modifiers);
-				BindingOperations.SetBinding(keyBinding, InputBinding.CommandProperty, new Binding { Path = new PropertyPath("Command"), Source=key });
-				BindingOperations.SetBinding(keyBinding, KeyBinding.KeyProperty, new Binding { Path = new PropertyPath("Key"), Source=key });
-				BindingOperations.SetBinding(keyBinding, KeyBinding.ModifiersProperty, new Binding { Path = new PropertyPath("Modifiers"), Source=key });
+				BindingOperations.SetBinding(keyBinding, InputBinding.CommandProperty, new Binding { Path = new PropertyPath("Command"), Source = key });
+				BindingOperations.SetBinding(keyBinding, KeyBinding.KeyProperty, new Binding { Path = new PropertyPath("Key"), Source = key });
+				BindingOperations.SetBinding(keyBinding, KeyBinding.ModifiersProperty, new Binding { Path = new PropertyPath("Modifiers"), Source = key });
 				this.InputBindings.Add(keyBinding);
 			}
 
+			//Initial keyboard focus by hitting up or down
+			var setInitialFocusCommand = ReactiveCommand.Create(() =>
+			{
+				if (!DivinityApp.IsKeyboardNavigating && this.ViewModel.ActiveSelected == 0 && this.ViewModel.InactiveSelected == 0)
+				{
+					GetModLayout()?.FocusInitialActiveSelected();
+				}
+			});
+			this.InputBindings.Add(new KeyBinding(setInitialFocusCommand, Key.Up, ModifierKeys.None));
+			this.InputBindings.Add(new KeyBinding(setInitialFocusCommand, Key.Down, ModifierKeys.None));
+
 			foreach (var item in TopMenuBar.Items)
 			{
-				if(item is MenuItem entry)
+				if (item is MenuItem entry)
 				{
 					if (entry.Header is string label)
 					{
@@ -258,7 +315,7 @@ namespace DivinityModManager.Views
 			.GetRuntimeProperties()
 			.Where(prop => Attribute.IsDefined(prop, typeof(MenuSettingsAttribute)))
 			.Select(prop => typeof(AppKeys).GetProperty(prop.Name));
-			foreach(var prop in menuKeyProperties)
+			foreach (var prop in menuKeyProperties)
 			{
 				Hotkey key = (Hotkey)prop.GetValue(ViewModel.Keys);
 				MenuSettingsAttribute menuSettings = prop.GetCustomAttribute<MenuSettingsAttribute>();
@@ -280,20 +337,20 @@ namespace DivinityModManager.Views
 				newEntry.Command = key.Command;
 				BindingOperations.SetBinding(newEntry, MenuItem.CommandProperty, new Binding { Path = new PropertyPath("Command"), Source = key });
 				parentMenuItem.Items.Add(newEntry);
-				if(!String.IsNullOrWhiteSpace(menuSettings.Tooltip))
+				if (!String.IsNullOrWhiteSpace(menuSettings.Tooltip))
 				{
 					newEntry.ToolTip = menuSettings.Tooltip;
 				}
-				if(!String.IsNullOrWhiteSpace(menuSettings.Style))
+				if (!String.IsNullOrWhiteSpace(menuSettings.Style))
 				{
 					Style style = (Style)TryFindResource(menuSettings.Style);
-					if(style != null)
+					if (style != null)
 					{
 						newEntry.Style = style;
 					}
 				}
 
-				if(menuSettings.AddSeparator)
+				if (menuSettings.AddSeparator)
 				{
 					parentMenuItem.Items.Add(new Separator());
 				}
@@ -311,15 +368,15 @@ namespace DivinityModManager.Views
 		{
 			ResourceLocator.SetColorScheme(this.Resources, !darkMode ? DivinityApp.LightTheme : DivinityApp.DarkTheme);
 			ResourceLocator.SetColorScheme(SettingsWindow.Resources, !darkMode ? DivinityApp.LightTheme : DivinityApp.DarkTheme);
-			if(AboutWindow != null)
+			if (AboutWindow != null)
 			{
 				ResourceLocator.SetColorScheme(AboutWindow.Resources, !darkMode ? DivinityApp.LightTheme : DivinityApp.DarkTheme);
 			}
-			if(VersionGeneratorWindow != null)
+			if (VersionGeneratorWindow != null)
 			{
 				ResourceLocator.SetColorScheme(VersionGeneratorWindow.Resources, !darkMode ? DivinityApp.LightTheme : DivinityApp.DarkTheme);
 			}
-			if(UpdateWindow != null)
+			if (UpdateWindow != null)
 			{
 				ResourceLocator.SetColorScheme(UpdateWindow.Resources, !darkMode ? DivinityApp.LightTheme : DivinityApp.DarkTheme);
 			}
@@ -400,25 +457,27 @@ namespace DivinityModManager.Views
 
 		private void OrdersComboBox_LostFocus(object sender, RoutedEventArgs e)
 		{
-			if (sender is ComboBox comboBox && comboBox.IsEditable)
+			if (sender is ComboBox comboBox && ViewModel.IsRenamingOrder)
 			{
 				RxApp.MainThreadScheduler.Schedule(TimeSpan.FromMilliseconds(250), _ =>
 				{
-					if (ViewModel.IsRenamingOrder)
+					var tb = comboBox.FindVisualChildren<TextBox>().FirstOrDefault();
+					if (tb != null && !tb.IsFocused)
 					{
-						var tb = comboBox.FindVisualChildren<TextBox>().FirstOrDefault();
-						if (tb != null && !tb.IsFocused)
+						var cancel = String.IsNullOrEmpty(tb.Text);
+						ViewModel.StopRenaming(cancel);
+						if (!cancel)
 						{
-							ViewModel.StopRenaming(false);
+							ViewModel.SelectedModOrder.Name = tb.Text;
+							var directory = Path.GetDirectoryName(ViewModel.SelectedModOrder.FilePath);
+							var ext = Path.GetExtension(ViewModel.SelectedModOrder.FilePath);
+							string outputName = DivinityModDataLoader.MakeSafeFilename(Path.Combine(ViewModel.SelectedModOrder.Name + ext), '_');
+							ViewModel.SelectedModOrder.FilePath = Path.Combine(directory, outputName);
+							AlertBar.SetSuccessAlert($"Renamed load order name/path to '{ViewModel.SelectedModOrder.FilePath}'", 20);
 						}
 					}
 				});
 			}
-		}
-
-		private void MenuItem_Click(object sender, RoutedEventArgs e)
-		{
-
 		}
 
 		private void OrderComboBox_OnUserClick(object sender, MouseButtonEventArgs e)
@@ -458,14 +517,14 @@ namespace DivinityModManager.Views
 		private void ModOrderPanel_Loaded(object sender, RoutedEventArgs e)
 		{
 			//var orderPanel = (Grid)this.FindResource("ModOrderPanel");
-			if(sender is Grid orderPanel)
+			if (sender is Grid orderPanel)
 			{
 				var buttons = orderPanel.FindVisualChildren<Button>();
-				foreach(var button in buttons)
+				foreach (var button in buttons)
 				{
-					if(_shortcutButtonBindings.TryGetValue(button.Name, out string path))
+					if (_shortcutButtonBindings.TryGetValue(button.Name, out string path))
 					{
-						if(button.Command == null)
+						if (button.Command == null)
 						{
 							BindingHelper.CreateCommandBinding(button, path, ViewModel);
 						}

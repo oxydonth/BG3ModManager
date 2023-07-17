@@ -14,34 +14,34 @@ namespace DivinityModManager.Models
 	public class DivinityPathwayData : ReactiveObject
 	{
 		/// <summary>
-		/// The path to the root game folder, i.e. SteamLibrary\steamapps\common\Divinity Original Sin 2
+		/// The path to the root game folder, i.e. SteamLibrary\steamapps\common\Baldur's Gate 3
 		/// </summary>
 		[Reactive] public string InstallPath { get; set; }
 
 		/// <summary>
-		/// The path to Documents\Larian Studios\Divinity Original Sin 2 Definitive Edition
+		/// The path to %LOCALAPPDATA%\Larian Studios\Baldur's Gate 3
 		/// </summary>
 		[Reactive] public string LarianDocumentsFolder { get; set; }
 
 		/// <summary>
-		/// The path to Documents\Larian Studios\Divinity Original Sin 2 Definitive Edition\Mods
+		/// The path to %LOCALAPPDATA%\Larian Studios\Baldur's Gate 3\Mods
 		/// </summary>
 		[Reactive] public string DocumentsModsPath { get; set; }
 
 		/// <summary>
-		/// The path to Documents\Larian Studios\Divinity Original Sin 2 Definitive Edition\PlayerProfiles
+		/// The path to %LOCALAPPDATA%\Larian Studios\Baldur's Gate 3\PlayerProfiles
 		/// </summary>
 		[Reactive] public string DocumentsProfilesPath { get; set; }
 
 		/// <summary>
-		/// The path to Documents\Larian Studios\Divinity Original Sin 2 Definitive Edition\GMCampaigns
+		/// The path to %LOCALAPPDATA%\Larian Studios\Divinity Original Sin 2 Definitive Edition\GMCampaigns
 		/// </summary>
 		[Reactive] public string DocumentsGMCampaignsPath { get; set; }
 
 		[Reactive] public string LastSaveFilePath { get; set; }
 
-		[Reactive] public string OsirisExtenderLatestReleaseUrl { get; set; }
-		[Reactive] public string OsirisExtenderLatestReleaseVersion { get; set; }
+		[Reactive] public string ScriptExtenderLatestReleaseUrl { get; set; }
+		[Reactive] public string ScriptExtenderLatestReleaseVersion { get; set; }
 
 		public DivinityPathwayData()
 		{
@@ -50,8 +50,8 @@ namespace DivinityModManager.Models
 			DocumentsModsPath = "";
 			DocumentsGMCampaignsPath = "";
 			LastSaveFilePath = "";
-			OsirisExtenderLatestReleaseUrl = "";
-			OsirisExtenderLatestReleaseVersion = "";
+			ScriptExtenderLatestReleaseUrl = "";
+			ScriptExtenderLatestReleaseVersion = "";
 		}
 
 		public string ScriptExtenderSettingsFile(DivinityModManagerSettings settings)

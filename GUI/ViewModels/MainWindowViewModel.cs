@@ -314,7 +314,9 @@ namespace DivinityModManager.ViewModels
 		}
 		public EventHandler OnRefreshed { get; set; }
 
-		#region GameMaster Support
+		#region DungeonMaster Support
+
+		//TODO - Waiting for DM mode to be released
 
 		private readonly ObservableAsPropertyHelper<Visibility> _gameMasterModeVisibility;
 		public Visibility GameMasterModeVisibility => _gameMasterModeVisibility.Value;
@@ -473,224 +475,6 @@ namespace DivinityModManager.ViewModels
 			}
 		}
 
-		private async Task<Unit> LoadExtenderSettingsAsync(CancellationToken t)
-		{
-			try
-			{
-				string latestReleaseZipUrl = "";
-				DivinityApp.Log($"Checking for latest {DivinityApp.EXTENDER_UPDATER_FILE} release at '{DivinityApp.EXTENDER_REPO_URL}'.");
-				var latestReleaseData = await GithubHelper.GetLatestReleaseDataAsync(DivinityApp.EXTENDER_REPO_URL);
-				if (!String.IsNullOrEmpty(latestReleaseData))
-				{
-					var jsonData = DivinityJsonUtils.SafeDeserialize<Dictionary<string, object>>(latestReleaseData);
-					if (jsonData != null)
-					{
-						if (jsonData.TryGetValue("assets", out var assetsArray))
-						{
-							JArray assets = (JArray)assetsArray;
-							foreach (var obj in assets.Children<JObject>())
-							{
-								if (obj.TryGetValue("browser_download_url", StringComparison.OrdinalIgnoreCase, out var browserUrl))
-								{
-									latestReleaseZipUrl = browserUrl.ToString();
-								}
-							}
-						}
-						if (jsonData.TryGetValue("tag_name", out var tagName))
-						{
-							PathwayData.OsirisExtenderLatestReleaseVersion = (string)tagName;
-						}
-#if DEBUG
-						//var lines = jsonData.Select(kvp => kvp.Key + ": " + kvp.Value.ToString());
-						//DivinityApp.LogMessage($"Releases Data:\n{String.Join(Environment.NewLine, lines)}");
-#endif
-					}
-					if (!String.IsNullOrEmpty(latestReleaseZipUrl))
-					{
-						OpenRepoLinkToDownload = false;
-						PathwayData.OsirisExtenderLatestReleaseUrl = latestReleaseZipUrl;
-						DivinityApp.Log($"OsiTools latest release url found: {latestReleaseZipUrl}");
-					}
-					else
-					{
-						DivinityApp.Log($"OsiTools latest release not found.");
-					}
-				}
-				else
-				{
-					OpenRepoLinkToDownload = true;
-				}
-			}
-			catch (Exception ex)
-			{
-				DivinityApp.Log($"Error checking for latest OsiExtender release: {ex}");
-
-				OpenRepoLinkToDownload = true;
-			}
-
-			await Observable.Start(() =>
-			{
-
-				try
-				{
-					string extenderSettingsJson = PathwayData.ScriptExtenderSettingsFile(Settings);
-					if (extenderSettingsJson.IsExistingFile())
-					{
-						var osirisExtenderSettings = DivinityJsonUtils.SafeDeserializeFromPath<OsirisExtenderSettings>(extenderSettingsJson);
-						if (osirisExtenderSettings != null)
-						{
-							DivinityApp.Log($"Loaded extender settings from '{extenderSettingsJson}'.");
-							Settings.ExtenderSettings.Set(osirisExtenderSettings);
-						}
-					}
-				}
-				catch (Exception ex)
-				{
-					DivinityApp.Log($"Error loading extender settings: {ex}");
-				}
-
-				string extenderUpdaterPath = Path.Combine(Path.GetDirectoryName(Settings.GameExecutablePath), DivinityApp.EXTENDER_UPDATER_FILE);
-				DivinityApp.Log($"Looking for OsiExtender at '{extenderUpdaterPath}'.");
-				if (File.Exists(extenderUpdaterPath))
-				{
-					DivinityApp.Log($"Checking {DivinityApp.EXTENDER_UPDATER_FILE} for Osiris ASCII bytes.");
-					try
-					{
-						FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(extenderUpdaterPath);
-						if (fvi != null && fvi.ProductName.IndexOf("Script Extender", StringComparison.OrdinalIgnoreCase) >= 0)
-						{
-							Settings.ExtenderSettings.ExtenderUpdaterIsAvailable = true;
-							DivinityApp.Log($"Found the Extender at '{extenderUpdaterPath}'.");
-							FileVersionInfo extenderInfo = FileVersionInfo.GetVersionInfo(extenderUpdaterPath);
-							if (!String.IsNullOrEmpty(extenderInfo.FileVersion))
-							{
-								var version = extenderInfo.FileVersion.Split('.')[0];
-								if (int.TryParse(version, out int intVersion))
-								{
-									if (intVersion >= 3)
-									{
-										//Assume we're using the latest release version if the updater is 3.0.0.0
-										Settings.ExtenderSettings.ExtenderVersion = 59;
-									}
-								}
-								else
-								{
-									Settings.ExtenderSettings.ExtenderVersion = -1;
-								}
-							}
-						}
-						else
-						{
-							DivinityApp.Log($"'{extenderUpdaterPath}' isn't the Script Extender?");
-						}
-					}
-					catch (System.IO.IOException)
-					{
-						// This can happen if the game locks up the dll.
-						// Assume it's the extender for now.
-						Settings.ExtenderSettings.ExtenderUpdaterIsAvailable = true;
-						DivinityApp.Log($"WARNING: {extenderUpdaterPath} is locked by a process.");
-					}
-					catch (Exception ex)
-					{
-						DivinityApp.Log($"Error reading: '{extenderUpdaterPath}'\n\t{ex}");
-					}
-				}
-				else
-				{
-					Settings.ExtenderSettings.ExtenderUpdaterIsAvailable = false;
-					DivinityApp.Log($"Extender updater {DivinityApp.EXTENDER_UPDATER_FILE} not found.");
-				}
-
-				string extenderDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DOS2ScriptExtender\\ScriptExtender");
-				if (Directory.Exists(extenderDirectory))
-				{
-					var extenderFiles = Directory.EnumerateFiles(extenderDirectory, DirectoryEnumerationOptions.Files | DirectoryEnumerationOptions.Recursive, new DirectoryEnumerationFilters
-					{
-						InclusionFilter = (f) => f.FileName.Equals("OsiExtenderEoCApp.dll", StringComparison.OrdinalIgnoreCase)
-					}).ToList();
-					int latestVersion = -1;
-					if (extenderFiles.Count > 0)
-					{
-						Settings.ExtenderSettings.ExtenderIsAvailable = true;
-
-						foreach (var f in extenderFiles)
-						{
-							try
-							{
-								FileVersionInfo extenderInfo = FileVersionInfo.GetVersionInfo(f);
-								if (!String.IsNullOrEmpty(extenderInfo.FileVersion))
-								{
-									var version = extenderInfo.FileVersion.Split('.').FirstOrDefault();
-									if (!String.IsNullOrEmpty(version) && int.TryParse(version, out int intVersion) && intVersion > latestVersion)
-									{
-										latestVersion = intVersion;
-									}
-								}
-							}
-							catch (Exception ex)
-							{
-								DivinityApp.Log($"Error getting file info from: '{f}'\n\t{ex}");
-							}
-						}
-						if (latestVersion > -1)
-						{
-							Settings.ExtenderSettings.ExtenderVersion = latestVersion;
-							DivinityApp.Log($"Current OsiExtender version found: '{Settings.ExtenderSettings.ExtenderVersion}'.");
-						}
-					}
-				}
-
-				//Look in old path
-				if (!Settings.ExtenderSettings.ExtenderIsAvailable)
-				{
-					string extenderAppFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), DivinityApp.EXTENDER_APPDATA_DLL_OLD);
-					if (File.Exists(extenderAppFile))
-					{
-						Settings.ExtenderSettings.ExtenderIsAvailable = true;
-						try
-						{
-							FileVersionInfo extenderInfo = FileVersionInfo.GetVersionInfo(extenderAppFile);
-							if (!String.IsNullOrEmpty(extenderInfo.FileVersion))
-							{
-								var version = extenderInfo.FileVersion.Split('.').FirstOrDefault();
-								if (!String.IsNullOrEmpty(version) && int.TryParse(version, out int intVersion))
-								{
-									Settings.ExtenderSettings.ExtenderVersion = intVersion;
-									DivinityApp.Log($"Current OsiExtender version found: '{Settings.ExtenderSettings.ExtenderVersion}'.");
-								}
-							}
-						}
-						catch (Exception ex)
-						{
-							DivinityApp.Log($"Error getting file info from: '{extenderAppFile}'\n\t{ex}");
-						}
-					}
-				}
-				return Unit.Default;
-			}, RxApp.MainThreadScheduler);
-
-			return Unit.Default;
-		}
-
-		private void LoadExtenderSettings()
-		{
-			if (File.Exists(Settings.GameExecutablePath))
-			{
-				RxApp.TaskpoolScheduler.ScheduleAsync(async (c, t) =>
-				{
-					await LoadExtenderSettingsAsync(t);
-					await c.Yield();
-					RxApp.MainThreadScheduler.Schedule(CheckExtenderData);
-					return Disposable.Empty;
-				});
-			}
-			else
-			{
-				CheckExtenderData();
-			}
-		}
-
 		private bool FilterDependencies(DivinityModDependencyData x, bool devMode)
 		{
 			if (!devMode)
@@ -783,7 +567,7 @@ namespace DivinityModManager.ViewModels
 			canOpenGameExe = this.WhenAnyValue(x => x.Settings.GameExecutablePath, (p) => !String.IsNullOrEmpty(p) && File.Exists(p)).StartWith(false);
 			canOpenLogDirectory = this.WhenAnyValue(x => x.Settings.ExtenderLogDirectory, (f) => Directory.Exists(f)).StartWith(false);
 
-			Keys.DownloadScriptExtender.AddAction(() => InstallOsiExtender_Start());
+			Keys.DownloadScriptExtender.AddAction(() => InstallScriptExtender_Start());
 
 			var canOpenModsFolder = this.WhenAnyValue(x => x.PathwayData.DocumentsModsPath, (p) => !String.IsNullOrEmpty(p) && Directory.Exists(p));
 			Keys.OpenModsFolder.AddAction(() =>
@@ -921,11 +705,11 @@ namespace DivinityModManager.ViewModels
 					}
 					string contents = JsonConvert.SerializeObject(Settings.ExtenderSettings, jsonSettings);
 					File.WriteAllText(outputFile, contents);
-					View.AlertBar.SetSuccessAlert($"Saved Osiris Extender settings to '{outputFile}'.", 20);
+					View.AlertBar.SetSuccessAlert($"Saved Script Extender settings to '{outputFile}'.", 20);
 				}
 				catch (Exception ex)
 				{
-					View.AlertBar.SetDangerAlert($"Error saving Osiris Extender settings to '{outputFile}':\n{ex}");
+					View.AlertBar.SetDangerAlert($"Error saving Script Extender settings to '{outputFile}':\n{ex}");
 				}
 			}).DisposeWith(Settings.Disposables);
 
@@ -1040,7 +824,7 @@ namespace DivinityModManager.ViewModels
 				if (!IsLocked)
 				{
 					SetGamePathways(Settings.GameDataPath, x);
-					View.AlertBar.SetWarningAlert($"Larian documents folder changed to '{PathwayData.LarianDocumentsFolder}'. Make sure to refresh.", 60);
+					View.AlertBar.SetWarningAlert($"Larian folder changed to '{PathwayData.LarianDocumentsFolder}'. Make sure to refresh.", 60);
 				}
 			}).DisposeWith(Settings.Disposables);
 
@@ -1190,10 +974,10 @@ namespace DivinityModManager.ViewModels
 		{
 			try
 			{
-				string documentsFolder = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments, Environment.SpecialFolderOption.DoNotVerify);
+				string documentsFolder = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.DoNotVerify);
 				if (String.IsNullOrWhiteSpace(AppSettings.DefaultPathways.DocumentsGameFolder))
 				{
-					AppSettings.DefaultPathways.DocumentsGameFolder = "Larian Studios\\Divinity Original Sin 2 Definitive Edition";
+					AppSettings.DefaultPathways.DocumentsGameFolder = "Larian Studios\\Baldur's Gate 3";
 				}
 
 				string larianDocumentsFolder = Path.Combine(documentsFolder, AppSettings.DefaultPathways.DocumentsGameFolder);
@@ -1207,7 +991,7 @@ namespace DivinityModManager.ViewModels
 					var userFolder = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile, Environment.SpecialFolderOption.DoNotVerify);
 					if (Directory.Exists(userFolder))
 					{
-						documentsFolder = Path.Combine(userFolder, "Documents");
+						documentsFolder = Path.Combine(userFolder, "AppData", "Local");
 						larianDocumentsFolder = Path.Combine(documentsFolder, AppSettings.DefaultPathways.DocumentsGameFolder);
 					}
 				}
@@ -1303,10 +1087,10 @@ namespace DivinityModManager.ViewModels
 					}
 				}
 
-				if (AppSettings.FeatureEnabled("ScriptExtender"))
+				/*if (AppSettings.FeatureEnabled("ScriptExtender"))
 				{
 					LoadExtenderSettings();
-				}
+				}*/
 			}
 			catch (Exception ex)
 			{
@@ -1576,14 +1360,17 @@ namespace DivinityModManager.ViewModels
 						{
 							SelectedModOrderIndex = selectIndex;
 							var nextOrder = ModOrderList.ElementAtOrDefault(selectIndex);
-							if (nextOrder.IsModSettings && Settings.GameMasterModeEnabled && SelectedGameMasterCampaign != null)
+
+							LoadModOrder(nextOrder, missingMods);
+
+							/*if (nextOrder.IsModSettings && Settings.GameMasterModeEnabled && SelectedGameMasterCampaign != null)
 							{
 								LoadGameMasterCampaignModOrder(SelectedGameMasterCampaign);
 							}
 							else
 							{
 								LoadModOrder(nextOrder, missingMods);
-							}
+							}*/
 
 							//Adds mods that will always be "enabled"
 							//ForceLoadedMods.AddRange(Mods.Where(x => !x.IsActive && x.IsForcedLoaded));
@@ -1873,12 +1660,12 @@ namespace DivinityModManager.ViewModels
 
 				foreach (var mod in Mods)
 				{
-					if (mod.OsiExtenderData != null && mod.OsiExtenderData.HasAnySettings)
+					if (mod.ScriptExtenderData != null && mod.ScriptExtenderData.HasAnySettings)
 					{
 						// Assume an Lua-only mod actually requires the extender, otherwise functionality is limited.
-						bool onlyUsesLua = mod.OsiExtenderData.FeatureFlags.Contains("Lua") && !mod.OsiExtenderData.FeatureFlags.Contains("OsirisExtensions");
+						bool onlyUsesLua = mod.ScriptExtenderData.FeatureFlags.Contains("Lua") && !mod.ScriptExtenderData.FeatureFlags.Contains("OsirisExtensions");
 
-						if (!mod.OsiExtenderData.FeatureFlags.Contains("Preprocessor") || onlyUsesLua)
+						if (!mod.ScriptExtenderData.FeatureFlags.Contains("Preprocessor") || onlyUsesLua)
 						{
 							if (!Settings.ExtenderSettings.EnableExtensions)
 							{
@@ -1888,7 +1675,7 @@ namespace DivinityModManager.ViewModels
 							{
 								if (Settings.ExtenderSettings != null && Settings.ExtenderSettings.ExtenderVersion > -1 && Settings.ExtenderSettings.ExtenderUpdaterIsAvailable)
 								{
-									if (mod.OsiExtenderData.RequiredExtensionVersion > -1 && Settings.ExtenderSettings.ExtenderVersion < mod.OsiExtenderData.RequiredExtensionVersion)
+									if (mod.ScriptExtenderData.RequiredExtensionVersion > -1 && Settings.ExtenderSettings.ExtenderVersion < mod.ScriptExtenderData.RequiredExtensionVersion)
 									{
 										mod.ExtenderModStatus = DivinityExtenderModStatus.REQUIRED_OLD;
 									}
@@ -2238,7 +2025,7 @@ namespace DivinityModManager.ViewModels
 				OnMainProgressComplete();
 				OnRefreshed?.Invoke(this, new EventArgs());
 
-				if (AppSettings.FeatureEnabled("ScriptExtender"))
+				/*if (AppSettings.FeatureEnabled("ScriptExtender"))
 				{
 					if (IsInitialized)
 					{
@@ -2250,7 +2037,7 @@ namespace DivinityModManager.ViewModels
 						DivinityApp.Log($"Checking extender data.");
 						CheckExtenderData();
 					}
-				}
+				}*/
 
 				IsRefreshing = false;
 
@@ -4055,10 +3842,10 @@ namespace DivinityModManager.ViewModels
 			}
 		}
 
-		private void InstallOsiExtender_DownloadStart(string exeDir)
+		private void InstallScriptExtender_DownloadStart(string exeDir)
 		{
 			double taskStepAmount = 1.0 / 3;
-			MainProgressTitle = $"Setting up the Osiris Extender...";
+			MainProgressTitle = $"Setting up the Script Extender...";
 			MainProgressValue = 0d;
 			MainProgressToken = new CancellationTokenSource();
 			CanCancelProgress = true;
@@ -4073,8 +3860,8 @@ namespace DivinityModManager.ViewModels
 				System.IO.Stream unzippedEntryStream = null;
 				try
 				{
-					RxApp.MainThreadScheduler.Schedule(_ => MainProgressWorkText = $"Downloading {PathwayData.OsirisExtenderLatestReleaseUrl}...");
-					webStream = await WebHelper.DownloadFileAsStreamAsync(PathwayData.OsirisExtenderLatestReleaseUrl, MainProgressToken.Token);
+					RxApp.MainThreadScheduler.Schedule(_ => MainProgressWorkText = $"Downloading {PathwayData.ScriptExtenderLatestReleaseUrl}...");
+					webStream = await WebHelper.DownloadFileAsStreamAsync(PathwayData.ScriptExtenderLatestReleaseUrl, MainProgressToken.Token);
 					if (webStream != null)
 					{
 						successes += 1;
@@ -4123,10 +3910,10 @@ namespace DivinityModManager.ViewModels
 						Settings.ExtenderSettings.ExtenderVersion = 56;
 						if (Settings.ExtenderSettings.ExtenderVersion <= -1)
 						{
-							if (!String.IsNullOrWhiteSpace(PathwayData.OsirisExtenderLatestReleaseVersion))
+							if (!String.IsNullOrWhiteSpace(PathwayData.ScriptExtenderLatestReleaseVersion))
 							{
 								var re = new Regex("v([0-9]+)");
-								var m = re.Match(PathwayData.OsirisExtenderLatestReleaseVersion);
+								var m = re.Match(PathwayData.ScriptExtenderLatestReleaseVersion);
 								if (m.Success)
 								{
 									if (int.TryParse(m.Groups[1].Value, out int version))
@@ -4136,10 +3923,10 @@ namespace DivinityModManager.ViewModels
 									}
 								}
 							}
-							else if (PathwayData.OsirisExtenderLatestReleaseUrl.Contains("v"))
+							else if (PathwayData.ScriptExtenderLatestReleaseUrl.Contains("v"))
 							{
 								var re = new Regex("v([0-9]+).*.zip");
-								var m = re.Match(PathwayData.OsirisExtenderLatestReleaseUrl);
+								var m = re.Match(PathwayData.ScriptExtenderLatestReleaseUrl);
 								if (m.Success)
 								{
 									if (int.TryParse(m.Groups[1].Value, out int version))
@@ -4162,7 +3949,7 @@ namespace DivinityModManager.ViewModels
 			}));
 		}
 
-		private void InstallOsiExtender_Start()
+		private void InstallScriptExtender_Start()
 		{
 			if (!OpenRepoLinkToDownload)
 			{
@@ -4175,7 +3962,7 @@ The extenders needs to only be installed once, as it can auto-update itself auto
 Download url: 
 {0}
 Directory the zip will be extracted to:
-{1}", PathwayData.OsirisExtenderLatestReleaseUrl, exeDir);
+{1}", PathwayData.ScriptExtenderLatestReleaseUrl, exeDir);
 
 					var result = AdonisUI.Controls.MessageBox.Show(new AdonisUI.Controls.MessageBoxModel
 					{
@@ -4187,7 +3974,7 @@ Directory the zip will be extracted to:
 
 					if (result == AdonisUI.Controls.MessageBoxResult.Yes)
 					{
-						InstallOsiExtender_DownloadStart(exeDir);
+						InstallScriptExtender_DownloadStart(exeDir);
 					}
 				}
 				else
@@ -4385,16 +4172,16 @@ Directory the zip will be extracted to:
 							}
 							if (dict.TryGetValue("Version", out var vObj))
 							{
-								int version;
+								ulong version;
 								if (vObj is string vStr)
 								{
-									version = int.Parse(vStr);
+									version = ulong.Parse(vStr);
 								}
 								else
 								{
-									version = Convert.ToInt32(vObj);
+									version = Convert.ToUInt64(vObj);
 								}
-								mod.Version = new DivinityModVersion(version);
+								mod.Version = new DivinityModVersion2(version);
 							}
 							if (dict.TryGetValue("Tags", out var tags))
 							{
@@ -4902,10 +4689,13 @@ Directory the zip will be extracted to:
 
 			SaveSettingsSilentlyCommand = ReactiveCommand.Create(SaveSettings);
 
-			#region GameMaster Support
+
+
+			#region DungeonMaster Support
 
 			var gmModeChanged = this.WhenAnyValue(x => x.Settings.GameMasterModeEnabled);
 			_adventureModBoxVisibility = gmModeChanged.Select(x => !x ? Visibility.Visible : Visibility.Collapsed).StartWith(Visibility.Visible).ToProperty(this, nameof(AdventureModBoxVisibility), true, RxApp.MainThreadScheduler);
+
 			_gameMasterModeVisibility = gmModeChanged.Select(x => x ? Visibility.Visible : Visibility.Collapsed).StartWith(Visibility.Collapsed).ToProperty(this, nameof(GameMasterModeVisibility), true, RxApp.MainThreadScheduler);
 
 			gameMasterCampaigns.Connect().Bind(out gameMasterCampaignsData).Subscribe();
@@ -4914,6 +4704,7 @@ Directory the zip will be extracted to:
 			_selectedGameMasterCampaign = justSelectedGameMasterCampaign.Select(x => GameMasterCampaigns.ElementAtOrDefault(x.Item1)).ToProperty(this, nameof(SelectedGameMasterCampaign));
 
 			Keys.ImportOrderFromSelectedGMCampaign.AddAction(() => LoadGameMasterCampaignModOrder(SelectedGameMasterCampaign), gmModeChanged);
+			
 			justSelectedGameMasterCampaign.ObserveOn(RxApp.MainThreadScheduler).Subscribe((d) =>
 			{
 				if (!this.IsRefreshing && IsInitialized && (Settings != null && Settings.AutomaticallyLoadGMCampaignMods) && d.Item1 > -1)

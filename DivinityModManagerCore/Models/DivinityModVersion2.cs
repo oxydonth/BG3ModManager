@@ -148,6 +148,26 @@ namespace DivinityModManager.Models
 			return new DivinityModVersion2(vInt);
 		}
 
+		public static bool operator >(DivinityModVersion2 a, DivinityModVersion2 b)
+		{
+			return a.VersionInt > b.VersionInt;
+		}
+
+		public static bool operator <(DivinityModVersion2 a, DivinityModVersion2 b)
+		{
+			return a.VersionInt < b.VersionInt;
+		}
+
+		public static bool operator >=(DivinityModVersion2 a, DivinityModVersion2 b)
+		{
+			return a.VersionInt >= b.VersionInt;
+		}
+
+		public static bool operator <=(DivinityModVersion2 a, DivinityModVersion2 b)
+		{
+			return a.VersionInt <= b.VersionInt;
+		}
+
 		public DivinityModVersion2() { }
 
 		public DivinityModVersion2(ulong vInt)

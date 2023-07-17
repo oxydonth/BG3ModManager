@@ -1,34 +1,41 @@
-﻿using DivinityModManager.Models;
-using System;
-using System.Collections.Generic;
-using Alphaleonis.Win32.Filesystem;
-using System.Text;
-using System.Xml;
-using System.Xml.Linq;
-using System.Linq;
+﻿using Alphaleonis.Win32.Filesystem;
+
+using DivinityModManager.Extensions;
+using DivinityModManager.Models;
+
+using DynamicData;
+
 using LSLib.LS;
-using System.Diagnostics;
-using System.Reflection;
-using System.Resources;
-using System.Threading.Tasks;
+
+using Microsoft.VisualBasic.Logging;
+
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
-using Newtonsoft.Json.Linq;
-using DynamicData;
-using DivinityModManager.Extensions;
+using System.Threading.Tasks;
+using System.Xml;
+using System.Xml.Linq;
 
 namespace DivinityModManager.Util
 {
 	public static class DivinityModDataLoader
 	{
-		private static string[] LarianFileTypes = new string[4] { ".lsb", ".lsf", ".lsx", ".lsj" };
 		private static readonly StringComparison SCOMP = StringComparison.OrdinalIgnoreCase;
+		private static readonly string[] LarianFileTypes = new string[4] { ".lsb", ".lsf", ".lsx", ".lsj" };
 
-		public static ulong HEADER_MAIN = 4;
+		public static ulong HEADER_MAJOR = 4;
 		public static ulong HEADER_MINOR = 0;
 		public static ulong HEADER_REVISION = 6;
 		public static ulong HEADER_BUILD = 5;
+
+		private static readonly string[] VersionAttributes = new string[] { "Version64", "Version" };
 
 		public static bool IgnoreMod(string modUUID)
 		{
@@ -117,7 +124,7 @@ namespace DivinityModManager.Util
 		public static string EscapeXml(string s)
 		{
 			string toxml = s;
-			if (!string.IsNullOrEmpty(toxml))
+			if (!String.IsNullOrEmpty(toxml))
 			{
 				// replace literal values with entities
 				toxml = toxml.Replace("&", "&amp;");
@@ -131,7 +138,7 @@ namespace DivinityModManager.Util
 
 		public static string EscapeXmlAttributes(string xmlstring)
 		{
-			if (!string.IsNullOrEmpty(xmlstring))
+			if (!String.IsNullOrEmpty(xmlstring))
 			{
 				xmlstring = Regex.Replace(xmlstring, "value=\"(.*?)\"", new MatchEvaluator((m) =>
 				{
@@ -143,7 +150,7 @@ namespace DivinityModManager.Util
 
 		public static string UnescapeXml(string str)
 		{
-			if (!string.IsNullOrEmpty(str))
+			if (!String.IsNullOrEmpty(str))
 			{
 				str = str.Replace("&amp;", "&");
 				str = str.Replace("&apos;", "'");
@@ -155,9 +162,6 @@ namespace DivinityModManager.Util
 			return str;
 		}
 
-		private static readonly string[] VersionAttributes = new string[] { "Version64", "Version" };
-
-
 		private static DivinityModData ParseMetaFile(string metaContents, bool isBaseGameMod = false)
 		{
 			try
@@ -165,10 +169,10 @@ namespace DivinityModManager.Util
 				XElement xDoc = XElement.Parse(EscapeXmlAttributes(metaContents));
 				var versionNode = xDoc.Descendants("version").FirstOrDefault();
 
-				ulong headerMajor = HEADER_MAIN;
-				ulong headerMinor = HEADER_MINOR;
-				ulong headerRevision = HEADER_REVISION;
-				ulong headerBuild = HEADER_BUILD;
+				var headerMajor = HEADER_MAJOR;
+				var headerMinor = HEADER_MINOR;
+				var headerRevision = HEADER_REVISION;
+				var headerBuild = HEADER_BUILD;
 
 				if (versionNode != null)
 				{
@@ -177,19 +181,19 @@ namespace DivinityModManager.Util
 					//Classic Mods <version major="3" minor="1" revision="3" build="5" />
 					if (TryGetAttribute(versionNode, "major", out var headerMajorStr))
 					{
-						UInt64.TryParse(headerMajorStr, out headerMajor);
+						ulong.TryParse(headerMajorStr, out headerMajor);
 					}
 					if (TryGetAttribute(versionNode, "minor", out var headerMinorStr))
 					{
-						UInt64.TryParse(headerMinorStr, out headerMinor);
+						ulong.TryParse(headerMinorStr, out headerMinor);
 					}
 					if (TryGetAttribute(versionNode, "revision", out var headerRevisionStr))
 					{
-						UInt64.TryParse(headerRevisionStr, out headerRevision);
+						ulong.TryParse(headerRevisionStr, out headerRevision);
 					}
 					if (TryGetAttribute(versionNode, "build", out var headerBuildStr))
 					{
-						UInt64.TryParse(headerBuildStr, out headerBuild);
+						ulong.TryParse(headerBuildStr, out headerBuild);
 					}
 
 					//DivinityApp.LogMessage($"Version: {headerMajor}.{headerMinor}.{headerRevision}.{headerBuild}");
@@ -219,7 +223,7 @@ namespace DivinityModManager.Util
 						Folder = GetAttributeWithId(moduleInfoNode, "Folder", ""),
 						Description = description,
 						MD5 = GetAttributeWithId(moduleInfoNode, "MD5", ""),
-						Type = GetAttributeWithId(moduleInfoNode, "Type", ""),
+						ModType = GetAttributeWithId(moduleInfoNode, "Type", ""),
 						HeaderVersion = new DivinityModVersion2(headerMajor, headerMinor, headerRevision, headerBuild)
 					};
 					var tagsText = GetAttributeWithId(moduleInfoNode, "Tags", "");
@@ -287,11 +291,80 @@ namespace DivinityModManager.Util
 		}
 
 		//BOM
-		private static string _byteOrderMarkUtf8 = Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
+		private static readonly string _byteOrderMarkUtf8 = Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
 
-		public static List<DivinityModData> LoadEditorProjects(string modsFolderPath)
+		private static System.IO.FileStream _GetAsyncStream(string filePath)
 		{
-			List<DivinityModData> projects = new List<DivinityModData>();
+			return new System.IO.FileStream(filePath,
+					System.IO.FileMode.Open,
+					System.IO.FileAccess.Read,
+					System.IO.FileShare.Read,
+					2048,
+					System.IO.FileOptions.Asynchronous);
+		}
+
+		private static async Task<DivinityModData> LoadEditorProjectFolderAsync(string folder, CancellationToken token)
+		{
+			var metaFile = Path.Combine(folder, "meta.lsx");
+			if (File.Exists(metaFile))
+			{
+				using (var fileStream = _GetAsyncStream(metaFile))
+				{
+					var result = new byte[fileStream.Length];
+					await fileStream.ReadAsync(result, 0, (int)fileStream.Length, token);
+
+					string str = Encoding.UTF8.GetString(result, 0, result.Length);
+
+					if (!String.IsNullOrEmpty(str))
+					{
+						//XML parsing doesn't like the BOM for some reason
+						if (str.StartsWith(_byteOrderMarkUtf8, StringComparison.Ordinal))
+						{
+							str = str.Remove(0, _byteOrderMarkUtf8.Length);
+						}
+
+						DivinityModData modData = ParseMetaFile(str);
+						if (modData != null)
+						{
+							modData.IsEditorMod = true;
+							modData.IsUserMod = true;
+							modData.FilePath = folder;
+							try
+							{
+								modData.LastModified = File.GetChangeTime(metaFile);
+								modData.LastUpdated = modData.LastModified.Value;
+							}
+							catch (PlatformNotSupportedException ex)
+							{
+								DivinityApp.Log($"Error getting last modified date for '{metaFile}': {ex}");
+							}
+
+							var osiConfigFile = Path.Combine(folder, DivinityApp.EXTENDER_MOD_CONFIG);
+							if (File.Exists(osiConfigFile))
+							{
+								var osiToolsConfig = await LoadScriptExtenderConfigAsync(osiConfigFile);
+								if (osiToolsConfig != null)
+								{
+									modData.ScriptExtenderData = osiToolsConfig;
+									if (modData.ScriptExtenderData.RequiredExtensionVersion > -1) modData.HasScriptExtenderSettings = true;
+								}
+								else
+								{
+									DivinityApp.Log($"Failed to parse {DivinityApp.EXTENDER_MOD_CONFIG} for '{folder}'.");
+								}
+							}
+
+							return modData;
+						}
+					}
+				}
+			}
+			return null;
+		}
+
+		public static async Task<List<DivinityModData>> LoadEditorProjectsAsync(string modsFolderPath, CancellationToken token)
+		{
+			var projects = new ConcurrentBag<DivinityModData>();
 
 			try
 			{
@@ -300,156 +373,60 @@ namespace DivinityModManager.Util
 					var projectDirectories = Directory.EnumerateDirectories(modsFolderPath);
 					var filteredFolders = projectDirectories.Where(f => !IgnoreModByFolder(f));
 					Console.WriteLine($"Project Folders: {filteredFolders.Count()} / {projectDirectories.Count()}");
-					foreach (var folder in filteredFolders)
-					{
-						//Console.WriteLine($"Folder: {Path.GetFileName(folder)} Blacklisted: {IgnoredMods.Any(m => Path.GetFileName(folder).Equals(m.Folder, ignoreCase))}");
-						var metaFile = Path.Combine(folder, "meta.lsx");
-						if (File.Exists(metaFile))
-						{
 
-							var str = File.ReadAllText(metaFile);
-							if (!String.IsNullOrEmpty(str))
+					async Task AwaitPartition(IEnumerator<string> partition)
+					{
+						using (partition)
+						{
+							while (partition.MoveNext())
 							{
-								//BOM stripping
-								if (str.StartsWith(_byteOrderMarkUtf8, StringComparison.Ordinal))
-								{
-									str = str.Remove(0, _byteOrderMarkUtf8.Length);
-								}
-								DivinityModData modData = ParseMetaFile(str);
+								if (token.IsCancellationRequested) return;
+								await Task.Yield(); // prevents a sync/hot thread hangup
+								var modData = await LoadEditorProjectFolderAsync(partition.Current, token);
 								if (modData != null)
 								{
-									modData.IsEditorMod = true;
-									modData.FilePath = folder;
-									try
-									{
-										modData.LastModified = File.GetChangeTime(metaFile);
-										modData.LastUpdated = modData.LastModified.Value;
-									}
-									catch (PlatformNotSupportedException ex)
-									{
-										DivinityApp.Log($"Error getting last modified date for '{metaFile}': {ex}");
-									}
-
 									projects.Add(modData);
-
-									var configFile = Path.Combine(folder, DivinityApp.EXTENDER_MOD_CONFIG);
-									if (File.Exists(configFile))
-									{
-										var osiToolsConfig = LoadExtenderConfig(configFile);
-										if (osiToolsConfig != null)
-										{
-											modData.ScriptExtenderData = osiToolsConfig;
-											if (modData.ScriptExtenderData.RequiredExtensionVersion > -1) modData.HasScriptExtenderSettings = true;
-										}
-										else
-										{
-											DivinityApp.Log($"Failed to parse OsiToolsConfig.json for '{folder}'.");
-										}
-									}
 								}
 							}
 						}
 					}
+
+					var currentTime = DateTime.Now;
+					var partitionAmount = Environment.ProcessorCount;
+					await Task.WhenAll(Partitioner.Create(filteredFolders).GetPartitions(partitionAmount).AsParallel().Select(p => AwaitPartition(p)));
+					DivinityApp.Log($"Took {DateTime.Now - currentTime:s\\.ff} seconds(s) to load editor mods.");
 				}
 			}
 			catch (Exception ex)
 			{
 				DivinityApp.Log($"Error loading mod projects: {ex}");
 			}
-			return projects;
+			return projects.ToList();
 		}
 
-		public static async Task<List<DivinityModData>> LoadEditorProjectsAsync(string modsFolderPath, CancellationToken? token = null)
-		{
-			List<DivinityModData> projects = new List<DivinityModData>();
-
-			try
-			{
-				if (Directory.Exists(modsFolderPath))
-				{
-					var projectDirectories = Directory.EnumerateDirectories(modsFolderPath);
-					var filteredFolders = projectDirectories.Where(f => !IgnoreModByFolder(f));
-					Console.WriteLine($"Project Folders: {filteredFolders.Count()} / {projectDirectories.Count()}");
-					foreach (var folder in filteredFolders)
-					{
-						if (token != null && token.Value.IsCancellationRequested)
-						{
-							return projects;
-						}
-						//DivinityApp.LogMessage($"Reading meta file from folder: {folder}");
-						//Console.WriteLine($"Folder: {Path.GetFileName(folder)} Blacklisted: {IgnoredMods.Any(m => Path.GetFileName(folder).Equals(m.Folder, ignoreCase))}");
-						var metaFile = Path.Combine(folder, "meta.lsx");
-						if (File.Exists(metaFile))
-						{
-							using (var fileStream = new System.IO.FileStream(metaFile,
-								System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.Read))
-							{
-								var result = new byte[fileStream.Length];
-								await fileStream.ReadAsync(result, 0, (int)fileStream.Length);
-
-								string str = Encoding.UTF8.GetString(result, 0, result.Length);
-
-								if (!String.IsNullOrEmpty(str))
-								{
-									//XML parsing doesn't like the BOM for some reason
-									if (str.StartsWith(_byteOrderMarkUtf8, StringComparison.Ordinal))
-									{
-										str = str.Remove(0, _byteOrderMarkUtf8.Length);
-									}
-
-									DivinityModData modData = ParseMetaFile(str);
-									if (modData != null)
-									{
-										modData.IsEditorMod = true;
-										modData.FilePath = folder;
-										try
-										{
-											modData.LastModified = File.GetChangeTime(metaFile);
-											modData.LastUpdated = modData.LastModified.Value;
-										}
-										catch (PlatformNotSupportedException ex)
-										{
-											DivinityApp.Log($"Error getting last modified date for '{metaFile}': {ex}");
-										}
-										projects.Add(modData);
-
-										var extenderConfigFile = Path.Combine(folder, DivinityApp.EXTENDER_MOD_CONFIG);
-										if (File.Exists(extenderConfigFile))
-										{
-											var osiToolsConfig = await LoadOsiConfigAsync(extenderConfigFile);
-											if (osiToolsConfig != null)
-											{
-												modData.ScriptExtenderData = osiToolsConfig;
-												if (modData.ScriptExtenderData.RequiredExtensionVersion > -1) modData.HasScriptExtenderSettings = true;
-											}
-											else
-											{
-												DivinityApp.Log($"Failed to parse OsiToolsConfig.json for '{folder}'.");
-											}
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-			catch (Exception ex)
-			{
-				DivinityApp.Log($"Error loading mod projects: {ex}");
-			}
-			return projects;
-		}
+		private static HashSet<string> _AllPaksNames = new HashSet<string>();
 
 		private static Regex multiPartPakPattern = new Regex("_[0-9]+.pak", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+		private static Regex multiPartPakPatternNoExtension = new Regex("(_[0-9]+)$", RegexOptions.IgnoreCase | RegexOptions.Singleline);
 
-		private static bool CanProcessPak(FileSystemEntryInfo f)
+		private static bool PakIsNotPartial(string path)
 		{
-			return !multiPartPakPattern.IsMatch(f.FileName) && Path.GetExtension(f.Extension).Equals(".pak", SCOMP);
+			var baseName = Path.GetFileNameWithoutExtension(path);
+			var match = multiPartPakPatternNoExtension.Match(baseName);
+			if (match.Success)
+			{
+				var nameWithoutPartial = baseName.Replace(match.Groups[0].Value, "");
+				if (_AllPaksNames.Contains(nameWithoutPartial))
+				{
+					DivinityApp.Log($"Pak ({baseName}) is a partial pak for ({nameWithoutPartial}). Skipping.");
+					return false;
+				}
+			}
+			return true;
 		}
 
-		private static Regex modMetaPattern = new Regex("^Mods/([^/]+)/meta.lsx", RegexOptions.IgnoreCase);
-		private static bool IsModMetaFile(string pakName, AbstractFileInfo f)
+		private static readonly Regex modMetaPattern = new Regex("^Mods/([^/]+)/meta.lsx", RegexOptions.IgnoreCase);
+		private static bool IsModMetaFile(AbstractFileInfo f)
 		{
 			if (Path.GetFileName(f.Name).Equals("meta.lsx", SCOMP))
 			{
@@ -458,277 +435,210 @@ namespace DivinityModManager.Util
 			return false;
 		}
 
-		public static List<DivinityModData> LoadModPackageData(string modsFolderPath, bool ignoreClassic = false)
+		private static Regex _ModFolderPattern = new Regex("^(Mods|Public)/(.+?)/.+$");
+		private static string[] _IgnoredRecursiveFolders = new string[]
 		{
-			List<DivinityModData> mods = new List<DivinityModData>();
+			"Data",
+			"Baldur's Gate 3\\bin",
+			"Localization",
+		};
 
-			if (Directory.Exists(modsFolderPath))
+		private static async Task<DivinityModData> LoadModDataFromPakAsync(string pakPath, Dictionary<string, DivinityModData> builtinMods)
+		{
+			using (var pr = new LSLib.LS.PackageReader(pakPath))
 			{
-				List<string> modPaks = new List<string>();
-				try
+				DivinityModData modData = null;
+
+				string pakName = Path.GetFileNameWithoutExtension(pakPath);
+
+				var pak = pr.Read();
+
+				var metaFiles = new List<AbstractFileInfo>();
+				var hasBuiltinDirectory = false;
+				var builtinModOverrides = new Dictionary<string, DivinityModData>();
+
+				AbstractFileInfo osiConfigInfo = null;
+
+				if (pak != null && pak.Files != null)
 				{
-					var files = Directory.EnumerateFiles(modsFolderPath, DirectoryEnumerationOptions.Files | DirectoryEnumerationOptions.Recursive,
-						new DirectoryEnumerationFilters()
-						{
-							InclusionFilter = CanProcessPak
-						});
-					if (files != null)
+					for (int i = 0; i < pak.Files.Count; i++)
 					{
-						modPaks.AddRange(files);
-					}
-				}
-				catch (Exception ex)
-				{
-					DivinityApp.Log($"Error enumerating pak folder '{modsFolderPath}': {ex}");
-				}
-
-				DivinityApp.Log("Mod Packages: " + modPaks.Count());
-				foreach (var pakPath in modPaks)
-				{
-					try
-					{
-						using (var pr = new LSLib.LS.PackageReader(pakPath))
+						var f = pak.Files[i];
+						if (f.Name.Contains(DivinityApp.EXTENDER_MOD_CONFIG))
 						{
-							DivinityModData modData = null;
-
-							string pakName = Path.GetFileNameWithoutExtension(pakPath);
-
-							var pak = pr.Read();
-							var metaFiles = pak?.Files?.Where(pf => IsModMetaFile(pakName, pf));
-							AbstractFileInfo metaFile = null;
-							foreach (var f in metaFiles)
+							osiConfigInfo = f;
+						}
+						if (IsModMetaFile(f))
+						{
+							metaFiles.Add(f);
+						}
+						else if (!hasBuiltinDirectory)
+						{
+							var modFolderMatch = _ModFolderPattern.Match(f.Name);
+							if (modFolderMatch.Success)
 							{
-								var parentDir = Directory.GetParent(f.Name);
-								// A pak may have multiple meta.lsx files for overriding NumPlayers or something. Match the parent diretory against the pak name in that case.
-								if (parentDir.Name == pakName)
+								var modFolder = Path.GetFileName(modFolderMatch.Groups[2].Value.TrimEnd(Path.DirectorySeparatorChar));
+								if (!builtinModOverrides.ContainsKey(modFolder) && builtinMods.TryGetValue(modFolder, out var builtinMod))
 								{
-									metaFile = f;
-									break;
-								}
-							}
-							if (metaFile == null) metaFile = metaFiles.FirstOrDefault();
-
-							if (metaFile != null)
-							{
-								DivinityApp.Log($"Parsing meta.lsx for '{pakPath}'.");
-								using (var stream = metaFile.MakeStream())
-								{
-									using (var sr = new System.IO.StreamReader(stream))
-									{
-										string text = sr.ReadToEnd();
-										modData = ParseMetaFile(text);
-									}
-								}
-							}
-							else
-							{
-								DivinityApp.Log($"Error: No meta.lsx for mod pak '{pakPath}'.");
-							}
-
-							if (modData != null)
-							{
-								modData.FilePath = pakPath;
-								try
-								{
-									modData.LastModified = File.GetChangeTime(pakPath);
-									modData.LastUpdated = modData.LastModified.Value;
-								}
-								catch (PlatformNotSupportedException ex)
-								{
-									DivinityApp.Log($"Error getting pak last modified date for '{pakPath}': {ex}");
-								}
-								if (!mods.Any(x => x.UUID == modData.UUID))
-								{
-									mods.Add(modData);
-								}
-								else
-								{
-									var duplicateMods = mods.Where(x => x.UUID == modData.UUID).ToList();
-									for (int i = 0; i < duplicateMods.Count; i++)
-									{
-										var duplicateMod = duplicateMods[i];
-										if (modData.Version.VersionInt > duplicateMod.Version.VersionInt ||
-											(modData.Version.VersionInt == duplicateMod.Version.VersionInt && modData.LastModified > duplicateMod.LastModified))
-										{
-											mods.Remove(duplicateMod);
-											DivinityApp.Log($"Ignoring older duplicate mod: {modData.Name} {duplicateMod.Version.Version} < {modData.Version.Version}");
-										}
-									}
-								}
-
-								var osiToolsConfig = pak?.Files?.FirstOrDefault(pf => pf.Name.Contains(DivinityApp.EXTENDER_MOD_CONFIG));
-								if (osiToolsConfig != null)
-								{
-									try
-									{
-										using (var stream = osiToolsConfig.MakeStream())
-										{
-											using (var sr = new System.IO.StreamReader(stream))
-											{
-												string text = sr.ReadToEnd();
-												if (!String.IsNullOrWhiteSpace(text))
-												{
-													var extenderConfig = DivinityJsonUtils.SafeDeserialize<DivinityModScriptExtenderConfig>(text);
-													if (extenderConfig != null)
-													{
-														modData.ScriptExtenderData = extenderConfig;
-														if (modData.ScriptExtenderData.RequiredExtensionVersion > -1) modData.HasScriptExtenderSettings = true;
-													}
-													else
-													{
-														var jsonObj = JObject.Parse(text);
-														if (jsonObj != null)
-														{
-															modData.ScriptExtenderData = new DivinityModScriptExtenderConfig();
-															modData.ScriptExtenderData.RequiredExtensionVersion = jsonObj.GetValue<int>("RequiredVersion", -1);
-															modData.ScriptExtenderData.FeatureFlags = jsonObj.GetValue<List<string>>("FeatureFlags", null);
-
-															if (modData.ScriptExtenderData.RequiredExtensionVersion > -1) modData.HasScriptExtenderSettings = true;
-														}
-														else
-														{
-															DivinityApp.Log($"Failed to parse OsiToolsConfig.json for '{pakPath}':\n\t{text}");
-														}
-													}
-												}
-											}
-										}
-									}
-									catch (Exception ex)
-									{
-										DivinityApp.Log($"Error reading 'OsiToolsConfig.json' for '{pakPath}': {ex}");
-									}
+									hasBuiltinDirectory = true;
+									builtinModOverrides[builtinMod.Folder] = builtinMod;
+									DivinityApp.Log($"Found a mod overriding a builtin directory. Pak({pakName}) Folder({modFolder}) File({f.Name}");
 								}
 							}
 						}
 					}
-					catch (Exception ex)
+				}
+
+				AbstractFileInfo metaFile = null;
+				for (int i = 0; i < metaFiles.Count; i++)
+				{
+					var f = metaFiles[i];
+					if (metaFile == null)
 					{
-						DivinityApp.Log($"Error loading pak '{pakPath}': {ex}");
+						metaFile = f;
 					}
+					else
+					{
+						var parentDir = Directory.GetParent(f.Name);
+						// A pak may have multiple meta.lsx files for overriding NumPlayers or something. Match against the pak name in that case.
+						if (pakName.Contains(parentDir.Name))
+						{
+							metaFile = f;
+							break;
+						}
+					}
+				}
+
+				if (metaFile != null)
+				{
+					//DivinityApp.LogMessage($"Parsing meta.lsx for mod pak '{pakPath}'.");
+					using (var stream = metaFile.MakeStream())
+					{
+						using (var sr = new System.IO.StreamReader(stream))
+						{
+							string text = await sr.ReadToEndAsync();
+							modData = ParseMetaFile(text);
+						}
+					}
+
+					if (modData != null)
+					{
+						modData.HasBuiltinOverride = hasBuiltinDirectory;
+						if (hasBuiltinDirectory)
+						{
+							modData.BuiltinOverrideModsText = String.Join(Environment.NewLine, builtinModOverrides.Values.OrderBy(x => x.Name).Select(x => $"{x.Folder} ({x.Name})"));
+							modData.IsForcedLoaded = true;
+						}
+						modData.FilePath = pakPath;
+						try
+						{
+							modData.LastModified = File.GetChangeTime(pakPath);
+							modData.LastUpdated = modData.LastModified.Value;
+						}
+						catch (PlatformNotSupportedException ex)
+						{
+							DivinityApp.Log($"Error getting pak last modified date for '{pakPath}': {ex}");
+						}
+
+						modData.IsUserMod = true;
+
+						if (osiConfigInfo != null)
+						{
+							var osiToolsConfig = await LoadScriptExtenderConfigAsync(osiConfigInfo);
+							if (osiToolsConfig != null)
+							{
+								modData.ScriptExtenderData = osiToolsConfig;
+								if (modData.ScriptExtenderData.RequiredExtensionVersion > -1) modData.HasScriptExtenderSettings = true;
+							}
+							else
+							{
+								DivinityApp.Log($"Failed to parse OsiToolsConfig.json for '{pakPath}'.");
+							}
+						}
+
+						//DivinityApp.Log($"Loaded mod '{modData.Name}'.");
+						return modData;
+					}
+					else
+					{
+						DivinityApp.Log($"Error: Failed to parse meta.lsx for mod pak '{pakPath}'.");
+					}
+				}
+				else
+				{
+					DivinityApp.Log($"Error: No meta.lsx for mod pak '{pakPath}'.");
 				}
 			}
 
+			return null;
+		}
+
+		private static async Task<DivinityModData> LoadModDataFromPakAsync(string pakPath, Dictionary<string, DivinityModData> builtinMods, CancellationToken cts)
+		{
 			try
 			{
-
+				while (!cts.IsCancellationRequested)
+				{
+					return await LoadModDataFromPakAsync(pakPath, builtinMods);
+				}
 			}
 			catch (Exception ex)
 			{
-				DivinityApp.Log($"Error loading mod paks: {ex}");
+				DivinityApp.Log($"Error loading mod pak '{pakPath}':\n{ex}");
 			}
-
-			return mods;
+			return null;
 		}
 
-		public static async Task<List<DivinityModData>> LoadModPackageDataAsync(string modsFolderPath, bool ignoreClassic = false, CancellationToken? token = null)
+		public static async Task<List<DivinityModData>> LoadModPackageDataAsync(string modsFolderPath, CancellationToken cts)
 		{
-			List<DivinityModData> mods = new List<DivinityModData>();
+			var builtinMods = DivinityApp.IgnoredMods.ToDictionary(x => x.Folder, x => x);
 
-			if (Directory.Exists(modsFolderPath))
+			var modPaks = new List<string>();
+			try
 			{
-				List<string> modPaks = new List<string>();
-				try
+				var dirOptions = DirectoryEnumerationOptions.Files | DirectoryEnumerationOptions.Recursive;
+				var allPaks = Directory.EnumerateFiles(modsFolderPath, dirOptions,
+				new DirectoryEnumerationFilters()
 				{
-					var files = Directory.EnumerateFiles(modsFolderPath, DirectoryEnumerationOptions.Files | DirectoryEnumerationOptions.Recursive,
-						new DirectoryEnumerationFilters()
-						{
-							InclusionFilter = CanProcessPak
-						});
-					if (files != null)
-					{
-						modPaks.AddRange(files);
-					}
-				}
-				catch (Exception ex)
-				{
-					DivinityApp.Log($"Error enumerating pak folder '{modsFolderPath}': {ex}");
-				}
+					InclusionFilter = (f) => Path.GetExtension(f.Extension).Equals(".pak", SCOMP),
+					RecursionFilter = (f) => !_IgnoredRecursiveFolders.Any(x => f.FullPath.Contains(x))
+				});
+				_AllPaksNames.UnionWith(allPaks.Select(p => Path.GetFileNameWithoutExtension(p)));
+				modPaks.AddRange(allPaks.Where(PakIsNotPartial));
+			}
+			catch (Exception ex)
+			{
+				DivinityApp.Log($"Error enumerating pak folder '{modsFolderPath}': {ex}");
+			}
 
-				DivinityApp.Log("Mod Packages: " + modPaks.Count());
-				foreach (var pakPath in modPaks)
+			DivinityApp.Log($"Mod Packages: {modPaks.Count()}");
+
+			var loadedMods = new ConcurrentBag<DivinityModData>();
+
+			async Task AwaitPartition(IEnumerator<string> partition)
+			{
+				using (partition)
 				{
-					try
+					while (partition.MoveNext())
 					{
-						if (token.HasValue && token.Value.IsCancellationRequested)
+						if (cts.IsCancellationRequested) return;
+						await Task.Yield(); // prevents a sync/hot thread hangup
+						var modData = await LoadModDataFromPakAsync(partition.Current, builtinMods, cts);
+						if (modData != null)
 						{
-							return mods;
+							loadedMods.Add(modData);
 						}
-						using (var pr = new LSLib.LS.PackageReader(pakPath))
-						{
-							DivinityModData modData = null;
-
-							string pakName = Path.GetFileNameWithoutExtension(pakPath);
-
-							var pak = pr.Read();
-							var metaFiles = pak?.Files?.Where(pf => IsModMetaFile(pakName, pf));
-							AbstractFileInfo metaFile = null;
-							foreach (var f in metaFiles)
-							{
-								var parentDir = Directory.GetParent(f.Name);
-								// A pak may have multiple meta.lsx files for overriding NumPlayers or something. Match against the pak name in that case.
-								if (parentDir.Name == pakName)
-								{
-									metaFile = f;
-									break;
-								}
-							}
-							if (metaFile == null) metaFile = metaFiles.FirstOrDefault();
-							if (metaFile != null)
-							{
-								//DivinityApp.LogMessage($"Parsing meta.lsx for mod pak '{pakPath}'.");
-								using (var stream = metaFile.MakeStream())
-								{
-									using (var sr = new System.IO.StreamReader(stream))
-									{
-										string text = await sr.ReadToEndAsync();
-										modData = ParseMetaFile(text);
-									}
-								}
-
-								if (modData != null)
-								{
-									modData.FilePath = pakPath;
-									try
-									{
-										modData.LastModified = File.GetChangeTime(pakPath);
-										modData.LastUpdated = modData.LastModified.Value;
-									}
-									catch (PlatformNotSupportedException ex)
-									{
-										DivinityApp.Log($"Error getting pak last modified date for '{pakPath}': {ex}");
-									}
-									mods.Add(modData);
-
-									var extenderConfigInfo = pak.Files?.FirstOrDefault(pf => pf.Name.Contains(DivinityApp.EXTENDER_MOD_CONFIG));
-									if (extenderConfigInfo != null)
-									{
-										var osiToolsConfig = await LoadOsiConfigAsync(extenderConfigInfo);
-										if (osiToolsConfig != null)
-										{
-											modData.ScriptExtenderData = osiToolsConfig;
-											if (modData.ScriptExtenderData.RequiredExtensionVersion > -1) modData.HasScriptExtenderSettings = true;
-										}
-										else
-										{
-											DivinityApp.Log($"Failed to parse {DivinityApp.EXTENDER_MOD_CONFIG} for '{pakPath}'.");
-										}
-									}
-								}
-							}
-							else
-							{
-								DivinityApp.Log($"Error: No meta.lsx for mod pak '{pakPath}'.");
-							}
-						}
-					}
-					catch (Exception ex)
-					{
-						DivinityApp.Log($"Error loading pak '{pakPath}': {ex}");
 					}
 				}
 			}
-			return mods;
+
+			var partitionAmount = Environment.ProcessorCount;
+			var currentTime = DateTime.Now;
+			DivinityApp.Log($"Split mod loading into {partitionAmount} partitions.");
+			await Task.WhenAll(Partitioner.Create(modPaks).GetPartitions(partitionAmount).AsParallel().Select(p => AwaitPartition(p)));
+
+			DivinityApp.Log($"Took {DateTime.Now - currentTime:s\\.ff} second(s) to load mod paks.");
+			return loadedMods.ToList();
 		}
 
 		private static string GetNodeAttribute(Node node, string key, string defaultValue)
@@ -753,19 +663,20 @@ namespace DivinityModManager.Util
 			}
 			return defaultValue;
 		}
+
 		private static DivinityGameMasterCampaign ParseGameMasterCampaignMetaFile(Resource meta)
 		{
 			try
 			{
-				ulong headerMajor = HEADER_MAIN;
-				ulong headerMinor = HEADER_MINOR;
-				ulong headerRevision = HEADER_REVISION;
-				ulong headerBuild = HEADER_BUILD;
+				var headerMajor = HEADER_MAJOR;
+				var headerMinor = HEADER_MINOR;
+				var headerRevision = HEADER_REVISION;
+				var headerBuild = HEADER_BUILD;
 
-				UInt64.TryParse(meta.Metadata.MajorVersion.ToString(), out headerMajor);
-				UInt64.TryParse(meta.Metadata.MinorVersion.ToString(), out headerMinor);
-				UInt64.TryParse(meta.Metadata.Revision.ToString(), out headerRevision);
-				UInt64.TryParse(meta.Metadata.BuildNumber.ToString(), out headerBuild);
+				ulong.TryParse(meta.Metadata.MajorVersion.ToString(), out headerMajor);
+				ulong.TryParse(meta.Metadata.MinorVersion.ToString(), out headerMinor);
+				ulong.TryParse(meta.Metadata.Revision.ToString(), out headerRevision);
+				ulong.TryParse(meta.Metadata.BuildNumber.ToString(), out headerBuild);
 
 				if (meta.TryFindNode("ModuleInfo", out var moduleInfoNode))
 				{
@@ -948,16 +859,6 @@ namespace DivinityModManager.Util
 			return null;
 		}
 
-		private static bool NodeIdMatch(Node n, string id)
-		{
-			if (n.Attributes.TryGetValue("id", out var att))
-			{
-				string idAttVal = (string)att.Value;
-				return id.Equals(idAttVal, SCOMP);
-			}
-			return false;
-		}
-
 		public static List<DivinityProfileData> LoadProfileData(string profilePath)
 		{
 			List<DivinityProfileData> profiles = new List<DivinityProfileData>();
@@ -970,13 +871,13 @@ namespace DivinityModManager.Util
 					string storedDisplayedName = displayName;
 					string profileUUID = "";
 
-					//Console.WriteLine($"Folder: {Path.GetFileName(folder)} Blacklisted: {IgnoredMods.Any(m => Path.GetFileName(folder).Equals(m.Folder, ignoreCase))}");
+					//Console.WriteLine($"Folder: {Path.GetFileName(folder)} Blacklisted: {IgnoredMods.Any(m => Path.GetFileName(folder).Equals(m.Folder, SCOMP))}");
 					var profileFile = GetProfileFile(folder);
 					if (profileFile != null)
 					{
 						try
 						{
-							var profileRes = ResourceUtils.LoadResource(profileFile.FullName);
+							var profileRes = ResourceUtils.LoadResource(profileFile.FullName, LSLib.LS.Enums.ResourceFormat.LSB);
 							if (profileRes != null && profileRes.Regions.TryGetValue("PlayerProfile", out var region))
 							{
 								if (region.Attributes.TryGetValue("PlayerProfileDisplayName", out var profileDisplayNameAtt))
@@ -1035,7 +936,7 @@ namespace DivinityModManager.Util
 											if (c.Attributes.TryGetValue("UUID", out var attribute))
 											{
 												var uuid = (string)attribute.Value;
-												if (!string.IsNullOrEmpty(uuid))
+												if (!String.IsNullOrEmpty(uuid))
 												{
 													profileData.ModOrder.Add(uuid);
 												}
@@ -1086,11 +987,11 @@ namespace DivinityModManager.Util
 					string storedDisplayedName = displayName;
 					string profileUUID = "";
 
-					//Console.WriteLine($"Folder: {Path.GetFileName(folder)} Blacklisted: {IgnoredMods.Any(m => Path.GetFileName(folder).Equals(m.Folder, ignoreCase))}");
-					var profileFile = GetProfileFile(folder);
-					if (profileFile != null)
+					//Console.WriteLine($"Folder: {Path.GetFileName(folder)} Blacklisted: {IgnoredMods.Any(m => Path.GetFileName(folder).Equals(m.Folder, SCOMP))}");
+					var profileFile = Path.Combine(folder, "profile.lsb");
+					if (File.Exists(profileFile))
 					{
-						var profileRes = await LoadResourceAsync(profileFile.FullName);
+						var profileRes = await LoadResourceAsync(profileFile, LSLib.LS.Enums.ResourceFormat.LSB);
 						if (profileRes != null && profileRes.Regions.TryGetValue("PlayerProfile", out var region))
 						{
 							if (region.Attributes.TryGetValue("PlayerProfileDisplayName", out var profileDisplayNameAtt))
@@ -1140,7 +1041,7 @@ namespace DivinityModManager.Util
 											if (c.Attributes.TryGetValue("UUID", out var attribute))
 											{
 												var uuid = (string)attribute.Value;
-												if (!string.IsNullOrEmpty(uuid))
+												if (!String.IsNullOrEmpty(uuid))
 												{
 													profileData.ModOrder.Add(uuid);
 												}
@@ -1179,20 +1080,14 @@ namespace DivinityModManager.Util
 			return profiles;
 		}
 
-		public static async Task<Resource> LoadResourceAsync(string path, LSLib.LS.Enums.ResourceFormat? resourceFormat = null, CancellationToken? token = null)
+		public static async Task<Resource> LoadResourceAsync(string path, LSLib.LS.Enums.ResourceFormat resourceFormat)
 		{
 			return await Task.Run(() =>
 			{
 				try
 				{
-					if (resourceFormat.HasValue)
-					{
-						return LSLib.LS.ResourceUtils.LoadResource(path, resourceFormat.Value);
-					}
-					else
-					{
-						return LSLib.LS.ResourceUtils.LoadResource(path);
-					}
+					var resource = LSLib.LS.ResourceUtils.LoadResource(path, resourceFormat);
+					return resource;
 				}
 				catch (Exception ex)
 				{
@@ -1202,7 +1097,7 @@ namespace DivinityModManager.Util
 			});
 		}
 
-		public static async Task<Resource> LoadResourceAsync(System.IO.Stream stream, LSLib.LS.Enums.ResourceFormat resourceFormat, CancellationToken? token = null)
+		public static async Task<Resource> LoadResourceAsync(System.IO.Stream stream, LSLib.LS.Enums.ResourceFormat resourceFormat)
 		{
 			return await Task.Run(() =>
 			{
@@ -1281,43 +1176,43 @@ namespace DivinityModManager.Util
 
 		public static bool ExportedSelectedProfile(string profilePath, string profileUUID)
 		{
-			FileInfo playerprofilesFile = GetPlayerProfilesFile(profilePath);
-			if (playerprofilesFile != null)
+			var conversionParams = ResourceConversionParameters.FromGameVersion(LSLib.LS.Enums.Game.DivinityOriginalSin2DE);
+			var playerprofilesFile = Path.Combine(profilePath, "playerprofiles.lsb");
+			if (File.Exists(playerprofilesFile))
 			{
-				var conversionParams = ResourceConversionParameters.FromGameVersion(LSLib.LS.Enums.Game.BaldursGate3);
 				try
 				{
-					var res = ResourceUtils.LoadResource(playerprofilesFile.FullName);
+					var res = ResourceUtils.LoadResource(playerprofilesFile, LSLib.LS.Enums.ResourceFormat.LSB);
 					if (res != null && res.Regions.TryGetValue("UserProfiles", out var region))
 					{
 						if (region.Attributes.TryGetValue("ActiveProfile", out var att))
 						{
 							att.Value = profileUUID;
-							ResourceUtils.SaveResource(res, playerprofilesFile.FullName, conversionParams);
+							ResourceUtils.SaveResource(res, playerprofilesFile, LSLib.LS.Enums.ResourceFormat.LSB, conversionParams);
 							return true;
 						}
 					}
 				}
 				catch (Exception ex)
 				{
-					DivinityApp.Log($"Error saving {playerprofilesFile.FullName}: {ex}");
+					DivinityApp.Log($"Error saving {playerprofilesFile}: {ex}");
 				}
 			}
 			else
 			{
-				DivinityApp.Log($"[*WARNING*] No playerProfiles file found. Skipping selected profile saving.");
+				DivinityApp.Log($"[*WARNING*] '{playerprofilesFile}' does not exist. Skipping selected profile saving.");
 			}
 			return false;
 		}
 
 		public static async Task<string> GetSelectedProfileUUIDAsync(string profilePath)
 		{
+			var playerprofilesFile = Path.Combine(profilePath, "playerprofiles.lsb");
 			string activeProfileUUID = "";
-			FileInfo playerprofilesFile = GetPlayerProfilesFile(profilePath);
-			if (playerprofilesFile != null)
+			if (File.Exists(playerprofilesFile))
 			{
-				DivinityApp.Log($"Loading playerprofiles at '{playerprofilesFile.FullName}'");
-				var res = await LoadResourceAsync(playerprofilesFile.FullName);
+				DivinityApp.Log($"Loading playerprofiles.lsb at '{playerprofilesFile}'");
+				var res = await LoadResourceAsync(playerprofilesFile, LSLib.LS.Enums.ResourceFormat.LSB);
 				if (res != null && res.Regions.TryGetValue("UserProfiles", out var region))
 				{
 					//DivinityApp.LogMessage($"ActiveProfile | Getting root node '{String.Join(";", region.Attributes.Keys)}'");
@@ -1474,21 +1369,114 @@ namespace DivinityModManager.Util
 			return null;
 		}
 
-		public static DivinityLoadOrder LoadOrderFromFile(string loadOrderFile)
+		public static DivinityLoadOrder LoadOrderFromFile(string loadOrderFile, IEnumerable<DivinityModData> allMods)
 		{
-			if (File.Exists(loadOrderFile))
+			var ext = Path.GetExtension(loadOrderFile).ToLower();
+			DivinityLoadOrder order = null;
+			switch (ext)
 			{
-				try
-				{
-					DivinityLoadOrder order = DivinityJsonUtils.SafeDeserialize<DivinityLoadOrder>(File.ReadAllText(loadOrderFile));
-					return order;
-				}
-				catch (Exception ex)
-				{
-					DivinityApp.Log($"Error reading '{loadOrderFile}': {ex}");
-				}
+				case ".json":
+					if (DivinityJsonUtils.TrySafeDeserializeFromPath<DivinityLoadOrder>(loadOrderFile, out var savedOrder))
+					{
+						return savedOrder;
+					}
+					else
+					{
+						if (DivinityJsonUtils.TrySafeDeserializeFromPath<List<DivinitySerializedModData>>(loadOrderFile, out var exportedOrder))
+						{
+							order = new DivinityLoadOrder();
+							order.IsDecipheredOrder = true;
+							order.AddRange(exportedOrder);
+							DivinityApp.Log(String.Join("\n", order.Order.Select(x => x.UUID)));
+							var modGUIDs = allMods.Select(x => x.UUID).ToHashSet();
+							foreach (var entry in order.Order)
+							{
+								if (!modGUIDs.Contains(entry.UUID))
+								{
+									entry.Missing = true;
+								}
+							}
+							order.Name = Path.GetFileNameWithoutExtension(loadOrderFile);
+							return order;
+						}
+					}
+					break;
+				case ".txt":
+					var textPattern = new Regex(@"\((\S+\.pak)\)", RegexOptions.IgnoreCase);
+					var textLines = File.ReadAllLines(loadOrderFile);
+					order = new DivinityLoadOrder();
+					foreach (var line in textLines)
+					{
+						var match = textPattern.Match(line);
+						if (match.Success)
+						{
+							var pakName = Path.GetFileName(match.Groups[1].Value.Trim());
+							var mod = allMods.FirstOrDefault(x => x.PakEquals(pakName, SCOMP));
+							if (mod != null)
+							{
+								order.Add(mod);
+							}
+							else
+							{
+								order.Order.Add(new DivinityLoadOrderEntry
+								{
+									Missing = true,
+									Name = pakName,
+									UUID = "",
+								});
+							}
+						}
+					}
+					break;
+				case ".tsv":
+					var tsvLines = File.ReadAllLines(loadOrderFile);
+					var header = tsvLines[0].Split('\t');
+					var fileIndex = header.IndexOf("FileName");
+					var nameIndex = header.IndexOf("Name");
+					var urlIndex = header.IndexOf("URL");
+					if (fileIndex > -1)
+					{
+						order = new DivinityLoadOrder();
+						for (var i = 1; i < tsvLines.Length; i++)
+						{
+							var lineData = tsvLines[i].Split('\t');
+							if (lineData.Length > fileIndex)
+							{
+								var fileName = Path.GetFileName(lineData[fileIndex].Trim());
+								var mod = allMods.FirstOrDefault(x => x.PakEquals(fileName, SCOMP));
+								if (mod != null)
+								{
+									order.Add(mod);
+								}
+								else
+								{
+									var name = fileName;
+									if (nameIndex > -1)
+									{
+										name = lineData[nameIndex];
+									}
+									if (urlIndex > -1 && lineData.Length > urlIndex)
+									{
+										name = $"{name} {lineData[urlIndex]}";
+									}
+									order.Order.Add(new DivinityLoadOrderEntry
+									{
+										Missing = true,
+										Name = name,
+										UUID = "",
+									});
+								}
+							}
+						}
+					}
+					break;
 			}
-			return null;
+			if (order != null)
+			{
+				order.IsDecipheredOrder = true;
+				order.Name = Path.GetFileNameWithoutExtension(loadOrderFile);
+			}
+			return order;
 		}
 
 		public static async Task<bool> ExportModSettingsToFileAsync(string folder, IEnumerable<DivinityModData> order)
@@ -1583,7 +1571,7 @@ namespace DivinityModManager.Util
 			}
 			catch (Exception ex)
 			{
-				Trace.WriteLine($"Error saving'{settingsFilePath}':\n{ex}");
+				DivinityApp.Log($"Error saving'{settingsFilePath}':\n{ex}");
 			}
 		}
 
@@ -1836,61 +1824,29 @@ namespace DivinityModManager.Util
 			return null;
 		}
 
-		private static DivinityModScriptExtenderConfig LoadExtenderConfig(string configPath)
+		private static async Task<DivinityModScriptExtenderConfig> LoadScriptExtenderConfigAsync(string configFile)
 		{
 			try
 			{
-				var text = File.ReadAllText(configPath);
-				if (!String.IsNullOrWhiteSpace(text))
-				{
-					var configJson = DivinityJsonUtils.SafeDeserialize<DivinityModScriptExtenderConfig>(text);
-					if (configJson != null)
-					{
-						return configJson;
-					}
-					else
-					{
-						var jsonObj = JObject.Parse(text);
-						if (jsonObj != null)
-						{
-							configJson = new DivinityModScriptExtenderConfig();
-							configJson.RequiredExtensionVersion = jsonObj.GetValue<int>("RequiredVersion", -1);
-							configJson.FeatureFlags = jsonObj.GetValue<List<string>>("FeatureFlags", null);
-							return configJson;
-						}
-					}
-				}
-			}
-			catch (Exception ex)
-			{
-				DivinityApp.Log($"Error reading '{configPath}': {ex}");
-			}
-			return null;
-		}
-
-		private static async Task<DivinityModScriptExtenderConfig> LoadOsiConfigAsync(string osiToolsConfig)
-		{
-			try
-			{
-				using (var reader = File.OpenText(osiToolsConfig))
+				using (var reader = File.OpenText(configFile))
 				{
 					var text = await reader.ReadToEndAsync();
 					if (!String.IsNullOrWhiteSpace(text))
 					{
-						var extenderConfig = DivinityJsonUtils.SafeDeserialize<DivinityModScriptExtenderConfig>(text);
-						if (extenderConfig != null)
+						var osiConfig = DivinityJsonUtils.SafeDeserialize<DivinityModScriptExtenderConfig>(text);
+						if (osiConfig != null)
 						{
-							return extenderConfig;
+							return osiConfig;
 						}
 						else
 						{
 							var jsonObj = JObject.Parse(text);
 							if (jsonObj != null)
 							{
-								extenderConfig = new DivinityModScriptExtenderConfig();
-								extenderConfig.RequiredExtensionVersion = jsonObj.GetValue<int>("RequiredVersion", -1);
-								extenderConfig.FeatureFlags = jsonObj.GetValue<List<string>>("FeatureFlags", null);
-								return extenderConfig;
+								osiConfig = new DivinityModScriptExtenderConfig();
+								osiConfig.RequiredExtensionVersion = jsonObj.GetValue<int>("RequiredExtensionVersion", -1);
+								osiConfig.FeatureFlags = jsonObj.GetValue<List<string>>("FeatureFlags", null);
+								return osiConfig;
 							}
 						}
 					}
@@ -1903,31 +1859,31 @@ namespace DivinityModManager.Util
 			return null;
 		}
 
-		private static async Task<DivinityModScriptExtenderConfig> LoadOsiConfigAsync(AbstractFileInfo osiToolsConfig)
+		private static async Task<DivinityModScriptExtenderConfig> LoadScriptExtenderConfigAsync(AbstractFileInfo configFile)
 		{
 			try
 			{
-				using (var stream = osiToolsConfig.MakeStream())
+				using (var stream = configFile.MakeStream())
 				{
 					using (var sr = new System.IO.StreamReader(stream))
 					{
 						string text = await sr.ReadToEndAsync();
 						if (!String.IsNullOrWhiteSpace(text))
 						{
-							var extenderConfig = DivinityJsonUtils.SafeDeserialize<DivinityModScriptExtenderConfig>(text);
-							if (extenderConfig != null)
+							var osiConfig = DivinityJsonUtils.SafeDeserialize<DivinityModScriptExtenderConfig>(text);
+							if (osiConfig != null)
 							{
-								return extenderConfig;
+								return osiConfig;
 							}
 							else
 							{
 								var jsonObj = JObject.Parse(text);
 								if (jsonObj != null)
 								{
-									extenderConfig = new DivinityModScriptExtenderConfig();
-									extenderConfig.RequiredExtensionVersion = jsonObj.GetValue<int>("RequiredVersion", -1);
-									extenderConfig.FeatureFlags = jsonObj.GetValue<List<string>>("FeatureFlags", null);
-									return extenderConfig;
+									osiConfig = new DivinityModScriptExtenderConfig();
+									osiConfig.RequiredExtensionVersion = jsonObj.GetValue<int>("RequiredExtensionVersion", -1);
+									osiConfig.FeatureFlags = jsonObj.GetValue<List<string>>("FeatureFlags", null);
+									return osiConfig;
 								}
 							}
 						}
@@ -1936,7 +1892,7 @@ namespace DivinityModManager.Util
 			}
 			catch (Exception ex)
 			{
-				DivinityApp.Log($"Error reading 'OsiToolsConfig.json': {ex}");
+				DivinityApp.Log($"Error reading 'ScriptExtenderConfig.json': {ex}");
 			}
 			return null;
 		}
@@ -1944,6 +1900,7 @@ namespace DivinityModManager.Util
 		public static List<DivinityModData> LoadBuiltinMods(string gameDataPath)
 		{
 			List<DivinityModData> baseMods = new List<DivinityModData>();
+
 			try
 			{
 				var modResources = new ModResources();
@@ -1971,8 +1928,8 @@ namespace DivinityModManager.Util
 									var modData = ParseMetaFile(text, true);
 									if (modData != null)
 									{
-										modData.IsLarianMod = true;
-										modData.IsHidden = true;
+										modData.IsLarianMod = DivinityApp.IgnoredMods.Any(x => x.UUID == modData.UUID) || modData.Author.Contains("Larian");
+										modData.IsHidden = modData.IsLarianMod;
 
 										var last = baseMods.FirstOrDefault(x => x.UUID == modData.UUID);
 
@@ -1998,59 +1955,72 @@ namespace DivinityModManager.Util
 			}
 			catch (Exception ex)
 			{
-				DivinityApp.Log($"Error parsing base game mods:\n{ex}");
+				DivinityApp.Log("Error parsing base game mods:\n" + ex.ToString());
 			}
 
 			return baseMods;
 		}
 
-		public static async Task<List<DivinityModData>> LoadBuiltinModsAsync(string gameDataPath, CancellationToken? token = null)
+		private static async Task<DivinityModData> LoadModFromModInfo(ModInfo modInfo, CancellationToken token)
 		{
-			List<DivinityModData> baseMods = new List<DivinityModData>();
-			try
+			var metaFile = modInfo.Meta;
+			if (metaFile != null)
 			{
-				var modResources = new ModResources();
-				var modHelper = new ModPathVisitor(modResources);
-				modHelper.Game = LSLib.LS.Story.Compiler.TargetGame.BG3;
-				modHelper.CollectGlobals = false;
-				modHelper.CollectLevels = false;
-				modHelper.CollectStoryGoals = false;
-				modHelper.CollectStats = false;
-				modHelper.DiscoverBuiltinPackages(gameDataPath);
-
-				if (modResources.Mods != null && modResources.Mods.Values != null)
+				using (var stream = metaFile.MakeStream())
 				{
-					foreach (var modInfo in modResources.Mods.Values)
+					using (var sr = new System.IO.StreamReader(stream))
 					{
-						if (token != null && token.Value.IsCancellationRequested)
+						if (token.IsCancellationRequested) return null;
+						string text = await sr.ReadToEndAsync();
+						var modData = ParseMetaFile(text, true);
+						if (modData != null)
 						{
-							return baseMods;
-						}
-						var metaFile = modInfo.Meta;
-						if (metaFile != null)
-						{
-							using (var stream = metaFile.MakeStream())
-							{
-								using (var sr = new System.IO.StreamReader(stream))
-								{
-									string text = await sr.ReadToEndAsync();
-									var modData = ParseMetaFile(text, true);
-									if (modData != null)
-									{
-										DivinityApp.Log($"Added base mod: Name({modData.Name}) UUID({modData.UUID}) Author({modData.Author}) Version({modData.Version.VersionInt})");
-										modData.IsLarianMod = DivinityApp.IgnoredMods.Any(x => x.UUID == modData.UUID) || modData.Author.Contains("Larian");
-										modData.IsHidden = modData.IsLarianMod;
-										baseMods.Add(modData);
-									}
-								}
-							}
+							DivinityApp.Log($"Added base mod: Name({modData.Name}) UUID({modData.UUID}) Author({modData.Author}) Version({modData.Version.VersionInt})");
+							modData.IsLarianMod = DivinityApp.IgnoredMods.Any(x => x.UUID == modData.UUID) || modData.Author.Contains("Larian");
+							modData.IsHidden = modData.IsLarianMod;
+							return modData;
 						}
 					}
 				}
 			}
+			return null;
+		}
+
+		public static async Task<List<DivinityModData>> LoadBuiltinModsAsync(string gameDataPath, CancellationToken token)
+		{
+			List<DivinityModData> baseMods = new List<DivinityModData>();
+
+			try
+			{
+				var modResources = new ModResources();
+				var modHelper = new ModPathVisitor(modResources)
+				{
+					Game = LSLib.LS.Story.Compiler.TargetGame.BG3,
+					CollectGlobals = false,
+					CollectLevels = false,
+					CollectStoryGoals = false,
+					CollectStats = false
+				};
+
+				modHelper.DiscoverBuiltinPackages(gameDataPath);
+
+				if (modResources.Mods != null && modResources.Mods.Values != null)
+				{
+					var currentTime = DateTime.Now;
+					foreach (var modInfo in modResources.Mods.Values)
+					{
+						var modData = await LoadModFromModInfo(modInfo, token);
+						if (modData != null)
+						{
+							baseMods.Add(modData);
+						}
+					}
+					DivinityApp.Log($"Took {DateTime.Now - currentTime:s\\.ff} seconds(s) to load builtin mods.");
+				}
+			}
 			catch (Exception ex)
 			{
-				DivinityApp.Log($"Error parsing base game mods:\n{ex}");
+				DivinityApp.Log("Error parsing base game mods:\n" + ex.ToString());
 			}
 
 			return baseMods;

@@ -28,7 +28,7 @@ namespace DivinityModManager.Views
 {
 	public class VersionGeneratorViewModel : ReactiveObject
 	{
-		[Reactive] public DivinityModVersion Version { get; set; }
+		[Reactive] public DivinityModVersion2 Version { get; set; }
 		[Reactive] public string Text { get; set; }
 
 		public ICommand CopyCommand { get; private set; }
@@ -37,7 +37,7 @@ namespace DivinityModManager.Views
 
 		public VersionGeneratorViewModel(AlertBar alert)
 		{
-			Version = new DivinityModVersion(268435456);
+			Version = new DivinityModVersion2(36028797018963968);
 
 			CopyCommand = ReactiveCommand.Create(() =>
 			{
@@ -54,7 +54,7 @@ namespace DivinityModManager.Views
 
 			UpdateVersionFromTextCommand = ReactiveCommand.Create<KeyboardFocusChangedEventArgs, Unit>(e =>
 			{
-				if (Int32.TryParse(Text, out int version))
+				if (ulong.TryParse(Text, out var version))
 				{
 					Version.ParseInt(version);
 				}
@@ -90,10 +90,10 @@ namespace DivinityModManager.Views
 			this.WhenActivated(d =>
 			{
 				d(this.Bind(ViewModel, vm => vm.Text, v => v.VersionNumberTextBox.Text));
-				d(this.Bind(ViewModel, vm => vm.Version.Major, v => v.MajorIntegerUpDown.Value));
-				d(this.Bind(ViewModel, vm => vm.Version.Minor, v => v.MinorIntegerUpDown.Value));
-				d(this.Bind(ViewModel, vm => vm.Version.Revision, v => v.RevisionIntegerUpDown.Value));
-				d(this.Bind(ViewModel, vm => vm.Version.Build, v => v.BuildIntegerUpDown.Value));
+				d(this.Bind(ViewModel, vm => vm.Version.Major, v => v.MajorUpDown.Value));
+				d(this.Bind(ViewModel, vm => vm.Version.Minor, v => v.MinorUpDown.Value));
+				d(this.Bind(ViewModel, vm => vm.Version.Revision, v => v.RevisionUpDown.Value));
+				d(this.Bind(ViewModel, vm => vm.Version.Build, v => v.BuildUpDown.Value));
 				d(this.BindCommand(ViewModel, vm => vm.CopyCommand, v => v.CopyButton));
 				d(this.BindCommand(ViewModel, vm => vm.ResetCommand, v => v.ResetButton));
 
