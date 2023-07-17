@@ -8,6 +8,7 @@ using DivinityModManager.Views;
 
 using DynamicData;
 using DynamicData.Binding;
+using DynamicData.Aggregation;
 
 using Microsoft.Win32;
 
@@ -44,13 +45,15 @@ using System.Windows.Input;
 using System.Windows.Media;
 using SharpCompress.Archives.SevenZip;
 using SharpCompress.Readers;
+using System.Reactive.Subjects;
+using System.Windows.Markup;
+using DivinityModManager.Models.Extender;
 
 namespace DivinityModManager.ViewModels
 {
 	public class MainWindowViewModel : BaseHistoryViewModel, IActivatableViewModel, IDivinityAppViewModel
 	{
-		private MainWindow view;
-		public MainWindow View => view;
+		[Reactive] public MainWindow View { get; private set; }
 
 		public ModViewLayout Layout { get; set; }
 
@@ -70,26 +73,44 @@ namespace DivinityModManager.ViewModels
 			set { this.RaiseAndSetIfChanged(ref dragHandler, value); }
 		}
 
-		private string title;
+		[Reactive] public string Title { get; set; }
+		[Reactive] public string Version { get; set; }
 
-		public string Title
+		private readonly AppKeys _keys;
+		public AppKeys Keys => _keys;
+
+		private bool IsInitialized { get; set; }
+
+		protected readonly SourceCache<DivinityModData, string> mods = new SourceCache<DivinityModData, string>(mod => mod.UUID);
+
+		public bool ModExists(string uuid)
 		{
-			get => title;
-			set { this.RaiseAndSetIfChanged(ref title, value); }
+			return mods.Lookup(uuid) != null;
 		}
 
-		public string Version { get; set; } = "";
+		public bool TryGetMod(string guid, out DivinityModData mod)
+		{
+			mod = null;
+			var modResult = mods.Lookup(guid);
+			if (modResult.HasValue)
+			{
+				mod = modResult.Value;
+				return true;
+			}
+			return false;
+		}
 
-		public AppKeys Keys { get; private set; } = new AppKeys();
+		public string GetModType(string guid)
+		{
+			if (TryGetMod(guid, out var mod))
+			{
+				return mod.ModType;
+			}
+			return "";
+		}
 
-		private bool IsInitialized { get; set; } = false;
-
-		protected SourceList<DivinityModData> mods = new SourceList<DivinityModData>();
-
-		private List<DivinityModData> userMods = new List<DivinityModData>();
-
-		protected ReadOnlyObservableCollection<DivinityModData> allMods;
-		public ReadOnlyObservableCollection<DivinityModData> Mods => allMods;
+		protected ReadOnlyObservableCollection<DivinityModData> addonMods;
+		public ReadOnlyObservableCollection<DivinityModData> Mods => addonMods;
 
 		protected ReadOnlyObservableCollection<DivinityModData> adventureMods;
 		public ReadOnlyObservableCollection<DivinityModData> AdventureMods => adventureMods;
@@ -106,16 +127,16 @@ namespace DivinityModManager.ViewModels
 			}
 		}
 
-		private readonly ObservableAsPropertyHelper<DivinityModData> selectedAdventureMod;
-		public DivinityModData SelectedAdventureMod => selectedAdventureMod.Value;
+		private readonly ObservableAsPropertyHelper<DivinityModData> _selectedAdventureMod;
+		public DivinityModData SelectedAdventureMod => _selectedAdventureMod.Value;
 
-		private readonly ObservableAsPropertyHelper<Visibility> adventureModBoxVisibility;
-		public Visibility AdventureModBoxVisibility => adventureModBoxVisibility.Value;
+		private readonly ObservableAsPropertyHelper<Visibility> _adventureModBoxVisibility;
+		public Visibility AdventureModBoxVisibility => _adventureModBoxVisibility.Value;
 
 		protected ReadOnlyObservableCollection<DivinityModData> selectedPakMods;
 		public ReadOnlyObservableCollection<DivinityModData> SelectedPakMods => selectedPakMods;
 
-		protected SourceList<DivinityModData> workshopMods = new SourceList<DivinityModData>();
+		protected readonly SourceCache<DivinityModData, string> workshopMods = new SourceCache<DivinityModData, string>(mod => mod.UUID);
 
 		protected ReadOnlyObservableCollection<DivinityModData> workshopModsCollection;
 		public ReadOnlyObservableCollection<DivinityModData> WorkshopMods => workshopModsCollection;
@@ -130,185 +151,108 @@ namespace DivinityModManager.ViewModels
 
 		public IgnoredModsData IgnoredMods => ignoredModsData;
 
-		private AppSettings appSettings = new AppSettings();
+		private readonly AppSettings appSettings = new AppSettings();
 
 		public AppSettings AppSettings => appSettings;
 
 		[Reactive] public DivinityModManagerSettings Settings { get; set; }
 
-		public ObservableCollectionExtended<DivinityModData> ActiveMods { get; set; } = new ObservableCollectionExtended<DivinityModData>();
-		public ObservableCollectionExtended<DivinityModData> InactiveMods { get; set; } = new ObservableCollectionExtended<DivinityModData>();
+		private readonly ObservableCollectionExtended<DivinityModData> _activeMods = new ObservableCollectionExtended<DivinityModData>();
+		public ObservableCollectionExtended<DivinityModData> ActiveMods => _activeMods;
+
+		private readonly ObservableCollectionExtended<DivinityModData> _inactiveMods = new ObservableCollectionExtended<DivinityModData>();
+		public ObservableCollectionExtended<DivinityModData> InactiveMods => _inactiveMods;
+
+		private readonly ReadOnlyObservableCollection<DivinityModData> _forceLoadedMods;
+		public ReadOnlyObservableCollection<DivinityModData> ForceLoadedMods => _forceLoadedMods;
+
+		private readonly ReadOnlyObservableCollection<DivinityModData> _userMods;
+		public ReadOnlyObservableCollection<DivinityModData> UserMods => _userMods;
+
+		IEnumerable<DivinityModData> IDivinityAppViewModel.ActiveMods => this.ActiveMods;
+		IEnumerable<DivinityModData> IDivinityAppViewModel.InactiveMods => this.InactiveMods;
+
 		public ObservableCollectionExtended<DivinityProfileData> Profiles { get; set; } = new ObservableCollectionExtended<DivinityProfileData>();
 
-		private readonly ObservableAsPropertyHelper<int> activeSelected;
+		private readonly ObservableAsPropertyHelper<int> _activeSelected;
+		public int ActiveSelected => _activeSelected.Value;
 
-		public int ActiveSelected => activeSelected.Value;
+		private readonly ObservableAsPropertyHelper<int> _inactiveSelected;
+		public int InactiveSelected => _inactiveSelected.Value;
 
-		private readonly ObservableAsPropertyHelper<int> inactiveSelected;
+		private readonly ObservableAsPropertyHelper<string> _activeSelectedText;
+		public string ActiveSelectedText => _activeSelectedText.Value;
 
-		public int InactiveSelected => inactiveSelected.Value;
+		private readonly ObservableAsPropertyHelper<string> _inactiveSelectedText;
+		public string InactiveSelectedText => _inactiveSelectedText.Value;
 
-		private string activeModFilterText = "";
+		private readonly ObservableAsPropertyHelper<string> _activeModsFilterResultText;
+		public string ActiveModsFilterResultText => _activeModsFilterResultText.Value;
 
-		public string ActiveModFilterText
-		{
-			get => activeModFilterText;
-			set { this.RaiseAndSetIfChanged(ref activeModFilterText, value); }
-		}
+		private readonly ObservableAsPropertyHelper<string> _inactiveModsFilterResultText;
+		public string InactiveModsFilterResultText => _inactiveModsFilterResultText.Value;
 
-		private string inactiveModFilterText = "";
+		[Reactive] public string ActiveModFilterText { get; set; }
+		[Reactive] public string InactiveModFilterText { get; set; }
 
-		public string InactiveModFilterText
-		{
-			get => inactiveModFilterText;
-			set { this.RaiseAndSetIfChanged(ref inactiveModFilterText, value); }
-		}
+		[Reactive] public int SelectedProfileIndex { get; set; }
 
-		private int selectedProfileIndex = 0;
+		private readonly ObservableAsPropertyHelper<DivinityProfileData> _selectedProfile;
+		public DivinityProfileData SelectedProfile => _selectedProfile.Value;
 
-		public int SelectedProfileIndex
-		{
-			get => selectedProfileIndex;
-			set
-			{
-				this.RaiseAndSetIfChanged(ref selectedProfileIndex, value);
-				this.RaisePropertyChanged("SelectedProfile");
-			}
-		}
-
-		private readonly ObservableAsPropertyHelper<DivinityProfileData> selectedprofile;
-		public DivinityProfileData SelectedProfile => selectedprofile.Value;
+		private readonly ObservableAsPropertyHelper<bool> _hasProfile;
+		public bool HasProfile => _hasProfile.Value;
 
 		public ObservableCollectionExtended<DivinityLoadOrder> ModOrderList { get; set; } = new ObservableCollectionExtended<DivinityLoadOrder>();
 
-		private int selectedModOrderIndex = 0;
+		[Reactive] public int SelectedModOrderIndex { get; set; }
 
-		public int SelectedModOrderIndex
-		{
-			get => selectedModOrderIndex;
-			set
-			{
-				if (value != selectedModOrderIndex)
-				{
-					SelectedModOrder?.DisposeBinding();
-				}
-				this.RaiseAndSetIfChanged(ref selectedModOrderIndex, value);
-				this.RaisePropertyChanged("SelectedModOrder");
-			}
-		}
+		private readonly ObservableAsPropertyHelper<DivinityLoadOrder> _selectedModOrder;
+		public DivinityLoadOrder SelectedModOrder => _selectedModOrder.Value;
 
-		private ObservableAsPropertyHelper<DivinityLoadOrder> selectedModOrder;
-		public DivinityLoadOrder SelectedModOrder => selectedModOrder.Value;
+		private readonly ObservableAsPropertyHelper<string> _selectedModOrderName;
+		public string SelectedModOrderName => _selectedModOrderName.Value;
 
-		private ObservableAsPropertyHelper<bool> isBaseLoadOrder;
-		public bool IsBaseLoadOrder => isBaseLoadOrder.Value;
+		private readonly ObservableAsPropertyHelper<bool> _isBaseLoadOrder;
+		public bool IsBaseLoadOrder => _isBaseLoadOrder.Value;
 
 		public List<DivinityLoadOrder> SavedModOrderList { get; set; } = new List<DivinityLoadOrder>();
 
-		private int layoutMode = 0;
+		[Reactive] public int LayoutMode { get; set; }
+		[Reactive] public bool CanSaveOrder { get; set; }
+		[Reactive] public bool IsLoadingOrder { get; set; }
+		[Reactive] public bool OrderJustLoaded { get; set; }
+		[Reactive] public bool IsDragging { get; set; }
+		[Reactive] public bool AppSettingsLoaded { get; set; }
+		[Reactive] public bool IsRefreshing { get; private set; }
+		[Reactive] public bool IsRefreshingWorkshop { get; private set; }
 
-		public int LayoutMode
-		{
-			get => layoutMode;
-			set { this.RaiseAndSetIfChanged(ref layoutMode, value); }
-		}
+		private readonly ObservableAsPropertyHelper<bool> _isLocked;
 
-		private bool canSaveOrder = true;
+		/// <summary>Used to locked certain functionality when data is loading or the user is dragging an item.</summary>
+		public bool IsLocked => _isLocked.Value;
 
-		public bool CanSaveOrder
-		{
-			get => canSaveOrder;
-			set { this.RaiseAndSetIfChanged(ref canSaveOrder, value); }
-		}
+		[Reactive] public string StatusText { get; set; }
+		[Reactive] public string StatusBarRightText { get; set; }
+		[Reactive] public bool ModUpdatesAvailable { get; set; }
+		[Reactive] public bool ModUpdatesViewVisible { get; set; }
+		[Reactive] public bool HighlightExtenderDownload { get; set; }
+		[Reactive] public bool GameDirectoryFound { get; set; }
 
-		private bool loadingOrder = false;
+		private readonly ObservableAsPropertyHelper<bool> _hideModList;
+		public bool HideModList => _hideModList.Value;
 
-		public bool LoadingOrder
-		{
-			get => loadingOrder;
-			set { this.RaiseAndSetIfChanged(ref loadingOrder, value); }
-		}
+		private readonly ObservableAsPropertyHelper<bool> _hasForceLoadedMods;
+		public bool HasForceLoadedMods => _hasForceLoadedMods.Value;
 
-		private string statusText;
-
-		public string StatusText
-		{
-			get => statusText;
-			set { this.RaiseAndSetIfChanged(ref statusText, value); }
-		}
-
-		private bool modUpdatesAvailable = false;
-
-		public bool ModUpdatesAvailable
-		{
-			get => modUpdatesAvailable;
-			set { this.RaiseAndSetIfChanged(ref modUpdatesAvailable, value); }
-		}
-
-		private bool modUpdatesViewVisible = false;
-
-		public bool ModUpdatesViewVisible
-		{
-			get => modUpdatesViewVisible;
-			set { this.RaiseAndSetIfChanged(ref modUpdatesViewVisible, value); }
-		}
-
-		private bool checkingForWorkshopUpdates = false;
-
-		public bool CheckingForWorkshopUpdates
-		{
-			get => checkingForWorkshopUpdates;
-			set { this.RaiseAndSetIfChanged(ref checkingForWorkshopUpdates, value); }
-		}
-
-		private bool highlightExtenderDownload = false;
-
-		public bool HighlightExtenderDownload
-		{
-			get => highlightExtenderDownload;
-			set { this.RaiseAndSetIfChanged(ref highlightExtenderDownload, value); }
-		}
-
-		private bool gameDirectoryFound = false;
-
-		public bool GameDirectoryFound
-		{
-			get => gameDirectoryFound;
-			set { this.RaiseAndSetIfChanged(ref gameDirectoryFound, value); }
-		}
+		private readonly ObservableAsPropertyHelper<bool> _isDeletingFiles;
+		public bool IsDeletingFiles => _isDeletingFiles.Value;
 
 		#region Progress
-		private string mainProgressTitle;
-
-		public string MainProgressTitle
-		{
-			get => mainProgressTitle;
-			set { this.RaiseAndSetIfChanged(ref mainProgressTitle, value); }
-		}
-
-		private string mainProgressWorkText;
-
-		public string MainProgressWorkText
-		{
-			get => mainProgressWorkText;
-			set { this.RaiseAndSetIfChanged(ref mainProgressWorkText, value); }
-		}
-
-		private bool mainProgressIsActive = true;
-
-		public bool MainProgressIsActive
-		{
-			get => mainProgressIsActive;
-			set { this.RaiseAndSetIfChanged(ref mainProgressIsActive, value); }
-		}
-
-		private double mainProgressValue = 0d;
-
-		public double MainProgressValue
-		{
-			get => mainProgressValue;
-			set { this.RaiseAndSetIfChanged(ref mainProgressValue, value); }
-		}
+		[Reactive] public string MainProgressTitle { get; set; }
+		[Reactive] public string MainProgressWorkText { get; set; }
+		[Reactive] public bool MainProgressIsActive { get; set; }
+		[Reactive] public double MainProgressValue { get; set; }
 
 		public void IncreaseMainProgressValue(double val, string message = "")
 		{
@@ -329,67 +273,23 @@ namespace DivinityModManager.ViewModels
 			}, RxApp.MainThreadScheduler);
 		}
 
-		private CancellationTokenSource mainProgressToken;
+		[Reactive] public CancellationTokenSource MainProgressToken { get; set; }
+		[Reactive] public bool CanCancelProgress { get; set; }
 
-		public CancellationTokenSource MainProgressToken
-		{
-			get => mainProgressToken;
-			set { this.RaiseAndSetIfChanged(ref mainProgressToken, value); }
-		}
-
-		private bool canCancelProgress = true;
-
-		public bool CanCancelProgress
-		{
-			get => canCancelProgress;
-			set { this.RaiseAndSetIfChanged(ref canCancelProgress, value); }
-		}
 		#endregion
-
-		private bool isRenamingOrder = false;
-
-		public bool IsRenamingOrder
-		{
-			get => isRenamingOrder;
-			set { this.RaiseAndSetIfChanged(ref isRenamingOrder, value); }
-		}
-
-		private string statusBarRightText = "";
-
-		public string StatusBarRightText
-		{
-			get => statusBarRightText;
-			set { this.RaiseAndSetIfChanged(ref statusBarRightText, value); }
-		}
-
-		private Visibility statusBarBusyIndicatorVisibility = Visibility.Collapsed;
-
-		public Visibility StatusBarBusyIndicatorVisibility
-		{
-			get => statusBarBusyIndicatorVisibility;
-			set { this.RaiseAndSetIfChanged(ref statusBarBusyIndicatorVisibility, value); }
-		}
-
-		private bool workshopSupportEnabled;
-
-		public bool WorkshopSupportEnabled
-		{
-			get => workshopSupportEnabled;
-			set { this.RaiseAndSetIfChanged(ref workshopSupportEnabled, value); }
-		}
+		[Reactive] public bool IsRenamingOrder { get; set; }
+		[Reactive] public Visibility StatusBarBusyIndicatorVisibility { get; set; }
+		[Reactive] public bool WorkshopSupportEnabled { get; set; }
+		[Reactive] public bool CanMoveSelectedMods { get; set; }
 
 		public IObservable<bool> canRenameOrder;
 
-		//private IObservable<bool> canSaveSettings;
 		private IObservable<bool> canOpenWorkshopFolder;
 		private IObservable<bool> canOpenGameExe;
-		private IObservable<bool> canOpenDialogWindow;
-		private IObservable<bool> gameExeFoundObservable;
-		private IObservable<bool> canInstallScriptExtender;
+		private readonly IObservable<bool> canOpenDialogWindow;
 		private IObservable<bool> canOpenLogDirectory;
 
-		private bool OpenRepoLinkToDownload { get; set; } = false;
-		public ICommand DebugCommand { get; private set; }
+		private bool OpenRepoLinkToDownload { get; set; }
 		public ICommand ToggleUpdatesViewCommand { get; private set; }
 		public ICommand CheckForAppUpdatesCommand { get; set; }
 		public ICommand CancelMainProgressCommand { get; set; }
@@ -403,6 +303,8 @@ namespace DivinityModManager.ViewModels
 		public ICommand SaveSettingsSilentlyCommand { get; private set; }
 		public ReactiveCommand<DivinityLoadOrder, Unit> DeleteOrderCommand { get; private set; }
 		public ReactiveCommand<object, Unit> ToggleOrderRenamingCommand { get; set; }
+		public ReactiveCommand<Unit, Unit> RefreshCommand { get; private set; }
+		public ReactiveCommand<Unit, Unit> RefreshWorkshopCommand { get; private set; }
 
 		private DivinityGameLaunchWindowAction actionOnGameLaunch = DivinityGameLaunchWindowAction.None;
 		public DivinityGameLaunchWindowAction ActionOnGameLaunch
@@ -411,12 +313,11 @@ namespace DivinityModManager.ViewModels
 			set { this.RaiseAndSetIfChanged(ref actionOnGameLaunch, value); }
 		}
 		public EventHandler OnRefreshed { get; set; }
-		public EventHandler OnOrderChanged { get; set; }
 
 		#region GameMaster Support
 
-		private readonly ObservableAsPropertyHelper<Visibility> gameMasterModeVisibility;
-		public Visibility GameMasterModeVisibility => gameMasterModeVisibility.Value;
+		private readonly ObservableAsPropertyHelper<Visibility> _gameMasterModeVisibility;
+		public Visibility GameMasterModeVisibility => _gameMasterModeVisibility.Value;
 
 		protected SourceList<DivinityGameMasterCampaign> gameMasterCampaigns = new SourceList<DivinityGameMasterCampaign>();
 
@@ -434,10 +335,10 @@ namespace DivinityModManager.ViewModels
 				this.RaisePropertyChanged("SelectedGameMasterCampaign");
 			}
 		}
-		public bool UserChangedSelectedGMCampaign { get; set; } = false;
+		public bool UserChangedSelectedGMCampaign { get; set; }
 
-		private readonly ObservableAsPropertyHelper<DivinityGameMasterCampaign> selectedGameMasterCampaign;
-		public DivinityGameMasterCampaign SelectedGameMasterCampaign => selectedGameMasterCampaign.Value;
+		private readonly ObservableAsPropertyHelper<DivinityGameMasterCampaign> _selectedGameMasterCampaign;
+		public DivinityGameMasterCampaign SelectedGameMasterCampaign => _selectedGameMasterCampaign.Value;
 		public ICommand OpenGameMasterCampaignInFileExplorerCommand { get; private set; }
 		public ICommand CopyGameMasterCampaignPathToClipboardCommand { get; private set; }
 
@@ -459,7 +360,7 @@ namespace DivinityModManager.ViewModels
 
 			if (String.IsNullOrEmpty(lastSelectedCampaignUUID) || !IsInitialized)
 			{
-				nextSelected = gameMasterCampaigns.Items.OrderByDescending(x => x.LastModified.HasValue ? x.LastModified.Value : DateTime.MinValue).FirstOrDefault();
+				nextSelected = gameMasterCampaigns.Items.OrderByDescending(x => x.LastModified ?? DateTime.MinValue).FirstOrDefault();
 
 			}
 			else
@@ -490,10 +391,11 @@ namespace DivinityModManager.ViewModels
 				int index = 0;
 				foreach (var entry in campaign.Dependencies)
 				{
-					var mod = mods.Items.FirstOrDefault(m => m.UUID == entry.UUID);
-					if (mod != null && !mod.IsClassicMod)
+					if (TryGetMod(entry.UUID, out var mod) && !mod.IsClassicMod)
 					{
-						ActiveMods.Add(mod);
+						mod.IsActive = true;
+						currentOrder.Add(mod);
+						index++;
 						if (mod.Dependencies.Count > 0)
 						{
 							foreach (var dependency in mod.Dependencies.Items)
@@ -501,35 +403,26 @@ namespace DivinityModManager.ViewModels
 								if (!DivinityModDataLoader.IgnoreMod(dependency.UUID) && !mods.Items.Any(x => x.UUID == dependency.UUID) &&
 									!missingMods.Any(x => x.UUID == dependency.UUID))
 								{
-									var x = new DivinityMissingModData
+									missingMods.Add(new DivinityMissingModData
 									{
 										Index = -1,
 										Name = dependency.Name,
 										UUID = dependency.UUID,
 										Dependency = true
-									};
-									missingMods.Add(x);
+									});
 								}
 							}
 						}
 					}
 					else if (!DivinityModDataLoader.IgnoreMod(entry.UUID) && !missingMods.Any(x => x.UUID == entry.UUID))
 					{
-						var x = new DivinityMissingModData
+						missingMods.Add(new DivinityMissingModData
 						{
 							Index = index,
 							Name = entry.Name,
 							UUID = entry.UUID
-						};
-						missingMods.Add(x);
+						});
 					}
-					currentOrder.Order.Add(new DivinityLoadOrderEntry()
-					{
-						Name = entry.Name,
-						UUID = entry.UUID,
-						Missing = mod == null
-					});
-					index++;
 				}
 			}
 
@@ -546,38 +439,7 @@ namespace DivinityModManager.ViewModels
 
 		#endregion
 
-		private void Debug_TraceMods(List<DivinityModData> mods)
-		{
-			foreach (var mod in mods)
-			{
-				DivinityApp.Log($"Found mod. Name({mod.Name}) Author({mod.Author}) Version({mod.Version}) UUID({mod.UUID}) Description({mod.Description})");
-				foreach (var dependency in mod.Dependencies.Items)
-				{
-					Console.WriteLine($"  {dependency.ToString()}");
-				}
-			}
-		}
-
-		private void Debug_TraceProfileModOrder(DivinityProfileData p)
-		{
-			DivinityApp.Log($"Mod Order for Profile {p.Name}");
-			DivinityApp.Log("========================================");
-			foreach (var uuid in p.ModOrder)
-			{
-				var modData = Mods.FirstOrDefault(m => m.UUID == uuid);
-				if (modData != null)
-				{
-					DivinityApp.Log($"  {modData.Name}({modData.UUID})");
-				}
-				else
-				{
-					DivinityApp.Log($"  NOT FOUND {uuid}");
-				}
-			}
-			DivinityApp.Log("========================================");
-		}
-
-		public bool DebugMode { get; set; } = false;
+		public bool DebugMode { get; set; }
 
 		private TextWriterTraceListener debugLogListener;
 		public void ToggleLogging(bool enabled)
@@ -620,7 +482,6 @@ namespace DivinityModManager.ViewModels
 				var latestReleaseData = await GithubHelper.GetLatestReleaseDataAsync(DivinityApp.EXTENDER_REPO_URL);
 				if (!String.IsNullOrEmpty(latestReleaseData))
 				{
-					DivinityApp.Log($"{latestReleaseData}");
 					var jsonData = DivinityJsonUtils.SafeDeserialize<Dictionary<string, object>>(latestReleaseData);
 					if (jsonData != null)
 					{
@@ -637,18 +498,22 @@ namespace DivinityModManager.ViewModels
 						}
 						if (jsonData.TryGetValue("tag_name", out var tagName))
 						{
-							PathwayData.ScriptExtenderLatestReleaseVersion = (string)tagName;
+							PathwayData.OsirisExtenderLatestReleaseVersion = (string)tagName;
 						}
+#if DEBUG
+						//var lines = jsonData.Select(kvp => kvp.Key + ": " + kvp.Value.ToString());
+						//DivinityApp.LogMessage($"Releases Data:\n{String.Join(Environment.NewLine, lines)}");
+#endif
 					}
 					if (!String.IsNullOrEmpty(latestReleaseZipUrl))
 					{
 						OpenRepoLinkToDownload = false;
-						PathwayData.ScriptExtenderLatestReleaseUrl = latestReleaseZipUrl;
-						DivinityApp.Log($"Extender latest release url found: {latestReleaseZipUrl}");
+						PathwayData.OsirisExtenderLatestReleaseUrl = latestReleaseZipUrl;
+						DivinityApp.Log($"OsiTools latest release url found: {latestReleaseZipUrl}");
 					}
 					else
 					{
-						DivinityApp.Log($"Extender latest release not found.");
+						DivinityApp.Log($"OsiTools latest release not found.");
 					}
 				}
 				else
@@ -658,105 +523,158 @@ namespace DivinityModManager.ViewModels
 			}
 			catch (Exception ex)
 			{
-				DivinityApp.Log($"Error checking for latest Extender release: {ex}");
+				DivinityApp.Log($"Error checking for latest OsiExtender release: {ex}");
 
 				OpenRepoLinkToDownload = true;
 			}
 
-			try
+			await Observable.Start(() =>
 			{
-				string extenderSettingsJson = PathwayData.ScriptExtenderSettingsFile(Settings);
-				if (extenderSettingsJson.IsExistingFile())
-				{
-					var extenderSettingsJsonData = DivinityJsonUtils.SafeDeserializeFromPath<ScriptExtenderSettings>(extenderSettingsJson);
-					if (extenderSettingsJsonData != null)
-					{
-						DivinityApp.Log($"Loaded extender settings from '{extenderSettingsJson}'.");
-						Settings.ExtenderSettings.Set(extenderSettingsJsonData);
-					}
-				}
-			}
-			catch (Exception ex)
-			{
-				DivinityApp.Log($"Error loading extender settings: {ex}");
-			}
 
-			string extenderUpdaterPath = Path.Combine(Path.GetDirectoryName(Settings.GameExecutablePath), DivinityApp.EXTENDER_UPDATER_FILE);
-			DivinityApp.Log($"Looking for Extender at '{extenderUpdaterPath}'.");
-			if (File.Exists(extenderUpdaterPath))
-			{
-				DivinityApp.Log($"Checking {DivinityApp.EXTENDER_UPDATER_FILE}.");
 				try
 				{
-					FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(extenderUpdaterPath);
-					if (fvi != null && fvi.ProductName.IndexOf("Script Extender", StringComparison.OrdinalIgnoreCase) >= 0)
+					string extenderSettingsJson = PathwayData.ScriptExtenderSettingsFile(Settings);
+					if (extenderSettingsJson.IsExistingFile())
 					{
-						Settings.ExtenderSettings.ExtenderUpdaterIsAvailable = true;
-						DivinityApp.Log($"Found the Extender at '{extenderUpdaterPath}'.");
+						var osirisExtenderSettings = DivinityJsonUtils.SafeDeserializeFromPath<OsirisExtenderSettings>(extenderSettingsJson);
+						if (osirisExtenderSettings != null)
+						{
+							DivinityApp.Log($"Loaded extender settings from '{extenderSettingsJson}'.");
+							Settings.ExtenderSettings.Set(osirisExtenderSettings);
+						}
 					}
-					else
-					{
-						DivinityApp.Log($"'{extenderUpdaterPath}' isn't the Script Extender?");
-					}
-				}
-				catch (System.IO.IOException ex)
-				{
-					// This can happen if the game locks up the dll.
-					// Assume it's the extender for now.
-					Settings.ExtenderSettings.ExtenderUpdaterIsAvailable = true;
-					DivinityApp.Log($"WARNING: {extenderUpdaterPath} is locked by a process.");
 				}
 				catch (Exception ex)
 				{
-					DivinityApp.Log($"Error reading: '{extenderUpdaterPath}'\n\t{ex}");
+					DivinityApp.Log($"Error loading extender settings: {ex}");
 				}
-			}
-			else
-			{
-				Settings.ExtenderSettings.ExtenderUpdaterIsAvailable = false;
-				DivinityApp.Log($"Extender updater {DivinityApp.EXTENDER_UPDATER_FILE} not found.");
-			}
 
-			string extenderAppFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), DivinityApp.EXTENDER_APPDATA_DLL);
-			if (File.Exists(extenderAppFile))
-			{
-				Settings.ExtenderSettings.ExtenderIsAvailable = true;
-				try
+				string extenderUpdaterPath = Path.Combine(Path.GetDirectoryName(Settings.GameExecutablePath), DivinityApp.EXTENDER_UPDATER_FILE);
+				DivinityApp.Log($"Looking for OsiExtender at '{extenderUpdaterPath}'.");
+				if (File.Exists(extenderUpdaterPath))
 				{
-					FileVersionInfo extenderInfo = FileVersionInfo.GetVersionInfo(extenderAppFile);
-					if (!String.IsNullOrEmpty(extenderInfo.FileVersion))
+					DivinityApp.Log($"Checking {DivinityApp.EXTENDER_UPDATER_FILE} for Osiris ASCII bytes.");
+					try
 					{
-						var version = extenderInfo.FileVersion.Split('.')[0];
-						if (int.TryParse(version, out int intVersion))
+						FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(extenderUpdaterPath);
+						if (fvi != null && fvi.ProductName.IndexOf("Script Extender", StringComparison.OrdinalIgnoreCase) >= 0)
 						{
-							Settings.ExtenderSettings.ExtenderVersion = intVersion;
-							DivinityApp.Log($"Current Extender version found: '{Settings.ExtenderSettings.ExtenderVersion}'.");
+							Settings.ExtenderSettings.ExtenderUpdaterIsAvailable = true;
+							DivinityApp.Log($"Found the Extender at '{extenderUpdaterPath}'.");
+							FileVersionInfo extenderInfo = FileVersionInfo.GetVersionInfo(extenderUpdaterPath);
+							if (!String.IsNullOrEmpty(extenderInfo.FileVersion))
+							{
+								var version = extenderInfo.FileVersion.Split('.')[0];
+								if (int.TryParse(version, out int intVersion))
+								{
+									if (intVersion >= 3)
+									{
+										//Assume we're using the latest release version if the updater is 3.0.0.0
+										Settings.ExtenderSettings.ExtenderVersion = 59;
+									}
+								}
+								else
+								{
+									Settings.ExtenderSettings.ExtenderVersion = -1;
+								}
+							}
 						}
 						else
 						{
-							Settings.ExtenderSettings.ExtenderVersion = -1;
+							DivinityApp.Log($"'{extenderUpdaterPath}' isn't the Script Extender?");
+						}
+					}
+					catch (System.IO.IOException)
+					{
+						// This can happen if the game locks up the dll.
+						// Assume it's the extender for now.
+						Settings.ExtenderSettings.ExtenderUpdaterIsAvailable = true;
+						DivinityApp.Log($"WARNING: {extenderUpdaterPath} is locked by a process.");
+					}
+					catch (Exception ex)
+					{
+						DivinityApp.Log($"Error reading: '{extenderUpdaterPath}'\n\t{ex}");
+					}
+				}
+				else
+				{
+					Settings.ExtenderSettings.ExtenderUpdaterIsAvailable = false;
+					DivinityApp.Log($"Extender updater {DivinityApp.EXTENDER_UPDATER_FILE} not found.");
+				}
+
+				string extenderDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DOS2ScriptExtender\\ScriptExtender");
+				if (Directory.Exists(extenderDirectory))
+				{
+					var extenderFiles = Directory.EnumerateFiles(extenderDirectory, DirectoryEnumerationOptions.Files | DirectoryEnumerationOptions.Recursive, new DirectoryEnumerationFilters
+					{
+						InclusionFilter = (f) => f.FileName.Equals("OsiExtenderEoCApp.dll", StringComparison.OrdinalIgnoreCase)
+					}).ToList();
+					int latestVersion = -1;
+					if (extenderFiles.Count > 0)
+					{
+						Settings.ExtenderSettings.ExtenderIsAvailable = true;
+
+						foreach (var f in extenderFiles)
+						{
+							try
+							{
+								FileVersionInfo extenderInfo = FileVersionInfo.GetVersionInfo(f);
+								if (!String.IsNullOrEmpty(extenderInfo.FileVersion))
+								{
+									var version = extenderInfo.FileVersion.Split('.').FirstOrDefault();
+									if (!String.IsNullOrEmpty(version) && int.TryParse(version, out int intVersion) && intVersion > latestVersion)
+									{
+										latestVersion = intVersion;
+									}
+								}
+							}
+							catch (Exception ex)
+							{
+								DivinityApp.Log($"Error getting file info from: '{f}'\n\t{ex}");
+							}
+						}
+						if (latestVersion > -1)
+						{
+							Settings.ExtenderSettings.ExtenderVersion = latestVersion;
+							DivinityApp.Log($"Current OsiExtender version found: '{Settings.ExtenderSettings.ExtenderVersion}'.");
 						}
 					}
 				}
-				catch (Exception ex)
+
+				//Look in old path
+				if (!Settings.ExtenderSettings.ExtenderIsAvailable)
 				{
-					DivinityApp.Log($"Error getting file info from: '{extenderAppFile}'\n\t{ex}");
+					string extenderAppFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), DivinityApp.EXTENDER_APPDATA_DLL_OLD);
+					if (File.Exists(extenderAppFile))
+					{
+						Settings.ExtenderSettings.ExtenderIsAvailable = true;
+						try
+						{
+							FileVersionInfo extenderInfo = FileVersionInfo.GetVersionInfo(extenderAppFile);
+							if (!String.IsNullOrEmpty(extenderInfo.FileVersion))
+							{
+								var version = extenderInfo.FileVersion.Split('.').FirstOrDefault();
+								if (!String.IsNullOrEmpty(version) && int.TryParse(version, out int intVersion))
+								{
+									Settings.ExtenderSettings.ExtenderVersion = intVersion;
+									DivinityApp.Log($"Current OsiExtender version found: '{Settings.ExtenderSettings.ExtenderVersion}'.");
+								}
+							}
+						}
+						catch (Exception ex)
+						{
+							DivinityApp.Log($"Error getting file info from: '{extenderAppFile}'\n\t{ex}");
+						}
+					}
 				}
-			}
+				return Unit.Default;
+			}, RxApp.MainThreadScheduler);
+
 			return Unit.Default;
 		}
 
 		private void LoadExtenderSettings()
 		{
-#if DEBUG
-			RxApp.TaskpoolScheduler.ScheduleAsync(async (c, t) =>
-			{
-				await LoadExtenderSettingsAsync(t);
-				await c.Yield();
-				RxApp.MainThreadScheduler.Schedule(CheckExtenderData);
-				return Disposable.Empty;
-			});
-#else
 			if (File.Exists(Settings.GameExecutablePath))
 			{
 				RxApp.TaskpoolScheduler.ScheduleAsync(async (c, t) =>
@@ -771,7 +689,6 @@ namespace DivinityModManager.ViewModels
 			{
 				CheckExtenderData();
 			}
-#endif
 		}
 
 		private bool FilterDependencies(DivinityModDependencyData x, bool devMode)
@@ -790,10 +707,7 @@ namespace DivinityModManager.ViewModels
 
 		private bool LoadSettings()
 		{
-			if (Settings != null)
-			{
-				Settings.Dispose();
-			}
+			Settings?.Dispose();
 
 			bool loaded = false;
 			string settingsFile = @"Data\settings.json";
@@ -811,7 +725,7 @@ namespace DivinityModManager.ViewModels
 			}
 			catch (Exception ex)
 			{
-				view.AlertBar.SetDangerAlert($"Error loading settings at '{settingsFile}': {ex}");
+				View.AlertBar.SetDangerAlert($"Error loading settings at '{settingsFile}': {ex}");
 				Settings = null;
 			}
 
@@ -828,12 +742,29 @@ namespace DivinityModManager.ViewModels
 
 			if (AppSettings.FeatureEnabled("Workshop"))
 			{
+				if (!String.IsNullOrWhiteSpace(Settings.WorkshopPath))
+				{
+					var baseName = Path.GetFileNameWithoutExtension(Settings.WorkshopPath);
+					if (baseName == "steamapps")
+					{
+						var newFolder = Path.Combine(Settings.WorkshopPath, $"workshop/content/{AppSettings.DefaultPathways.Steam.AppID}");
+						if (Directory.Exists(newFolder))
+						{
+							Settings.WorkshopPath = newFolder;
+						}
+						else
+						{
+							Settings.WorkshopPath = "";
+						}
+					}
+				}
+
 				if (String.IsNullOrEmpty(Settings.WorkshopPath) || !Directory.Exists(Settings.WorkshopPath))
 				{
 					Settings.WorkshopPath = DivinityRegistryHelper.GetWorkshopPath(AppSettings.DefaultPathways.Steam.AppID).Replace("\\", "/");
 					if (!String.IsNullOrEmpty(Settings.WorkshopPath) && Directory.Exists(Settings.WorkshopPath))
 					{
-						DivinityApp.Log($"Invalid workshop path set in settings file. Found workshop folder at: '{Settings.WorkshopPath}'.");
+						DivinityApp.Log($"Workshop path set to: '{Settings.WorkshopPath}'.");
 						SaveSettings();
 					}
 				}
@@ -849,18 +780,31 @@ namespace DivinityModManager.ViewModels
 				Settings.WorkshopPath = "";
 			}
 
-			//canSaveSettings = this.WhenAnyValue(x => x.Settings.CanSaveSettings).StartWith(false);
 			canOpenGameExe = this.WhenAnyValue(x => x.Settings.GameExecutablePath, (p) => !String.IsNullOrEmpty(p) && File.Exists(p)).StartWith(false);
 			canOpenLogDirectory = this.WhenAnyValue(x => x.Settings.ExtenderLogDirectory, (f) => Directory.Exists(f)).StartWith(false);
-			gameExeFoundObservable = this.WhenAnyValue(x => x.Settings.GameExecutablePath, (path) => path.IsExistingFile()).StartWith(false);
-			canInstallScriptExtender = this.WhenAnyValue(x => x.PathwayData.ScriptExtenderLatestReleaseUrl, x => x.Settings.GameExecutablePath,
-				(url, exe) => !String.IsNullOrWhiteSpace(url) && exe.IsExistingFile()).ObserveOn(RxApp.MainThreadScheduler).StartWith(false);
-			Keys.DownloadScriptExtender.AddAction(() => InstallScriptExtender_Start(), canInstallScriptExtender, true);
+
+			Keys.DownloadScriptExtender.AddAction(() => InstallOsiExtender_Start());
+
+			var canOpenModsFolder = this.WhenAnyValue(x => x.PathwayData.DocumentsModsPath, (p) => !String.IsNullOrEmpty(p) && Directory.Exists(p));
+			Keys.OpenModsFolder.AddAction(() =>
+			{
+				Process.Start(PathwayData.DocumentsModsPath);
+			}, canOpenModsFolder);
+
+			var canOpenGameFolder = this.WhenAnyValue(x => x.Settings.GameExecutablePath, (p) => !String.IsNullOrEmpty(p) && File.Exists(p));
+			Keys.OpenGameFolder.AddAction(() =>
+			{
+				var folder = Path.GetDirectoryName(Settings.GameExecutablePath);
+				if (Directory.Exists(folder))
+				{
+					Process.Start(folder);
+				}
+			}, canOpenGameFolder);
 
 			Keys.OpenLogsFolder.AddAction(() =>
 			{
 				Process.Start(Settings.ExtenderLogDirectory);
-			}, canOpenLogDirectory, true);
+			}, canOpenLogDirectory);
 
 			Keys.OpenWorkshopFolder.AddAction(() =>
 			{
@@ -869,69 +813,59 @@ namespace DivinityModManager.ViewModels
 				{
 					Process.Start(Settings.WorkshopPath);
 				}
-			}, canOpenWorkshopFolder, true);
+			}, canOpenWorkshopFolder);
 
 			Keys.LaunchGame.AddAction(() =>
 			{
-				string exePath = Settings.GameExecutablePath;
-				if (Settings.LaunchDX11 && !exePath.Contains("bg3_dx11"))
+				if (!File.Exists(Settings.GameExecutablePath))
 				{
-					string exePath2 = Regex.Replace(exePath, "bg3.exe", "bg3_dx11.exe", RegexOptions.IgnoreCase);
-					DivinityApp.Log($"Looking for DirectX 11 exe: {exePath2}");
-					if (File.Exists(exePath2))
+					if (String.IsNullOrWhiteSpace(Settings.GameExecutablePath))
 					{
-						exePath = exePath2;
-					}
-				}
-				if (File.Exists(exePath))
-				{
-					string launchParams = Settings.GameLaunchParams;
-					if (String.IsNullOrEmpty(launchParams)) launchParams = "";
-
-					if (Settings.GameStoryLogEnabled && launchParams.IndexOf("storylog") < 0)
-					{
-						if (String.IsNullOrWhiteSpace(launchParams))
-						{
-							launchParams = "-storylog 1";
-						}
-						else
-						{
-							launchParams = launchParams + " " + "-storylog 1";
-						}
-					}
-
-					DivinityApp.Log($"Opening game exe at: {exePath} with args {launchParams}");
-					Process proc = new Process();
-					proc.StartInfo.FileName = exePath;
-					proc.StartInfo.Arguments = launchParams;
-					proc.StartInfo.WorkingDirectory = Path.GetDirectoryName(exePath);
-					proc.Start();
-
-					if (Settings.ActionOnGameLaunch != DivinityGameLaunchWindowAction.None)
-					{
-						switch (Settings.ActionOnGameLaunch)
-						{
-							case DivinityGameLaunchWindowAction.Minimize:
-								view.WindowState = WindowState.Minimized;
-								break;
-							case DivinityGameLaunchWindowAction.Close:
-								App.Current.Shutdown();
-								break;
-						}
-					}
-				}
-				else
-				{
-					if (String.IsNullOrWhiteSpace(exePath))
-					{
-						ShowAlert("No game executable path set.", AlertType.Warning, 30);
+						ShowAlert("No game executable path set.", AlertType.Danger, 30);
 					}
 					else
 					{
-						ShowAlert($"Failed to find game exe at, \"{exePath}\"", AlertType.Danger, 90);
+						ShowAlert($"Failed to find game exe at, \"{Settings.GameExecutablePath}\"", AlertType.Danger, 90);
+					}
+					return;
+				}
+				string launchParams = Settings.GameLaunchParams;
+				if (String.IsNullOrEmpty(launchParams)) launchParams = "";
+
+				if (Settings.GameStoryLogEnabled && launchParams.IndexOf("storylog") < 0)
+				{
+					if (String.IsNullOrWhiteSpace(launchParams))
+					{
+						launchParams = "-storylog 1";
+					}
+					else
+					{
+						launchParams = launchParams + " " + "-storylog 1";
 					}
 				}
+
+				DivinityApp.Log($"Opening game exe at: {Settings.GameExecutablePath} with args {launchParams}");
+				Process proc = new Process();
+				proc.StartInfo.FileName = Settings.GameExecutablePath;
+				proc.StartInfo.Arguments = launchParams;
+				proc.StartInfo.WorkingDirectory = Path.GetDirectoryName(Settings.GameExecutablePath);
+				proc.Start();
+
+				if (Settings.ActionOnGameLaunch != DivinityGameLaunchWindowAction.None)
+				{
+					switch (Settings.ActionOnGameLaunch)
+					{
+						case DivinityGameLaunchWindowAction.Minimize:
+							this.View.WindowState = WindowState.Minimized;
+							break;
+						case DivinityGameLaunchWindowAction.Close:
+							App.Current.Shutdown();
+							break;
+					}
+				}
+
 			}, canOpenGameExe);
+
 			Settings.SaveSettingsCommand = ReactiveCommand.Create(() =>
 			{
 				try
@@ -963,18 +897,10 @@ namespace DivinityModManager.ViewModels
 						Settings.ExportExtenderSettingsCommand?.Execute(null);
 					}
 				}
-				catch (Exception ex) { }
+				catch (Exception) { }
 				if (SaveSettings())
 				{
-					view.AlertBar.SetSuccessAlert($"Saved settings to '{settingsFile}'.", 10);
-					if (Settings.TelemetryDisabled)
-					{
-						DivinityModDataLoader.SetTelemetry(false);
-					}
-					else
-					{
-						DivinityModDataLoader.SetTelemetry(SelectedModOrder == null || SelectedModOrder.Order.Count == 0);
-					}
+					View.AlertBar.SetSuccessAlert($"Saved settings to '{settingsFile}'.", 10);
 				}
 			}).DisposeWith(Settings.Disposables);
 
@@ -995,19 +921,19 @@ namespace DivinityModManager.ViewModels
 					}
 					string contents = JsonConvert.SerializeObject(Settings.ExtenderSettings, jsonSettings);
 					File.WriteAllText(outputFile, contents);
-					view.AlertBar.SetSuccessAlert($"Saved Script Extender settings to '{outputFile}'.", 20);
+					View.AlertBar.SetSuccessAlert($"Saved Osiris Extender settings to '{outputFile}'.", 20);
 				}
 				catch (Exception ex)
 				{
-					view.AlertBar.SetDangerAlert($"Error saving Script Extender settings to '{outputFile}':\n{ex}");
+					View.AlertBar.SetDangerAlert($"Error saving Osiris Extender settings to '{outputFile}':\n{ex}");
 				}
 			}).DisposeWith(Settings.Disposables);
 
 			var canResetExtenderSettingsObservable = this.WhenAny(x => x.Settings.ExtenderSettings, (extenderSettings) => extenderSettings != null).StartWith(false);
 			Settings.ResetExtenderSettingsToDefaultCommand = ReactiveCommand.Create(() =>
 			{
-				MessageBoxResult result = Xceed.Wpf.Toolkit.MessageBox.Show(view.SettingsWindow, $"Reset Extender Settings to Default?\nCurrent Extender Settings will be lost.", "Confirm Extender Settings Reset",
-					MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No, view.MainWindowMessageBox_OK.Style);
+				MessageBoxResult result = Xceed.Wpf.Toolkit.MessageBox.Show(View.SettingsWindow, $"Reset Extender Settings to Default?\nCurrent Extender Settings will be lost.", "Confirm Extender Settings Reset",
+					MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No, View.MainWindowMessageBox_OK.Style);
 				if (result == MessageBoxResult.Yes)
 				{
 					Settings.ExportDefaultExtenderSettings = false;
@@ -1017,8 +943,8 @@ namespace DivinityModManager.ViewModels
 
 			Settings.ResetKeybindingsCommand = ReactiveCommand.Create(() =>
 			{
-				MessageBoxResult result = Xceed.Wpf.Toolkit.MessageBox.Show(view.SettingsWindow, $"Reset Keybindings to Default?\nCurrent keybindings may be lost.", "Confirm Reset",
-					MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No, view.MainWindowMessageBox_OK.Style);
+				MessageBoxResult result = Xceed.Wpf.Toolkit.MessageBox.Show((Window)this.View.SettingsWindow, $"Reset Keybindings to Default?\nCurrent keybindings may be lost.", "Confirm Reset",
+					MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No, (Style)this.View.MainWindowMessageBox_OK.Style);
 				if (result == MessageBoxResult.Yes)
 				{
 					Keys.SetToDefault();
@@ -1029,19 +955,19 @@ namespace DivinityModManager.ViewModels
 			{
 				if (File.Exists("Data\\workshopdata.json"))
 				{
-					MessageBoxResult result = Xceed.Wpf.Toolkit.MessageBox.Show(view.SettingsWindow, $"Delete local workshop cache?\nThis cannot be undone.\nRefresh to download tag data once more.", "Confirm Delete Cache",
-					MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No, view.MainWindowMessageBox_OK.Style);
+					MessageBoxResult result = Xceed.Wpf.Toolkit.MessageBox.Show(View.SettingsWindow, $"Delete local workshop cache?\nThis cannot be undone.\nRefresh to download tag data once more.", "Confirm Delete Cache",
+					MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No, View.MainWindowMessageBox_OK.Style);
 					if (result == MessageBoxResult.Yes)
 					{
 						try
 						{
 							var fullFilePath = Path.GetFullPath("Data\\workshopdata.json");
 							RecycleBinHelper.DeleteFile(fullFilePath, false, true);
-							view.AlertBar.SetSuccessAlert($"Deleted local workshop cache at '{fullFilePath}'.", 20);
+							View.AlertBar.SetSuccessAlert($"Deleted local workshop cache at '{fullFilePath}'.", 20);
 						}
 						catch (Exception ex)
 						{
-							view.AlertBar.SetDangerAlert($"Error deleting workshop cache:\n{ex}");
+							View.AlertBar.SetDangerAlert($"Error deleting workshop cache:\n{ex}");
 						}
 					}
 				}
@@ -1075,7 +1001,7 @@ namespace DivinityModManager.ViewModels
 
 			this.WhenAnyValue(x => x.Settings.DarkThemeEnabled).ObserveOn(RxApp.MainThreadScheduler).Subscribe((b) =>
 			{
-				view.UpdateColorTheme(b);
+				View.UpdateColorTheme(b);
 				SaveSettings();
 			}).DisposeWith(Settings.Disposables);
 
@@ -1096,7 +1022,7 @@ namespace DivinityModManager.ViewModels
 
 			this.WhenAnyValue(x => x.Settings.DisplayFileNames).Subscribe((b) =>
 			{
-				if (view.MenuItems.TryGetValue("ToggleFileNameDisplay", out var menuItem))
+				if (View.MenuItems.TryGetValue("ToggleFileNameDisplay", out var menuItem))
 				{
 					if (b)
 					{
@@ -1109,20 +1035,27 @@ namespace DivinityModManager.ViewModels
 				}
 			}).DisposeWith(Settings.Disposables);
 
-			//DivinityApp.DependencyFilter = this.WhenAnyValue(x => x.Settings.DebugModeEnabled).Select(MakeDependencyFilter);
-			//DisposeWith(Settings.Disposables);
+			this.WhenAnyValue(x => x.Settings.DocumentsFolderPathOverride).Skip(1).Subscribe((x) =>
+			{
+				if (!IsLocked)
+				{
+					SetGamePathways(Settings.GameDataPath, x);
+					View.AlertBar.SetWarningAlert($"Larian documents folder changed to '{PathwayData.LarianDocumentsFolder}'. Make sure to refresh.", 60);
+				}
+			}).DisposeWith(Settings.Disposables);
+
+			this.WhenAnyValue(x => x.Settings.SaveWindowLocation).Subscribe(View.ToggleWindowPositionSaving).DisposeWith(Settings.Disposables);
 
 			if (Settings.LogEnabled)
 			{
 				ToggleLogging(true);
 			}
 
-			SetGamePathways(Settings.GameDataPath);
+			SetGamePathways(Settings.GameDataPath, Settings.DocumentsFolderPathOverride);
 
 			if (loaded)
 			{
 				Settings.CanSaveSettings = false;
-				//view.AlertBar.SetSuccessAlert($"Loaded settings from '{settingsFile}'.", 5);
 			}
 
 			return loaded;
@@ -1152,44 +1085,33 @@ namespace DivinityModManager.ViewModels
 			}
 			catch (Exception ex)
 			{
-				view.AlertBar.SetDangerAlert($"Error saving settings at '{settingsFile}': {ex}");
+				View.AlertBar.SetDangerAlert($"Error saving settings at '{settingsFile}': {ex}");
 			}
 			return false;
 		}
 
-		public void LoadWorkshopMods()
-		{
-			if (Directory.Exists(Settings.WorkshopPath))
-			{
-				List<DivinityModData> modPakData = DivinityModDataLoader.LoadModPackageData(Settings.WorkshopPath, true);
-				if (modPakData.Count > 0)
-				{
-					foreach (var workshopMod in modPakData)
-					{
-						string workshopID = Directory.GetParent(workshopMod.FilePath)?.Name;
-						if (!String.IsNullOrEmpty(workshopID))
-						{
-							workshopMod.WorkshopData.ID = workshopID;
-						}
-					}
-					//Ignore Classic mods since they share the same workshop folder
-					var sortedWorkshopMods = modPakData.OrderBy(m => m.Name);
-					workshopMods.Clear();
-					workshopMods.AddRange(sortedWorkshopMods);
+		object deferSave = null;
 
-					DivinityApp.Log($"Loaded '{workshopMods.Count}' workshop mods from '{Settings.WorkshopPath}'.");
-				}
+		public void QueueSave()
+		{
+			if (deferSave == null)
+			{
+				deferSave = RxApp.MainThreadScheduler.Schedule(TimeSpan.FromMilliseconds(250), () =>
+				{
+					SaveSettings();
+					deferSave = null;
+				});
 			}
 		}
 
-		public async Task<List<DivinityModData>> LoadWorkshopModsAsync(CancellationToken? token = null)
+		public async Task<List<DivinityModData>> LoadWorkshopModsAsync(CancellationToken cts)
 		{
 			List<DivinityModData> newWorkshopMods = new List<DivinityModData>();
 
 			if (Directory.Exists(Settings.WorkshopPath))
 			{
-				newWorkshopMods = await DivinityModDataLoader.LoadModPackageDataAsync(Settings.WorkshopPath, true, token);
-				if (token.HasValue && token.Value.IsCancellationRequested)
+				newWorkshopMods = await DivinityModDataLoader.LoadModPackageDataAsync(Settings.WorkshopPath, cts);
+				if (cts.IsCancellationRequested)
 				{
 					return newWorkshopMods;
 				}
@@ -1208,27 +1130,33 @@ namespace DivinityModManager.ViewModels
 			return newWorkshopMods;
 		}
 
-		public void CheckForModUpdates(CancellationToken? token = null)
+		public void CheckForModUpdates(CancellationToken cts)
 		{
 			ModUpdatesViewData.Clear();
 
 			int count = 0;
 			foreach (var workshopMod in WorkshopMods)
 			{
-				if (token.HasValue && token.Value.IsCancellationRequested)
+				if (cts.IsCancellationRequested)
 				{
 					break;
 				}
-				DivinityModData pakMod = mods.Items.FirstOrDefault(x => x.UUID == workshopMod.UUID && !x.IsClassicMod);
-
-				if (pakMod != null)
+				if (TryGetMod(workshopMod.UUID, out var pakMod))
 				{
 					pakMod.WorkshopData.ID = workshopMod.WorkshopData.ID;
 					if (!pakMod.IsEditorMod)
 					{
-						//DivinityApp.LogMessage($"Comparing versions for ({pakMod.Name}): Workshop({workshopMod.Version.VersionInt})({workshopMod.Version.Version}) Local({pakMod.Version.VersionInt})({pakMod.Version.Version})");
-						if (!File.Exists(pakMod.FilePath) || workshopMod.Version.VersionInt > pakMod.Version.VersionInt || workshopMod.LastModified > pakMod.LastModified)
+						if (!File.Exists(pakMod.FilePath) || workshopMod.Version > pakMod.Version || workshopMod.IsNewerThan(pakMod))
 						{
+							if (workshopMod.Version.VersionInt > pakMod.Version.VersionInt)
+							{
+								DivinityApp.Log($"Update available for ({pakMod.FileName}): Workshop({workshopMod.Version.VersionInt}|{pakMod.Version.Version})({workshopMod.Version.Version}) > Local({pakMod.Version.VersionInt}|{pakMod.Version.Version})");
+							}
+							else
+							{
+								DivinityApp.Log($"Update available for ({pakMod.FileName}): Workshop({workshopMod.LastModified}) > Local({pakMod.LastModified})");
+							}
+
 							ModUpdatesViewData.Updates.Add(new DivinityModUpdateData()
 							{
 								LocalMod = pakMod,
@@ -1255,51 +1183,71 @@ namespace DivinityModManager.ViewModels
 				DivinityApp.Log($"'{count}' mod updates pending.");
 			}
 			ModUpdatesViewData.OnLoaded?.Invoke();
-			CheckingForWorkshopUpdates = false;
+			IsRefreshingWorkshop = false;
 		}
 
-		private void SetGamePathways(string currentGameDataPath)
+		private void SetGamePathways(string currentGameDataPath, string larianDocumentsFolderOverride = "")
 		{
 			try
 			{
-				//string documentsFolder = System.Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-				//Patch 7 moved the Larian Studios folder to AppData\Local
-				string documentsFolder = System.Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-
+				string documentsFolder = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments, Environment.SpecialFolderOption.DoNotVerify);
 				if (String.IsNullOrWhiteSpace(AppSettings.DefaultPathways.DocumentsGameFolder))
 				{
-					AppSettings.DefaultPathways.DocumentsGameFolder = "Larian Studios\\Baldur's Gate 3";
+					AppSettings.DefaultPathways.DocumentsGameFolder = "Larian Studios\\Divinity Original Sin 2 Definitive Edition";
 				}
+
 				string larianDocumentsFolder = Path.Combine(documentsFolder, AppSettings.DefaultPathways.DocumentsGameFolder);
 
-				PathwayData.LarianDocumentsFolder = larianDocumentsFolder;
-				DivinityApp.Log($"Larian documents folder set to '{larianDocumentsFolder}'.");
-				if (!Directory.Exists(larianDocumentsFolder))
+				if (!String.IsNullOrEmpty(larianDocumentsFolderOverride) && Directory.Exists(larianDocumentsFolderOverride))
 				{
-					Directory.CreateDirectory(larianDocumentsFolder);
+					larianDocumentsFolder = larianDocumentsFolderOverride;
+				}
+				else if (!Directory.Exists(larianDocumentsFolder))
+				{
+					var userFolder = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile, Environment.SpecialFolderOption.DoNotVerify);
+					if (Directory.Exists(userFolder))
+					{
+						documentsFolder = Path.Combine(userFolder, "Documents");
+						larianDocumentsFolder = Path.Combine(documentsFolder, AppSettings.DefaultPathways.DocumentsGameFolder);
+					}
 				}
 
 				string modPakFolder = Path.Combine(larianDocumentsFolder, "Mods");
-				PathwayData.DocumentsModsPath = modPakFolder;
-				if (!Directory.Exists(modPakFolder))
-				{
-					DivinityApp.Log($"No mods folder found at '{modPakFolder}'. Creating folder.");
-					Directory.CreateDirectory(modPakFolder);
-				}
-
 				string gmCampaignsFolder = Path.Combine(larianDocumentsFolder, "GMCampaigns");
-				PathwayData.DocumentsGMCampaignsPath = gmCampaignsFolder;
-				if (!Directory.Exists(gmCampaignsFolder))
-				{
-					DivinityApp.Log($"No GM campaigns folder found at '{gmCampaignsFolder}'.");
-				}
+				string profileFolder = Path.Combine(larianDocumentsFolder, "PlayerProfiles");
 
-				string profileFolder = (Path.Combine(larianDocumentsFolder, "PlayerProfiles"));
+				PathwayData.LarianDocumentsFolder = larianDocumentsFolder;
+				PathwayData.DocumentsModsPath = modPakFolder;
+				PathwayData.DocumentsGMCampaignsPath = gmCampaignsFolder;
 				PathwayData.DocumentsProfilesPath = profileFolder;
-				if (!Directory.Exists(profileFolder))
+
+				if (Directory.Exists(documentsFolder))
 				{
-					DivinityApp.Log($"Creating profile folder at '{profileFolder}'.");
-					Directory.CreateDirectory(profileFolder);
+					Directory.CreateDirectory(larianDocumentsFolder);
+					DivinityApp.Log($"Larian documents folder set to '{larianDocumentsFolder}'.");
+
+					if (!Directory.Exists(modPakFolder))
+					{
+						DivinityApp.Log($"No mods folder found at '{modPakFolder}'. Creating folder.");
+						Directory.CreateDirectory(modPakFolder);
+					}
+
+					if (!Directory.Exists(gmCampaignsFolder))
+					{
+						DivinityApp.Log($"No GM campaigns folder found at '{gmCampaignsFolder}'. Creating folder.");
+						Directory.CreateDirectory(gmCampaignsFolder);
+					}
+
+					if (!Directory.Exists(profileFolder))
+					{
+						DivinityApp.Log($"No PlayerProfiles folder found at '{profileFolder}'. Creating folder.");
+						Directory.CreateDirectory(profileFolder);
+					}
+				}
+				else
+				{
+					ShowAlert("Failed to find %USERPROFILE%\\Documents folder. This is weird.", AlertType.Danger);
+					DivinityApp.Log($"Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments, Environment.SpecialFolderOption.DoNotVerify) return a non-existent path?\nResult({Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments, Environment.SpecialFolderOption.DoNotVerify)})");
 				}
 
 				if (String.IsNullOrEmpty(currentGameDataPath) || !Directory.Exists(currentGameDataPath))
@@ -1330,7 +1278,6 @@ namespace DivinityModManager.ViewModels
 						string gameDataPath = Path.Combine(installPath, AppSettings.DefaultPathways.GameDataFolder).Replace("\\", "/");
 						DivinityApp.Log($"Set game data path to '{gameDataPath}'.");
 						Settings.GameDataPath = gameDataPath;
-						SaveSettings();
 					}
 				}
 				else
@@ -1372,8 +1319,8 @@ namespace DivinityModManager.ViewModels
 			mods.Clear();
 			foreach (var m in DivinityApp.IgnoredMods)
 			{
-				mods.Add(m);
-				DivinityApp.Log($"Added ignored mod: Name({m.Name}) UUID({m.UUID}) Type({m.Type}) Version({m.Version.VersionInt})");
+				mods.AddOrUpdate(m);
+				DivinityApp.Log($"Added ignored mod: Name({m.Name}) UUID({m.UUID}) Type({m.ModType}) Version({m.Version.VersionInt})");
 			}
 			foreach (var m in loadedMods)
 			{
@@ -1385,77 +1332,20 @@ namespace DivinityModManager.ViewModels
 						DivinityApp.IgnoredMods.Remove(existingIgnoredMod);
 					}
 					DivinityApp.IgnoredMods.Add(m);
-
-					// Gustav
-					if (m.UUID == "991c9c7a-fb80-40cb-8f0d-b92d4e80e9b1")
-					{
-						m.Name = "Story";
-					}
-					else if (m.UUID == "ed539163-bb70-431b-96a7-f5b2eda5376b" || m.UUID == "9dff4c3b-fda7-43de-a763-ce1383039999")
-					{
-						// Shared and Engine are "Adventure" for some reason.
-						m.Type = "Add-on";
-					}
 				}
-				var existingMod = mods.Items.FirstOrDefault(x => x.UUID == m.UUID);
-				if (existingMod == null)
-				{
-					mods.Add(m);
-				}
-				else
+				if (TryGetMod(m.UUID, out var existingMod))
 				{
 					if (m.Version.VersionInt > existingMod.Version.VersionInt)
 					{
-						mods.Remove(existingMod);
-						mods.Add(m);
-						DivinityApp.Log($"Updated mod data from pak: Name({m.Name}) UUID({m.UUID}) Type({m.Type}) Version({m.Version.VersionInt})");
+						mods.AddOrUpdate(m);
+						DivinityApp.Log($"Updated mod data from pak: Name({m.Name}) UUID({m.UUID}) Type({m.ModType}) Version({m.Version.VersionInt})");
 					}
 				}
-			}
-			userMods.Clear();
-			userMods.AddRange(loadedMods);
-		}
-
-		public List<DivinityModData> LoadMods()
-		{
-			List<DivinityModData> finalMods = new List<DivinityModData>();
-			List<DivinityModData> modPakData = null;
-			List<DivinityModData> projects = null;
-			List<DivinityModData> baseMods = null;
-
-			if (Directory.Exists(PathwayData.DocumentsModsPath))
-			{
-				DivinityApp.Log($"Loading mods from '{PathwayData.DocumentsModsPath}'.");
-				modPakData = DivinityModDataLoader.LoadModPackageData(PathwayData.DocumentsModsPath);
-			}
-
-			GameDirectoryFound = Directory.Exists(Settings.GameDataPath);
-
-			if (GameDirectoryFound)
-			{
-				GameDirectoryFound = true;
-				string modsDirectory = Path.Combine(Settings.GameDataPath, "Mods");
-				if (Directory.Exists(modsDirectory))
+				else
 				{
-					DivinityApp.Log($"Loading mod projects from '{modsDirectory}'.");
-					projects = DivinityModDataLoader.LoadEditorProjects(modsDirectory);
+					mods.AddOrUpdate(m);
 				}
-
-				DivinityApp.Log($"Loading base game mods from '{Settings.GameDataPath}'.");
-				baseMods = DivinityModDataLoader.LoadBuiltinMods(Settings.GameDataPath);
 			}
-			else
-			{
-				DivinityApp.Log($"Game data directory not found at '{Settings.GameDataPath}'.");
-			}
-
-			if (baseMods != null) MergeModLists(finalMods, baseMods);
-			if (modPakData != null) MergeModLists(finalMods, modPakData);
-			if (projects != null) MergeModLists(finalMods, projects);
-
-			finalMods = finalMods.OrderBy(m => m.Name).ToList();
-			DivinityApp.Log($"Loaded '{finalMods.Count}' mods.");
-			return finalMods;
 		}
 
 		private void MergeModLists(List<DivinityModData> finalMods, List<DivinityModData> newMods)
@@ -1495,11 +1385,11 @@ namespace DivinityModManager.ViewModels
 			{
 				return await task;
 			}
-			catch (OperationCanceledException ex)
+			catch (OperationCanceledException)
 			{
 				DivinityApp.Log("Operation timed out/canceled.");
 			}
-			catch (TimeoutException ex)
+			catch (TimeoutException)
 			{
 				DivinityApp.Log("Operation timed out.");
 			}
@@ -1518,13 +1408,14 @@ namespace DivinityModManager.ViewModels
 			List<DivinityModData> baseMods = null;
 
 			var cancelTokenSource = GetCancellationToken(int.MaxValue);
+			CanCancelProgress = false;
 
 			if (Directory.Exists(PathwayData.DocumentsModsPath))
 			{
 				DivinityApp.Log($"Loading mods from '{PathwayData.DocumentsModsPath}'.");
 				await SetMainProgressTextAsync("Loading mods from documents folder...");
-				cancelTokenSource.CancelAfter(60000);
-				modPakData = await RunTask(DivinityModDataLoader.LoadModPackageDataAsync(PathwayData.DocumentsModsPath, false, cancelTokenSource.Token), null);
+				cancelTokenSource.CancelAfter(TimeSpan.FromMinutes(10));
+				modPakData = await RunTask(DivinityModDataLoader.LoadModPackageDataAsync(PathwayData.DocumentsModsPath, cancelTokenSource.Token), null);
 				cancelTokenSource = GetCancellationToken(int.MaxValue);
 				await IncreaseMainProgressValueAsync(taskStepAmount);
 			}
@@ -1545,16 +1436,11 @@ namespace DivinityModManager.ViewModels
 					await IncreaseMainProgressValueAsync(taskStepAmount);
 				}
 
-				DivinityApp.Log($"Loading base game mods from '{Settings.GameDataPath}'.");
 				await SetMainProgressTextAsync("Loading base game mods from data folder...");
 				cancelTokenSource = GetCancellationToken(30000);
 				baseMods = await RunTask(DivinityModDataLoader.LoadBuiltinModsAsync(Settings.GameDataPath, cancelTokenSource.Token), null);
 				cancelTokenSource = GetCancellationToken(int.MaxValue);
 				await IncreaseMainProgressValueAsync(taskStepAmount);
-			}
-			else
-			{
-				DivinityApp.Log($"Game data directory not found at '{Settings.GameDataPath}'.");
 			}
 
 			if (baseMods != null) MergeModLists(finalMods, baseMods);
@@ -1598,36 +1484,6 @@ namespace DivinityModManager.ViewModels
 				|| DivinityApp.IgnoredDependencyMods.Any(d => d.UUID == divinityModData.UUID);
 		}
 
-		public void LoadProfiles()
-		{
-			if (Directory.Exists(PathwayData.DocumentsProfilesPath))
-			{
-				DivinityApp.Log($"Loading profiles from '{PathwayData.DocumentsProfilesPath}'.");
-
-				var profiles = DivinityModDataLoader.LoadProfileData(PathwayData.DocumentsProfilesPath);
-				Profiles.AddRange(profiles);
-
-				DivinityApp.Log($"Loaded '{Profiles.Count}' profiles.");
-
-				var selectedUUID = DivinityModDataLoader.GetSelectedProfileUUID(PathwayData.DocumentsProfilesPath);
-				if (!String.IsNullOrWhiteSpace(selectedUUID))
-				{
-					var index = Profiles.IndexOf(Profiles.FirstOrDefault(p => p.UUID == selectedUUID));
-					if (index > -1)
-					{
-						SelectedProfileIndex = index;
-						Debug_TraceProfileModOrder(Profiles[index]);
-					}
-				}
-
-				DivinityApp.Log($"Last selected UUID: {selectedUUID}");
-			}
-			else
-			{
-				DivinityApp.Log($"Profile folder not found at '{PathwayData.DocumentsProfilesPath}'.");
-			}
-		}
-
 		public async Task<List<DivinityProfileData>> LoadProfilesAsync()
 		{
 			if (Directory.Exists(PathwayData.DocumentsProfilesPath))
@@ -1649,14 +1505,18 @@ namespace DivinityModManager.ViewModels
 		{
 			if (SelectedProfile != null)
 			{
-				LoadingOrder = true;
+				IsLoadingOrder = true;
 
 				List<DivinityMissingModData> missingMods = new List<DivinityMissingModData>();
 
-				if (SelectedProfile.SavedLoadOrder == null)
-				{
-					DivinityLoadOrder currentOrder = new DivinityLoadOrder() { Name = "Current", FilePath = Path.Combine(SelectedProfile.Folder, "modsettings.lsx") };
+				DivinityLoadOrder currentOrder = new DivinityLoadOrder() { Name = "Current", FilePath = Path.Combine(SelectedProfile.Folder, "modsettings.lsx"), IsModSettings = true };
 
+				if (this.SelectedModOrder != null && this.SelectedModOrder.IsModSettings)
+				{
+					currentOrder.SetOrder(this.SelectedModOrder);
+				}
+				else
+				{
 					foreach (var uuid in SelectedProfile.ModOrder)
 					{
 						var activeModData = SelectedProfile.ActiveMods.FirstOrDefault(y => y.UUID == uuid);
@@ -1683,14 +1543,21 @@ namespace DivinityModManager.ViewModels
 							DivinityApp.Log($"UUID {uuid} is missing from the profile's active mod list.");
 						}
 					}
+				}
 
+				ModOrderList.Clear();
+				ModOrderList.Add(currentOrder);
+				if (SelectedProfile.SavedLoadOrder != null && !SelectedProfile.SavedLoadOrder.IsModSettings)
+				{
+					ModOrderList.Add(SelectedProfile.SavedLoadOrder);
+				}
+				else
+				{
 					SelectedProfile.SavedLoadOrder = currentOrder;
 				}
 
 				DivinityApp.Log($"Profile order: {String.Join(";", SelectedProfile.SavedLoadOrder.Order.Select(x => x.Name))}");
 
-				ModOrderList.Clear();
-				ModOrderList.Add(SelectedProfile.SavedLoadOrder);
 				ModOrderList.AddRange(SavedModOrderList);
 
 				if (!String.IsNullOrEmpty(lastOrderName))
@@ -1708,8 +1575,8 @@ namespace DivinityModManager.ViewModels
 						try
 						{
 							SelectedModOrderIndex = selectIndex;
-							var nextOrder = ModOrderList.ElementAtOrDefault(selectedModOrderIndex);
-							if (nextOrder.Name == "Current" && Settings.GameMasterModeEnabled && SelectedGameMasterCampaign != null)
+							var nextOrder = ModOrderList.ElementAtOrDefault(selectIndex);
+							if (nextOrder.IsModSettings && Settings.GameMasterModeEnabled && SelectedGameMasterCampaign != null)
 							{
 								LoadGameMasterCampaignModOrder(SelectedGameMasterCampaign);
 							}
@@ -1718,6 +1585,9 @@ namespace DivinityModManager.ViewModels
 								LoadModOrder(nextOrder, missingMods);
 							}
 
+							//Adds mods that will always be "enabled"
+							//ForceLoadedMods.AddRange(Mods.Where(x => !x.IsActive && x.IsForcedLoaded));
+
 							Settings.LastOrder = nextOrder?.Name;
 						}
 						catch (Exception ex)
@@ -1725,20 +1595,9 @@ namespace DivinityModManager.ViewModels
 							DivinityApp.Log($"Error setting next load order:\n{ex}");
 						}
 					}
-					LoadingOrder = false;
+					IsLoadingOrder = false;
 				});
 			}
-		}
-
-		private int GetModOrder(DivinityModData mod, DivinityLoadOrder loadOrder)
-		{
-			var entry = loadOrder.Order.FirstOrDefault(o => o.UUID == mod.UUID);
-			int index = -1;
-			if (mod != null)
-			{
-				index = loadOrder.Order.IndexOf(entry);
-			}
-			return index > -1 ? index : 99999999;
 		}
 
 		private async Task<bool> AddModFromFile(string filePath, CancellationToken t)
@@ -1776,22 +1635,24 @@ namespace DivinityModManager.ViewModels
 
 		private void OpenModImportDialog()
 		{
-			var dialog = new OpenFileDialog();
-			dialog.CheckFileExists = true;
-			dialog.CheckPathExists = true;
-			dialog.DefaultExt = ".zip";
-			dialog.Filter = "All formats (*.pak;*.zip;*.7z)|*.pak;*.zip;*.7z;*.7zip;*.tar;*.bzip2;*.gzip;*.lzip|Mod package (*.pak)|*.pak|Archive file (*.zip;*.7z)|*.zip;*.7z;*.7zip;*.tar;*.bzip2;*.gzip;*.lzip|All files (*.*)|*.*";
-			dialog.Title = "Import Mods from Archive...";
-			dialog.ValidateNames = true;
-			dialog.ReadOnlyChecked = true;
-			dialog.Multiselect = true;
+			var dialog = new OpenFileDialog
+			{
+				CheckFileExists = true,
+				CheckPathExists = true,
+				DefaultExt = ".zip",
+				Filter = "All formats (*.pak;*.zip;*.7z)|*.pak;*.zip;*.7z;*.7zip;*.tar;*.bzip2;*.gzip;*.lzip|Mod package (*.pak)|*.pak|Archive file (*.zip;*.7z)|*.zip;*.7z;*.7zip;*.tar;*.bzip2;*.gzip;*.lzip|All files (*.*)|*.*",
+				Title = "Import Mods from Archive...",
+				ValidateNames = true,
+				ReadOnlyChecked = true,
+				Multiselect = true
+			};
 
 			if (!String.IsNullOrEmpty(PathwayData.LastSaveFilePath) && Directory.Exists(PathwayData.LastSaveFilePath))
 			{
 				dialog.InitialDirectory = PathwayData.LastSaveFilePath;
 			}
 
-			if (dialog.ShowDialog(view) == true)
+			if (dialog.ShowDialog(View) == true)
 			{
 				MainProgressTitle = "Importing mods.";
 				MainProgressWorkText = "";
@@ -1819,15 +1680,15 @@ namespace DivinityModManager.ViewModels
 						{
 							if (total > 1)
 							{
-								view.AlertBar.SetSuccessAlert($"Successfully imported {total} mods.", 20);
+								View.AlertBar.SetSuccessAlert($"Successfully imported {total} mods.", 20);
 							}
 							else if (total == 1)
 							{
-								view.AlertBar.SetSuccessAlert($"Successfully imported '{dialog.FileName}'.", 20);
+								View.AlertBar.SetSuccessAlert($"Successfully imported '{dialog.FileName}'.", 20);
 							}
 							else
 							{
-								view.AlertBar.SetSuccessAlert("Skipped importing mod.", 20);
+								View.AlertBar.SetSuccessAlert("Skipped importing mod.", 20);
 							}
 						}
 						else
@@ -1845,8 +1706,10 @@ namespace DivinityModManager.ViewModels
 			var lastIndex = SelectedModOrderIndex;
 			var lastOrders = ModOrderList.ToList();
 
-			var nextOrders = new List<DivinityLoadOrder>();
-			nextOrders.Add(SelectedProfile.SavedLoadOrder);
+			var nextOrders = new List<DivinityLoadOrder>
+			{
+				SelectedProfile.SavedLoadOrder
+			};
 			nextOrders.AddRange(SavedModOrderList);
 
 			void undo()
@@ -1862,13 +1725,13 @@ namespace DivinityModManager.ViewModels
 				{
 					newOrder = new DivinityLoadOrder()
 					{
-						Name = "New" + nextOrders.Count,
+						Name = $"New{nextOrders.Count}",
 						Order = ActiveMods.Select(m => m.ToOrderEntry()).ToList()
 					};
 					newOrder.FilePath = Path.Combine(Settings.LoadOrderPath, DivinityModDataLoader.MakeSafeFilename(Path.Combine(newOrder.Name + ".json"), '_'));
 				}
 				SavedModOrderList.Add(newOrder);
-				BuildModOrderList(SavedModOrderList.Count);
+				BuildModOrderList(ModOrderList.Count);
 			};
 
 			this.CreateSnapshot(undo, redo);
@@ -1876,114 +1739,120 @@ namespace DivinityModManager.ViewModels
 			redo();
 		}
 
+		public void DeselectAllMods()
+		{
+			foreach (var mod in mods.Items)
+			{
+				mod.IsSelected = false;
+			}
+		}
+
 		public bool LoadModOrder(DivinityLoadOrder order, List<DivinityMissingModData> missingModsFromProfileOrder = null)
 		{
 			if (order == null) return false;
 
-			LoadingOrder = true;
-
-			ActiveMods.Clear();
-			InactiveMods.Clear();
+			IsLoadingOrder = true;
 
 			var loadFrom = order.Order;
 
+			foreach (var mod in ActiveMods)
+			{
+				mod.IsActive = false;
+				mod.Index = -1;
+			}
+
+			DeselectAllMods();
+
 			DivinityApp.Log($"Loading mod order '{order.Name}'.");
-			List<DivinityMissingModData> missingMods = new List<DivinityMissingModData>();
+			Dictionary<string, DivinityMissingModData> missingMods = new Dictionary<string, DivinityMissingModData>();
 			if (missingModsFromProfileOrder != null && missingModsFromProfileOrder.Count > 0)
 			{
-				missingMods.AddRange(missingModsFromProfileOrder);
+				missingModsFromProfileOrder.ForEach(x => missingMods[x.UUID] = x);
 				DivinityApp.Log($"Missing mods (from profile): {String.Join(";", missingModsFromProfileOrder)}");
 			}
+
+			var loadOrderIndex = 0;
 
 			for (int i = 0; i < loadFrom.Count; i++)
 			{
 				var entry = loadFrom[i];
-				var mod = mods.Items.FirstOrDefault(m => m.UUID == entry.UUID);
-				if (mod != null)
+				if (!DivinityModDataLoader.IgnoreMod(entry.UUID))
 				{
-					if (mod.Type != "Adventure")
+					var modResult = mods.Lookup(entry.UUID);
+					if (!modResult.HasValue)
 					{
-						ActiveMods.Add(mod);
-					}
-					else
-					{
-						var nextIndex = AdventureMods.IndexOf(mod);
-						if (nextIndex != -1) SelectedAdventureModIndex = nextIndex;
-					}
-
-					if (mod.Dependencies.Count > 0)
-					{
-						foreach (var dependency in mod.Dependencies.Items)
+						missingMods[entry.UUID] = new DivinityMissingModData
 						{
-							if (!DivinityModDataLoader.IgnoreMod(dependency.UUID) && !mods.Items.Any(x => x.UUID == dependency.UUID) &&
-								!missingMods.Any(x => x.UUID == dependency.UUID))
+							Index = i,
+							Name = entry.Name,
+							UUID = entry.UUID
+						};
+						entry.Missing = true;
+					}
+					else if (!modResult.Value.IsClassicMod)
+					{
+						var mod = modResult.Value;
+						if (mod.ModType != "Adventure")
+						{
+							mod.IsActive = true;
+							mod.Index = loadOrderIndex;
+							loadOrderIndex += 1;
+						}
+						else
+						{
+							var nextIndex = AdventureMods.IndexOf(mod);
+							if (nextIndex != -1) SelectedAdventureModIndex = nextIndex;
+						}
+
+						if (mod.Dependencies.Count > 0)
+						{
+							foreach (var dependency in mod.Dependencies.Items)
 							{
-								var x = new DivinityMissingModData
+								if (!String.IsNullOrWhiteSpace(dependency.UUID) && !DivinityModDataLoader.IgnoreMod(dependency.UUID) && !ModExists(dependency.UUID))
 								{
-									Index = -1,
-									Name = dependency.Name,
-									UUID = dependency.UUID,
-									Dependency = true
-								};
-								missingMods.Add(x);
+									missingMods[dependency.UUID] = new DivinityMissingModData
+									{
+										Index = -1,
+										Name = dependency.Name,
+										UUID = dependency.UUID,
+										Dependency = true
+									};
+								}
 							}
 						}
 					}
 				}
-				else if (!DivinityModDataLoader.IgnoreMod(entry.UUID) && !missingMods.Any(x => x.UUID == entry.UUID))
-				{
-					var x = new DivinityMissingModData
-					{
-						Index = i,
-						Name = entry.Name,
-						UUID = entry.UUID
-					};
-					missingMods.Add(x);
-					entry.Missing = true;
-				}
 			}
 
-			List<DivinityModData> inactive = new List<DivinityModData>();
-
-			for (int i = 0; i < Mods.Count; i++)
-			{
-				var mod = Mods[i];
-				if (ActiveMods.Any(m => m.UUID == mod.UUID))
-				{
-					mod.IsActive = true;
-				}
-				else
-				{
-					mod.IsActive = false;
-					mod.Index = -1;
-					inactive.Add(mod);
-				}
-			}
-
-			InactiveMods.AddRange(inactive.OrderBy(m => m.Name));
+			ActiveMods.Clear();
+			ActiveMods.AddRange(addonMods.Where(x => x.CanAddToLoadOrder && x.IsActive).OrderBy(x => x.Index));
+			InactiveMods.Clear();
+			InactiveMods.AddRange(addonMods.Where(x => x.CanAddToLoadOrder && !x.IsActive));
 
 			OnFilterTextChanged(ActiveModFilterText, ActiveMods);
 			OnFilterTextChanged(InactiveModFilterText, InactiveMods);
 
-			OnOrderChanged?.Invoke(this, new EventArgs());
-
 			if (missingMods.Count > 0)
 			{
-				DivinityApp.Log($"Missing mods: {String.Join(";", missingMods)}");
+				var orderedMissingMods = missingMods.Values.OrderBy(x => x.Index).ToList();
+
+				DivinityApp.Log($"Missing mods: {String.Join(";", orderedMissingMods)}");
 				if (Settings?.DisableMissingModWarnings == true)
 				{
 					DivinityApp.Log("Skipping missing mod display.");
 				}
 				else
 				{
-					view.MainWindowMessageBox_OK.WindowBackground = new SolidColorBrush(Color.FromRgb(219, 40, 40));
-					view.MainWindowMessageBox_OK.Closed += MainWindowMessageBox_Closed_ResetColor;
-					view.MainWindowMessageBox_OK.ShowMessageBox(String.Join("\n", missingMods.OrderBy(x => x.Index)),
+					View.MainWindowMessageBox_OK.WindowBackground = new SolidColorBrush(Color.FromRgb(219, 40, 40));
+					View.MainWindowMessageBox_OK.Closed += MainWindowMessageBox_Closed_ResetColor;
+					View.MainWindowMessageBox_OK.ShowMessageBox(String.Join("\n", orderedMissingMods),
 						"Missing Mods in Load Order", MessageBoxButton.OK);
 				}
 			}
 
-			LoadingOrder = false;
+			OrderJustLoaded = true;
+
+			IsLoadingOrder = false;
 			return true;
 		}
 
@@ -1995,40 +1864,21 @@ namespace DivinityModManager.ViewModels
 				messageBox.Closed -= MainWindowMessageBox_Closed_ResetColor;
 			}
 		}
-		[Reactive] public bool Refreshing { get; set; } = false;
-		[Reactive] public bool RefreshingWorkshop { get; set; } = false;
-
-		private List<DivinityLoadOrder> LoadExternalLoadOrders()
-		{
-			string loadOrderDirectory = Settings.LoadOrderPath;
-			if (String.IsNullOrWhiteSpace(loadOrderDirectory))
-			{
-				//Settings.LoadOrderPath = Path.Combine(Path.GetFullPath(System.AppDomain.CurrentDomain.BaseDirectory), @"Data\ModOrder");
-				//Settings.LoadOrderPath = Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, @"Data\ModOrder");
-				loadOrderDirectory = System.AppDomain.CurrentDomain.BaseDirectory;
-			}
-			else if (Uri.IsWellFormedUriString(loadOrderDirectory, UriKind.Relative))
-			{
-				loadOrderDirectory = Path.GetFullPath(loadOrderDirectory);
-			}
-
-			DivinityApp.Log($"Attempting to load saved load orders from '{loadOrderDirectory}'.");
-			var savedOrderList = DivinityModDataLoader.FindLoadOrderFilesInDirectory(loadOrderDirectory);
-			return savedOrderList;
-		}
 
 		private void CheckExtenderData()
 		{
 			if (Settings != null && Mods.Count > 0)
 			{
+				DivinityModData.CurrentExtenderVersion = Settings.ExtenderSettings.ExtenderVersion;
+
 				foreach (var mod in Mods)
 				{
-					if (mod.ScriptExtenderData != null && mod.ScriptExtenderData.HasAnySettings)
+					if (mod.OsiExtenderData != null && mod.OsiExtenderData.HasAnySettings)
 					{
 						// Assume an Lua-only mod actually requires the extender, otherwise functionality is limited.
-						bool onlyUsesLua = mod.ScriptExtenderData.FeatureFlags.Contains("Lua") && !mod.ScriptExtenderData.FeatureFlags.Contains("OsirisExtensions");
+						bool onlyUsesLua = mod.OsiExtenderData.FeatureFlags.Contains("Lua") && !mod.OsiExtenderData.FeatureFlags.Contains("OsirisExtensions");
 
-						if (!mod.ScriptExtenderData.FeatureFlags.Contains("Preprocessor") || onlyUsesLua)
+						if (!mod.OsiExtenderData.FeatureFlags.Contains("Preprocessor") || onlyUsesLua)
 						{
 							if (!Settings.ExtenderSettings.EnableExtensions)
 							{
@@ -2038,7 +1888,7 @@ namespace DivinityModManager.ViewModels
 							{
 								if (Settings.ExtenderSettings != null && Settings.ExtenderSettings.ExtenderVersion > -1 && Settings.ExtenderSettings.ExtenderUpdaterIsAvailable)
 								{
-									if (mod.ScriptExtenderData.RequiredExtensionVersion > -1 && Settings.ExtenderSettings.ExtenderVersion < mod.ScriptExtenderData.RequiredExtensionVersion)
+									if (mod.OsiExtenderData.RequiredExtensionVersion > -1 && Settings.ExtenderSettings.ExtenderVersion < mod.OsiExtenderData.RequiredExtensionVersion)
 									{
 										mod.ExtenderModStatus = DivinityExtenderModStatus.REQUIRED_OLD;
 									}
@@ -2075,9 +1925,9 @@ namespace DivinityModManager.ViewModels
 			}, RxApp.MainThreadScheduler);
 		}
 
-		private CancellationToken? workshopModLoadingCancelToken;
+		private CancellationToken workshopModLoadingCancelToken;
 
-		private List<string> ignoredModProjectNames = new List<string> { "Test", "Debug" };
+		private readonly List<string> ignoredModProjectNames = new List<string> { "Test", "Debug" };
 		private bool CanFetchWorkshopData(DivinityModData mod)
 		{
 			if (CachedWorkshopData.NonWorkshopMods.Contains(mod.UUID))
@@ -2101,7 +1951,8 @@ namespace DivinityModManager.ViewModels
 			var success = await DivinityWorkshopDataLoader.GetAllWorkshopDataAsync(CachedWorkshopData, AppSettings.DefaultPathways.Steam.AppID);
 			if (success)
 			{
-				var nonWorkshopMods = userMods.Where(x => !CachedWorkshopData.Mods.Any(y => y.UUID == x.UUID)).ToList();
+				var cachedGUIDs = CachedWorkshopData.Mods.Select(x => x.UUID).ToHashSet();
+				var nonWorkshopMods = UserMods.Where(x => !cachedGUIDs.Contains(x.UUID)).ToList();
 				if (nonWorkshopMods.Count > 0)
 				{
 					foreach (var m in nonWorkshopMods)
@@ -2116,7 +1967,7 @@ namespace DivinityModManager.ViewModels
 
 		private void UpdateModDataWithCachedData()
 		{
-			foreach (var mod in userMods)
+			foreach (var mod in UserMods)
 			{
 				var cachedMods = CachedWorkshopData.Mods.Where(x => x.UUID == mod.UUID);
 				if (cachedMods != null)
@@ -2142,19 +1993,18 @@ namespace DivinityModManager.ViewModels
 
 		private void LoadWorkshopModDataBackground()
 		{
-			RefreshingWorkshop = true;
 			bool workshopCacheFound = false;
-			CheckingForWorkshopUpdates = true;
+			IsRefreshingWorkshop = true;
 
-			RxApp.TaskpoolScheduler.ScheduleAsync(async (s, token) =>
+			RxApp.TaskpoolScheduler.ScheduleAsync((Func<IScheduler, CancellationToken, Task>)(async (s, token) =>
 			{
 				workshopModLoadingCancelToken = token;
 				var loadedWorkshopMods = await LoadWorkshopModsAsync(workshopModLoadingCancelToken);
 				await Observable.Start(() =>
 				{
-					workshopMods.AddRange(loadedWorkshopMods);
+					workshopMods.AddOrUpdate(loadedWorkshopMods);
 					DivinityApp.Log($"Loaded '{workshopMods.Count}' workshop mods from '{Settings.WorkshopPath}'.");
-					if (!workshopModLoadingCancelToken.Value.IsCancellationRequested)
+					if (!workshopModLoadingCancelToken.IsCancellationRequested)
 					{
 						CheckForModUpdates(workshopModLoadingCancelToken);
 					}
@@ -2195,7 +2045,7 @@ namespace DivinityModManager.ViewModels
 					else
 					{
 						DivinityApp.Log("Checking for mods missing workshop data.");
-						var targetMods = userMods.Where(x => CanFetchWorkshopData(x)).ToList();
+						var targetMods = UserMods.Where(x => CanFetchWorkshopData(x)).ToList();
 						if (targetMods.Count > 0)
 						{
 							RxApp.MainThreadScheduler.Schedule(() =>
@@ -2218,8 +2068,7 @@ namespace DivinityModManager.ViewModels
 						StatusBarRightText = "";
 						StatusBarBusyIndicatorVisibility = Visibility.Collapsed;
 						string updateMessage = !CachedWorkshopData.CacheUpdated ? "cached " : "";
-						view.AlertBar.SetSuccessAlert($"Loaded {updateMessage}workshop data ({CachedWorkshopData.Mods.Count} mods).", 60);
-						RefreshingWorkshop = false;
+						this.View.AlertBar.SetSuccessAlert($"Loaded {updateMessage}workshop data ({CachedWorkshopData.Mods.Count} mods).", 60);
 					});
 
 					if (CachedWorkshopData.CacheUpdated)
@@ -2228,14 +2077,14 @@ namespace DivinityModManager.ViewModels
 						CachedWorkshopData.CacheUpdated = false;
 					}
 				}
-			});
+			}));
 		}
 
 		private async Task<IDisposable> RefreshAsync(IScheduler ctrl, CancellationToken t)
 		{
 			DivinityApp.Log($"Refreshing data asynchronously...");
 
-			double taskStepAmount = 1.0 / 10;
+			double taskStepAmount = 1.0 / 11;
 
 			List<DivinityLoadOrderEntry> lastActiveOrder = null;
 			string lastOrderName = "";
@@ -2275,9 +2124,9 @@ namespace DivinityModManager.ViewModels
 					await IncreaseMainProgressValueAsync(taskStepAmount);
 				}
 
-				//await SetMainProgressTextAsync("Loading GM Campaigns...");
-				//var loadedGMCampaigns = await LoadGameMasterCampaignsAsync(taskStepAmount);
-				//await IncreaseMainProgressValueAsync(taskStepAmount);
+				await SetMainProgressTextAsync("Loading GM Campaigns...");
+				var loadedGMCampaigns = await LoadGameMasterCampaignsAsync(taskStepAmount);
+				await IncreaseMainProgressValueAsync(taskStepAmount);
 
 				await SetMainProgressTextAsync("Loading external load orders...");
 				var savedModOrderList = await RunTask(LoadExternalLoadOrdersAsync(), new List<DivinityLoadOrder>());
@@ -2298,7 +2147,7 @@ namespace DivinityModManager.ViewModels
 				{
 					LoadAppConfig();
 					SetLoadedMods(loadedMods);
-					//SetLoadedGMCampaigns(loadedGMCampaigns);
+					SetLoadedGMCampaigns(loadedGMCampaigns);
 
 					Profiles.AddRange(loadedProfiles);
 
@@ -2326,7 +2175,7 @@ namespace DivinityModManager.ViewModels
 
 					if (lastActiveOrder != null && lastActiveOrder.Count > 0)
 					{
-						if (SelectedModOrder != null) SelectedModOrder.SetOrder(lastActiveOrder);
+						SelectedModOrder?.SetOrder(lastActiveOrder);
 					}
 					BuildModOrderList(0, lastOrderName);
 					MainProgressValue += taskStepAmount;
@@ -2347,7 +2196,7 @@ namespace DivinityModManager.ViewModels
 				{
 					if (String.IsNullOrEmpty(lastAdventureMod))
 					{
-						var activeAdventureMod = SelectedModOrder.Order.Select(x => mods.Items.FirstOrDefault(y => y.UUID == x.UUID && y.Type == "Adventure")).FirstOrDefault();
+						var activeAdventureMod = SelectedModOrder?.Order.FirstOrDefault(x => GetModType(x.UUID) == "Adventure");
 						if (activeAdventureMod != null)
 						{
 							lastAdventureMod = activeAdventureMod.UUID;
@@ -2386,7 +2235,6 @@ namespace DivinityModManager.ViewModels
 
 				DivinityApp.Log($"Finalizing refresh operation.");
 
-				Refreshing = false;
 				OnMainProgressComplete();
 				OnRefreshed?.Invoke(this, new EventArgs());
 
@@ -2404,6 +2252,8 @@ namespace DivinityModManager.ViewModels
 					}
 				}
 
+				IsRefreshing = false;
+
 				return Unit.Default;
 			}, RxApp.MainThreadScheduler);
 
@@ -2412,53 +2262,8 @@ namespace DivinityModManager.ViewModels
 				LoadWorkshopModDataBackground();
 			}
 
-			/*
-			RxApp.MainThreadScheduler.Schedule(TimeSpan.FromMilliseconds(250), () =>
-			{
-				OnFilterTextChanged(ActiveModFilterText, ActiveMods);
-				OnFilterTextChanged(InactiveModFilterText, InactiveMods);
-			});
-			*/
-#if DEBUG
-			//DivinityApp.Log("Mods (" + mods.Count + ")");
-			//DivinityApp.Log(String.Join("\n", mods.Items.Select(x => $"{x.UUID}|{x.Name}|{x.Type}")));
-			//DivinityApp.Log("Ignored Mods (" + DivinityApp.IgnoredMods.Count + ")");
-			//DivinityApp.Log(String.Join("\n", DivinityApp.IgnoredMods.Select(x => $"{x.UUID}|{x.Name}|{x.Type}")));
-			//DivinityApp.Log("Adventure Mods (" + AdventureMods.Count + ")");
-			//DivinityApp.Log(String.Join("\n", AdventureMods.Select(x => $"{x.UUID}|{x.Name}")));
-#endif
+			IsInitialized = true;
 			return Disposable.Empty;
-		}
-
-		public void RefreshAsync_Start(string title = "Refreshing...")
-		{
-			if (ModUpdatesViewData != null)
-			{
-				ModUpdatesViewData.Clear();
-			}
-			ModUpdatesViewVisible = ModUpdatesAvailable = false;
-			MainProgressTitle = title;
-			MainProgressValue = 0d;
-			CanCancelProgress = false;
-			MainProgressIsActive = true;
-			Refreshing = true;
-			mods.Clear();
-			gameMasterCampaigns.Clear();
-			userMods.Clear();
-			Profiles.Clear();
-			workshopMods.Clear();
-			RxApp.TaskpoolScheduler.ScheduleAsync(RefreshAsync);
-		}
-
-		public void RefreshWorkshopAsync_Start()
-		{
-			if (ModUpdatesViewData != null)
-			{
-				ModUpdatesViewData.Clear();
-			}
-			ModUpdatesViewVisible = ModUpdatesAvailable = false;
-			workshopMods.Clear();
-			LoadWorkshopModDataBackground();
 		}
 
 		private async Task<List<DivinityLoadOrder>> LoadExternalLoadOrdersAsync()
@@ -2487,15 +2292,12 @@ namespace DivinityModManager.ViewModels
 			}
 		}
 
-		private void SaveLoadOrder()
+		private void SaveLoadOrder(bool skipSaveConfirmation = false)
 		{
-			view.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Normal, new Action(async () =>
-			{
-				await SaveLoadOrderAsync();
-			}));
+			RxApp.MainThreadScheduler.ScheduleAsync(async (sch, cts) => await SaveLoadOrderAsync(skipSaveConfirmation));
 		}
 
-		private async Task<bool> SaveLoadOrderAsync()
+		private async Task<bool> SaveLoadOrderAsync(bool skipSaveConfirmation = false)
 		{
 			bool result = false;
 			if (SelectedProfile != null && SelectedModOrder != null)
@@ -2514,6 +2316,7 @@ namespace DivinityModManager.ViewModels
 
 				string outputPath = SelectedModOrder.FilePath;
 				string outputName = DivinityModDataLoader.MakeSafeFilename(Path.Combine(SelectedModOrder.Name + ".json"), '_');
+
 				if (String.IsNullOrWhiteSpace(SelectedModOrder.FilePath))
 				{
 					SelectedModOrder.FilePath = Path.Combine(Settings.LoadOrderPath, outputName);
@@ -2522,7 +2325,7 @@ namespace DivinityModManager.ViewModels
 
 				try
 				{
-					if (SelectedModOrder.Name.Equals("Current"))
+					if (SelectedModOrder.IsModSettings)
 					{
 						//When saving the "Current" order, write this to modsettings.lsx instead of a json file.
 						result = await ExportLoadOrderAsync();
@@ -2530,58 +2333,18 @@ namespace DivinityModManager.ViewModels
 					}
 					else
 					{
-						// Renaming existing files
-						if (!String.IsNullOrWhiteSpace(outputPath) && !String.IsNullOrWhiteSpace(SelectedModOrder.Name) && File.Exists(outputPath))
-						{
-							string baseName = Path.GetFileNameWithoutExtension(outputPath);
-							if (baseName != SelectedModOrder.Name)
-							{
-								var lastPath = outputPath;
-								outputPath = Path.Combine(outputDirectory, outputName);
-								try
-								{
-									if (File.Exists(outputPath))
-									{
-										MessageBoxResult messageBoxResult = Xceed.Wpf.Toolkit.MessageBox.Show(view, $"Overwrite saved load order file with new name?{Environment.NewLine}Renaming {baseName}.json to {SelectedModOrder.Name}.json", "Confirm Overwrite",
-											MessageBoxButton.OKCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel, view.MainWindowMessageBox_OK.Style);
-										if (messageBoxResult == MessageBoxResult.OK)
-										{
-											DivinityApp.Log($"Renaming load order file '{lastPath}' to '{outputPath}'.");
-											File.Move(lastPath, outputPath);
-										}
-									}
-									else
-									{
-										DivinityApp.Log($"Renaming load order file '{lastPath}' to '{outputPath}'.");
-										File.Move(lastPath, outputPath);
-									}
-								}
-								catch (Exception ex)
-								{
-									DivinityApp.Log($"Error renaming file:\n{ex}");
-								}
-							}
-						}
-
-						// Save mods that aren't missing
-						var tempOrder = new DivinityLoadOrder
-						{
-							Name = SelectedModOrder.Name,
-						};
-						tempOrder.Order.AddRange(SelectedModOrder.Order.Where(x => Mods.Any(y => y.UUID == x.UUID)));
-
-						result = await DivinityModDataLoader.ExportLoadOrderToFileAsync(outputPath, tempOrder);
+						result = await DivinityModDataLoader.ExportLoadOrderToFileAsync(outputPath, SelectedModOrder);
 					}
 				}
 				catch (Exception ex)
 				{
-					view.AlertBar.SetDangerAlert($"Failed to save mod load order to '{outputPath}': {ex.Message}");
+					View.AlertBar.SetDangerAlert($"Failed to save mod load order to '{outputPath}': {ex.Message}");
 					result = false;
 				}
 
-				if (result)
+				if (result && !skipSaveConfirmation)
 				{
-					view.AlertBar.SetSuccessAlert($"Saved mod load order to '{outputPath}'", 10);
+					View.AlertBar.SetSuccessAlert($"Saved mod load order to '{outputPath}'", 10);
 				}
 			}
 
@@ -2597,14 +2360,16 @@ namespace DivinityModManager.ViewModels
 				Directory.CreateDirectory(startDirectory);
 			}
 
-			var dialog = new SaveFileDialog();
-			dialog.AddExtension = true;
-			dialog.DefaultExt = ".json";
-			dialog.Filter = "JSON file (*.json)|*.json";
-			dialog.InitialDirectory = startDirectory;
+			var dialog = new SaveFileDialog
+			{
+				AddExtension = true,
+				DefaultExt = ".json",
+				Filter = "JSON file (*.json)|*.json",
+				InitialDirectory = startDirectory
+			};
 
 			string outputName = Path.Combine(SelectedModOrder.Name + ".json");
-			if (SelectedModOrder.Name.Equals("Current", StringComparison.OrdinalIgnoreCase))
+			if (SelectedModOrder.IsModSettings)
 			{
 				outputName = $"{SelectedProfile.Name}_{SelectedModOrder.Name}.json";
 			}
@@ -2616,7 +2381,7 @@ namespace DivinityModManager.ViewModels
 			dialog.OverwritePrompt = true;
 			dialog.Title = "Save Load Order As...";
 
-			if (dialog.ShowDialog(view) == true)
+			if (dialog.ShowDialog(View) == true)
 			{
 				// Save mods that aren't missing
 				var tempOrder = new DivinityLoadOrder
@@ -2625,7 +2390,7 @@ namespace DivinityModManager.ViewModels
 				};
 				tempOrder.Order.AddRange(SelectedModOrder.Order.Where(x => Mods.Any(y => y.UUID == x.UUID)));
 				bool result = false;
-				if (SelectedModOrder.Name.Equals("Current", StringComparison.OrdinalIgnoreCase))
+				if (SelectedModOrder.IsModSettings)
 				{
 					tempOrder.Name = $"Current ({SelectedProfile.Name})";
 					result = DivinityModDataLoader.ExportLoadOrderToFile(dialog.FileName, tempOrder);
@@ -2637,7 +2402,7 @@ namespace DivinityModManager.ViewModels
 
 				if (result)
 				{
-					view.AlertBar.SetSuccessAlert($"Saved mod load order to '{dialog.FileName}'", 10);
+					View.AlertBar.SetSuccessAlert($"Saved mod load order to '{dialog.FileName}'", 10);
 					foreach (var order in this.ModOrderList)
 					{
 						if (order.FilePath == dialog.FileName)
@@ -2649,7 +2414,7 @@ namespace DivinityModManager.ViewModels
 				}
 				else
 				{
-					view.AlertBar.SetDangerAlert($"Failed to save mod load order to '{dialog.FileName}'");
+					View.AlertBar.SetDangerAlert($"Failed to save mod load order to '{dialog.FileName}'");
 				}
 			}
 		}
@@ -2666,8 +2431,7 @@ namespace DivinityModManager.ViewModels
 				for (int i = 0; i < order.Order.Count; i++)
 				{
 					var entry = order.Order[i];
-					var mod = mods.Items.FirstOrDefault(m => m.UUID == entry.UUID);
-					if (mod != null)
+					if (TryGetMod(entry.UUID, out var mod))
 					{
 						if (mod.Dependencies.Count > 0)
 						{
@@ -2703,9 +2467,9 @@ namespace DivinityModManager.ViewModels
 
 				if (missingMods.Count > 0)
 				{
-					view.MainWindowMessageBox_OK.WindowBackground = new SolidColorBrush(Color.FromRgb(219, 40, 40));
-					view.MainWindowMessageBox_OK.Closed += MainWindowMessageBox_Closed_ResetColor;
-					view.MainWindowMessageBox_OK.ShowMessageBox(String.Join("\n", missingMods.OrderBy(x => x.Index)),
+					View.MainWindowMessageBox_OK.WindowBackground = new SolidColorBrush(Color.FromRgb(219, 40, 40));
+					View.MainWindowMessageBox_OK.Closed += MainWindowMessageBox_Closed_ResetColor;
+					View.MainWindowMessageBox_OK.ShowMessageBox(String.Join("\n", missingMods.OrderBy(x => x.Index)),
 						"Missing Mods in Load Order", MessageBoxButton.OK, MessageBoxImage.Error, MessageBoxResult.OK);
 				}
 				else
@@ -2718,13 +2482,11 @@ namespace DivinityModManager.ViewModels
 				displayExtenderModWarning = true;
 			}
 
-			/*
-			// Disabled missing extender warning for now, as it hasn't been updated yet for Patch6 - 10/22/2021
 			if (AppSettings.FeatureEnabled("ScriptExtender"))
 			{
 				if (displayExtenderModWarning)
 				{
-					DivinityApp.LogMessage($"Mod Order: {String.Join("\n", order.Order.Select(x => x.Name))}");
+					//DivinityApp.LogMessage($"Mod Order: {String.Join("\n", order.Order.Select(x => x.Name))}");
 					DivinityApp.Log("Checking mods for extender requirements.");
 					List<DivinityMissingModData> extenderRequiredMods = new List<DivinityMissingModData>();
 					for (int i = 0; i < order.Order.Count; i++)
@@ -2749,17 +2511,19 @@ namespace DivinityModManager.ViewModels
 								{
 									foreach (var dependency in mod.Dependencies.Items)
 									{
-										var dependencyMod = mods.Items.FirstOrDefault(m => m.UUID == dependency.UUID);
-										 Dependencies not in the order that require the extender
-										if (dependencyMod.ExtenderModStatus == DivinityExtenderModStatus.REQUIRED_DISABLED || dependencyMod.ExtenderModStatus == DivinityExtenderModStatus.REQUIRED_MISSING)
+										if (TryGetMod(dependency.UUID, out var dependencyMod))
 										{
-											extenderRequiredMods.Add(new DivinityMissingModData
+											// Dependencies not in the order that require the extender
+											if (dependencyMod.ExtenderModStatus == DivinityExtenderModStatus.REQUIRED_DISABLED || dependencyMod.ExtenderModStatus == DivinityExtenderModStatus.REQUIRED_MISSING)
 											{
-												Index = mod.Index - 1,
-												Name = dependencyMod.DisplayName,
-												UUID = dependencyMod.UUID,
-												Dependency = true
-											});
+												extenderRequiredMods.Add(new DivinityMissingModData
+												{
+													Index = mod.Index - 1,
+													Name = dependencyMod.DisplayName,
+													UUID = dependencyMod.UUID,
+													Dependency = true
+												});
+											}
 										}
 									}
 								}
@@ -2770,21 +2534,20 @@ namespace DivinityModManager.ViewModels
 					if (extenderRequiredMods.Count > 0)
 					{
 						DivinityApp.Log("Displaying mods that require the extender.");
-						view.MainWindowMessageBox_OK.WindowBackground = new SolidColorBrush(Color.FromRgb(219, 40, 40));
-						view.MainWindowMessageBox_OK.Closed += MainWindowMessageBox_Closed_ResetColor;
-						view.MainWindowMessageBox_OK.ShowMessageBox(String.Join("\n", extenderRequiredMods.OrderBy(x => x.Index)),
+						View.MainWindowMessageBox_OK.WindowBackground = new SolidColorBrush(Color.FromRgb(219, 40, 40));
+						View.MainWindowMessageBox_OK.Closed += MainWindowMessageBox_Closed_ResetColor;
+						View.MainWindowMessageBox_OK.ShowMessageBox(String.Join("\n", extenderRequiredMods.OrderBy(x => x.Index)),
 							"Mods Require the Script Extender - Install it with the Tools menu!", MessageBoxButton.OK, MessageBoxImage.Error, MessageBoxResult.OK);
 					}
 				}
-			}*/
+			}
 		}
 
 		private DivinityProfileActiveModData ProfileActiveModDataFromUUID(string uuid)
 		{
-			var modData = mods.Items.FirstOrDefault(x => x.UUID == uuid);
-			if (modData != null)
+			if (TryGetMod(uuid, out var mod))
 			{
-				modData.ToProfileModData();
+				return mod.ToProfileModData();
 			}
 			return new DivinityProfileActiveModData()
 			{
@@ -2803,72 +2566,140 @@ namespace DivinityModManager.ViewModels
 
 		private async Task<bool> ExportLoadOrderAsync()
 		{
-			if (SelectedProfile != null && SelectedModOrder != null)
+			if (!Settings.GameMasterModeEnabled)
 			{
-				string outputPath = Path.Combine(SelectedProfile.Folder, "modsettings.lsx");
-				var finalOrder = DivinityModDataLoader.BuildOutputList(SelectedModOrder.Order, mods.Items, Settings.AutoAddDependenciesWhenExporting, SelectedAdventureMod);
-				var result = await DivinityModDataLoader.ExportModSettingsToFileAsync(SelectedProfile.Folder, finalOrder);
-
-				// If mods are enabled, telemetry should be disabled.
-				bool telemetryEnabled = !Settings.TelemetryDisabled && SelectedModOrder.Order.Count == 0;
-				await DivinityModDataLoader.SetTelemetryAsync(telemetryEnabled);
-
-				await Observable.Start(() =>
+				if (SelectedProfile != null && SelectedModOrder != null)
 				{
-					ShowAlert($"Exported load order to '{outputPath}'", AlertType.Success, 15);
+					string outputPath = Path.Combine(SelectedProfile.Folder, "modsettings.lsx");
+					var finalOrder = DivinityModDataLoader.BuildOutputList(SelectedModOrder.Order, mods.Items, Settings.AutoAddDependenciesWhenExporting, SelectedAdventureMod);
+					var result = await DivinityModDataLoader.ExportModSettingsToFileAsync(SelectedProfile.Folder, finalOrder);
 
-					if (DivinityModDataLoader.ExportedSelectedProfile(PathwayData.DocumentsProfilesPath, SelectedProfile.UUID))
+					if (result)
 					{
-						DivinityApp.Log($"Set active profile to '{SelectedProfile.Name}'.");
+						await Observable.Start(() =>
+						{
+							ShowAlert($"Exported load order to '{outputPath}'", AlertType.Success, 15);
+
+							if (DivinityModDataLoader.ExportedSelectedProfile(PathwayData.DocumentsProfilesPath, SelectedProfile.UUID))
+							{
+								DivinityApp.Log($"Set active profile to '{SelectedProfile.Name}'.");
+							}
+							else
+							{
+								DivinityApp.Log($"Could not set active profile to '{SelectedProfile.Name}'.");
+							}
+
+							//Update "Current" order
+							if (!SelectedModOrder.IsModSettings)
+							{
+								this.ModOrderList.First(x => x.IsModSettings)?.SetOrder(SelectedModOrder.Order);
+							}
+
+							List<string> orderList = new List<string>();
+							if (SelectedAdventureMod != null) orderList.Add(SelectedAdventureMod.UUID);
+							orderList.AddRange(SelectedModOrder.Order.Select(x => x.UUID));
+
+							SelectedProfile.ModOrder.Clear();
+							SelectedProfile.ModOrder.AddRange(orderList);
+							SelectedProfile.ActiveMods.Clear();
+							SelectedProfile.ActiveMods.AddRange(orderList.Select(x => ProfileActiveModDataFromUUID(x)));
+							DisplayMissingMods(SelectedModOrder);
+
+							return Unit.Default;
+						}, RxApp.MainThreadScheduler);
+						return true;
 					}
 					else
 					{
-						DivinityApp.Log($"Could not set active profile to '{SelectedProfile.Name}'.");
+						await Observable.Start((Func<Unit>)(() =>
+						{
+							string msg = $"Problem exporting load order to '{outputPath}'";
+							ShowAlert(msg, AlertType.Danger);
+							this.View.MainWindowMessageBox_OK.WindowBackground = new SolidColorBrush(Color.FromRgb(219, 40, 40));
+							this.View.MainWindowMessageBox_OK.Closed += this.MainWindowMessageBox_Closed_ResetColor;
+							this.View.MainWindowMessageBox_OK.ShowMessageBox(msg, "Mod Order Export Failed", MessageBoxButton.OK);
+							return Unit.Default;
+						}), RxApp.MainThreadScheduler);
 					}
-
-					//Update "Current" order
-					if (SelectedModOrder.Name != "Current")
-					{
-						var currentOrder = this.ModOrderList.FirstOrDefault(x => x.Name == "Current");
-						currentOrder.SetOrder(SelectedModOrder.Order);
-					}
-
-					List<string> orderList = new List<string>();
-					if (SelectedAdventureMod != null) orderList.Add(SelectedAdventureMod.UUID);
-					orderList.AddRange(SelectedModOrder.Order.Select(x => x.UUID));
-
-					SelectedProfile.ModOrder.Clear();
-					SelectedProfile.ModOrder.AddRange(orderList);
-					SelectedProfile.ActiveMods.Clear();
-					SelectedProfile.ActiveMods.AddRange(orderList.Select(x => ProfileActiveModDataFromUUID(x)));
-					DisplayMissingMods(SelectedModOrder);
-
-					return Unit.Default;
-				}, RxApp.MainThreadScheduler);
-
-				if (!DivinityModDataLoader.ExportedSelectedProfile(PathwayData.DocumentsProfilesPath, SelectedProfile.UUID))
-				{
-					ShowAlert($"Failed to export active profile to {PathwayData.DocumentsProfilesPath}.", AlertType.Warning);
 				}
-
-				return true;
+				else
+				{
+					await Observable.Start(() =>
+					{
+						ShowAlert("SelectedProfile or SelectedModOrder is null! Failed to export mod order.", AlertType.Danger);
+						return Unit.Default;
+					}, RxApp.MainThreadScheduler);
+				}
 			}
 			else
 			{
-				await Observable.Start(() =>
+				if (SelectedGameMasterCampaign != null)
 				{
-					ShowAlert("SelectedProfile or SelectedModOrder is null! Failed to export mod order.", AlertType.Danger);
-					return Unit.Default;
-				}, RxApp.MainThreadScheduler);
+					if (TryGetMod(DivinityApp.GAMEMASTER_UUID, out var gmAdventureMod))
+					{
+						var finalOrder = DivinityModDataLoader.BuildOutputList(SelectedModOrder.Order, mods.Items, Settings.AutoAddDependenciesWhenExporting);
+						if (SelectedGameMasterCampaign.Export(finalOrder))
+						{
+							// Need to still write to modsettings.lsx
+							finalOrder.Insert(0, gmAdventureMod);
+							await DivinityModDataLoader.ExportModSettingsToFileAsync(SelectedProfile.Folder, finalOrder);
+
+							await Observable.Start(() =>
+							{
+								ShowAlert($"Exported load order to '{SelectedGameMasterCampaign.FilePath}'", AlertType.Success, 15);
+
+								if (DivinityModDataLoader.ExportedSelectedProfile(PathwayData.DocumentsProfilesPath, SelectedProfile.UUID))
+								{
+									DivinityApp.Log($"Set active profile to '{SelectedProfile.Name}'.");
+								}
+								else
+								{
+									DivinityApp.Log($"Could not set active profile to '{SelectedProfile.Name}'.");
+								}
+
+								//Update the campaign's saved dependencies
+								SelectedGameMasterCampaign.Dependencies.Clear();
+								SelectedGameMasterCampaign.Dependencies.AddRange(finalOrder.Select(x => DivinityModDependencyData.FromModData(x)));
+
+								List<string> orderList = new List<string>();
+								if (SelectedAdventureMod != null) orderList.Add(SelectedAdventureMod.UUID);
+								orderList.AddRange(SelectedModOrder.Order.Select(x => x.UUID));
+
+								SelectedProfile.ModOrder.Clear();
+								SelectedProfile.ModOrder.AddRange(orderList);
+								SelectedProfile.ActiveMods.Clear();
+								SelectedProfile.ActiveMods.AddRange(orderList.Select(x => ProfileActiveModDataFromUUID(x)));
+								DisplayMissingMods(SelectedModOrder);
+
+								return Unit.Default;
+							}, RxApp.MainThreadScheduler);
+							return true;
+						}
+						else
+						{
+							await Observable.Start((Func<Unit>)(() =>
+							{
+								string msg = $"Problem exporting load order to '{SelectedGameMasterCampaign.FilePath}'";
+								ShowAlert(msg, AlertType.Danger);
+								this.View.MainWindowMessageBox_OK.WindowBackground = new SolidColorBrush(Color.FromRgb(219, 40, 40));
+								this.View.MainWindowMessageBox_OK.Closed += this.MainWindowMessageBox_Closed_ResetColor;
+								this.View.MainWindowMessageBox_OK.ShowMessageBox(msg, "Mod Order Export Failed", MessageBoxButton.OK);
+								return Unit.Default;
+							}), RxApp.MainThreadScheduler);
+						}
+					}
+				}
+				else
+				{
+					await Observable.Start(() =>
+					{
+						ShowAlert("SelectedGameMasterCampaign is null! Failed to export mod order.", AlertType.Danger);
+						return Unit.Default;
+					}, RxApp.MainThreadScheduler);
+				}
 			}
 
 			return false;
-		}
-
-		private void MainProgressStart()
-		{
-			MainProgressValue = 0d;
-			MainProgressIsActive = true;
 		}
 
 		private void OnMainProgressComplete(double delay = 0)
@@ -2895,22 +2726,24 @@ namespace DivinityModManager.ViewModels
 		//TODO: Extract zip mods to the Mods folder, possibly import a load order if a json exists.
 		private void ImportOrderFromArchive()
 		{
-			var dialog = new OpenFileDialog();
-			dialog.CheckFileExists = true;
-			dialog.CheckPathExists = true;
-			dialog.DefaultExt = ".zip";
-			dialog.Filter = "Archive file (*.zip;*.7z)|*.zip;*.7z;*.7zip;*.tar;*.bzip2;*.gzip;*.lzip|All files (*.*)|*.*";
-			dialog.Title = "Import Mods from Archive...";
-			dialog.ValidateNames = true;
-			dialog.ReadOnlyChecked = true;
-			dialog.Multiselect = false;
+			var dialog = new OpenFileDialog
+			{
+				CheckFileExists = true,
+				CheckPathExists = true,
+				DefaultExt = ".zip",
+				Filter = "Archive file (*.zip;*.7z)|*.zip;*.7z;*.7zip;*.tar;*.bzip2;*.gzip;*.lzip|All files (*.*)|*.*",
+				Title = "Import Mods from Archive...",
+				ValidateNames = true,
+				ReadOnlyChecked = true,
+				Multiselect = false
+			};
 
 			if (!String.IsNullOrEmpty(PathwayData.LastSaveFilePath) && Directory.Exists(PathwayData.LastSaveFilePath))
 			{
 				dialog.InitialDirectory = PathwayData.LastSaveFilePath;
 			}
 
-			if (dialog.ShowDialog(view) == true)
+			if (dialog.ShowDialog(View) == true)
 			{
 				//if(!Path.GetExtension(dialog.FileName).Equals(".zip", StringComparison.OrdinalIgnoreCase))
 				//{
@@ -2931,7 +2764,7 @@ namespace DivinityModManager.ViewModels
 						OnMainProgressComplete();
 						if (success)
 						{
-							view.AlertBar.SetSuccessAlert($"Successfully extracted archive.", 20);
+							View.AlertBar.SetSuccessAlert($"Successfully extracted archive.", 20);
 						}
 					});
 					return Disposable.Empty;
@@ -3099,15 +2932,15 @@ namespace DivinityModManager.ViewModels
 			catch (Exception ex)
 			{
 				DivinityApp.Log($"Error extracting package: {ex}");
-				RxApp.MainThreadScheduler.Schedule(_ =>
+				RxApp.MainThreadScheduler.Schedule((Action<Action>)(_ =>
 				{
-					view.AlertBar.SetDangerAlert($"Error extracting archive (check the log): {ex.Message}", 0);
-				});
+					this.View.AlertBar.SetDangerAlert($"Error extracting archive (check the log): {ex.Message}", 0);
+				}));
 			}
 			finally
 			{
 				RxApp.MainThreadScheduler.Schedule(_ => MainProgressWorkText = $"Cleaning up...");
-				if (fileStream != null) fileStream.Close();
+				fileStream?.Close();
 				IncreaseMainProgressValue(taskStepAmount);
 
 				if (!onlyMods && jsonFiles.Count > 0)
@@ -3135,8 +2968,8 @@ namespace DivinityModManager.ViewModels
 		{
 			//view.MainWindowMessageBox.Text = "Add active mods to a zip file?";
 			//view.MainWindowMessageBox.Caption = "Depending on the number of mods, this may take some time.";
-			MessageBoxResult result = Xceed.Wpf.Toolkit.MessageBox.Show(view, $"Save active mods to a zip file?{Environment.NewLine}Depending on the number of mods, this may take some time.", "Confirm Archive Creation",
-				MessageBoxButton.OKCancel, MessageBoxImage.Question, MessageBoxResult.Cancel, view.MainWindowMessageBox_OK.Style);
+			MessageBoxResult result = Xceed.Wpf.Toolkit.MessageBox.Show(View, $"Save active mods to a zip file?{Environment.NewLine}Depending on the number of mods, this may take some time.", "Confirm Archive Creation",
+				MessageBoxButton.OKCancel, MessageBoxImage.Question, MessageBoxResult.Cancel, View.MainWindowMessageBox_OK.Style);
 			if (result == MessageBoxResult.OK)
 			{
 				MainProgressTitle = "Adding active mods to zip...";
@@ -3168,7 +3001,7 @@ namespace DivinityModManager.ViewModels
 				if (String.IsNullOrEmpty(outputPath))
 				{
 					string baseOrderName = SelectedModOrder.Name;
-					if (SelectedModOrder.Name.Equals("Current", StringComparison.OrdinalIgnoreCase))
+					if (SelectedModOrder.IsModSettings)
 					{
 						baseOrderName = $"{SelectedProfile.Name}_{SelectedModOrder.Name}";
 					}
@@ -3246,7 +3079,7 @@ namespace DivinityModManager.ViewModels
 					{
 						var dir = Path.GetDirectoryName(outputPath);
 						Process.Start(dir);
-						view.AlertBar.SetSuccessAlert($"Exported load order to '{outputPath}'.", 15);
+						this.View.AlertBar.SetSuccessAlert($"Exported load order to '{outputPath}'.", 15);
 					});
 
 					success = true;
@@ -3257,7 +3090,7 @@ namespace DivinityModManager.ViewModels
 					{
 						string msg = $"Error writing load order archive '{outputPath}': {ex}";
 						DivinityApp.Log(msg);
-						view.AlertBar.SetDangerAlert(msg);
+						this.View.AlertBar.SetDangerAlert(msg);
 					});
 				}
 
@@ -3267,7 +3100,7 @@ namespace DivinityModManager.ViewModels
 			{
 				RxApp.MainThreadScheduler.Schedule(() =>
 				{
-					view.AlertBar.SetDangerAlert("SelectedProfile or SelectedModOrder is null! Failed to export mod order.");
+					this.View.AlertBar.SetDangerAlert("SelectedProfile or SelectedModOrder is null! Failed to export mod order.");
 				});
 			}
 
@@ -3313,15 +3146,17 @@ namespace DivinityModManager.ViewModels
 			{
 				var startDirectory = Path.GetFullPath(Directory.GetCurrentDirectory());
 
-				var dialog = new SaveFileDialog();
-				dialog.AddExtension = true;
-				dialog.DefaultExt = ".zip";
-				dialog.Filter = "Archive file (*.zip)|*.zip";
-				dialog.InitialDirectory = startDirectory;
+				var dialog = new SaveFileDialog
+				{
+					AddExtension = true,
+					DefaultExt = ".zip",
+					Filter = "Archive file (*.zip)|*.zip",
+					InitialDirectory = startDirectory
+				};
 
 				string sysFormat = CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern.Replace("/", "-");
 				string baseOrderName = SelectedModOrder.Name;
-				if (SelectedModOrder.Name.Equals("Current", StringComparison.OrdinalIgnoreCase))
+				if (SelectedModOrder.IsModSettings)
 				{
 					baseOrderName = $"{SelectedProfile.Name}_{SelectedModOrder.Name}";
 				}
@@ -3334,7 +3169,7 @@ namespace DivinityModManager.ViewModels
 				dialog.OverwritePrompt = true;
 				dialog.Title = "Export Load Order As...";
 
-				if (dialog.ShowDialog(view) == true)
+				if (dialog.ShowDialog(View) == true)
 				{
 					MainProgressTitle = "Adding active mods to zip...";
 					MainProgressWorkText = "";
@@ -3353,7 +3188,7 @@ namespace DivinityModManager.ViewModels
 			}
 			else
 			{
-				view.AlertBar.SetDangerAlert("SelectedProfile or SelectedModOrder is null! Failed to export mod order.");
+				View.AlertBar.SetDangerAlert("SelectedProfile or SelectedModOrder is null! Failed to export mod order.");
 			}
 
 		}
@@ -3364,15 +3199,17 @@ namespace DivinityModManager.ViewModels
 			{
 				var startDirectory = Path.GetFullPath(Directory.GetCurrentDirectory());
 
-				var dialog = new SaveFileDialog();
-				dialog.AddExtension = true;
-				dialog.DefaultExt = ".txt";
-				dialog.Filter = "Text file (*.txt)|*.txt|TSV file (*.tsv)|*.tsv|JSON file (*.json)|*.json";
-				dialog.InitialDirectory = startDirectory;
+				var dialog = new SaveFileDialog
+				{
+					AddExtension = true,
+					DefaultExt = ".tsv",
+					Filter = "Spreadsheet file (*.tsv)|*.tsv|Plain text file (*.txt)|*.txt|JSON file (*.json)|*.json",
+					InitialDirectory = startDirectory
+				};
 
 				string sysFormat = CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern.Replace("/", "-");
 				string baseOrderName = SelectedModOrder.Name;
-				if (SelectedModOrder.Name.Equals("Current", StringComparison.OrdinalIgnoreCase))
+				if (SelectedModOrder.IsModSettings)
 				{
 					baseOrderName = $"{SelectedProfile.Name}_{SelectedModOrder.Name}";
 				}
@@ -3385,13 +3222,13 @@ namespace DivinityModManager.ViewModels
 				dialog.OverwritePrompt = true;
 				dialog.Title = "Export Load Order As Text File...";
 
-				if (dialog.ShowDialog(view) == true)
+				if (dialog.ShowDialog(View) == true)
 				{
 					var fileType = Path.GetExtension(dialog.FileName);
 					string outputText = "";
 					if (fileType.Equals(".json", StringComparison.OrdinalIgnoreCase))
 					{
-						outputText = JsonConvert.SerializeObject(ActiveMods, Formatting.Indented, new JsonSerializerSettings
+						outputText = JsonConvert.SerializeObject(ActiveMods.Select(x => DivinitySerializedModData.FromMod(x)).ToList(), Formatting.Indented, new JsonSerializerSettings
 						{
 							NullValueHandling = NullValueHandling.Ignore
 						});
@@ -3417,29 +3254,31 @@ namespace DivinityModManager.ViewModels
 					try
 					{
 						File.WriteAllText(dialog.FileName, outputText);
-						view.AlertBar.SetSuccessAlert($"Exported order to '{dialog.FileName}'", 20);
+						View.AlertBar.SetSuccessAlert($"Exported order to '{dialog.FileName}'", 20);
 					}
 					catch (Exception ex)
 					{
-						view.AlertBar.SetDangerAlert($"Error exporting mod order to '{dialog.FileName}':\n{ex}");
+						View.AlertBar.SetDangerAlert($"Error exporting mod order to '{dialog.FileName}':\n{ex}");
 					}
 				}
 			}
 			else
 			{
 				DivinityApp.Log($"SelectedProfile({SelectedProfile}) SelectedModOrder({SelectedModOrder})");
-				view.AlertBar.SetDangerAlert("SelectedProfile or SelectedModOrder is null! Failed to export mod order.");
+				View.AlertBar.SetDangerAlert("SelectedProfile or SelectedModOrder is null! Failed to export mod order.");
 			}
 		}
 
 		private DivinityLoadOrder ImportOrderFromSave()
 		{
-			var dialog = new OpenFileDialog();
-			dialog.CheckFileExists = true;
-			dialog.CheckPathExists = true;
-			dialog.DefaultExt = ".lsv";
-			dialog.Filter = "Larian Save file (*.lsv)|*.lsv";
-			dialog.Title = "Load Mod Order From Save...";
+			var dialog = new OpenFileDialog
+			{
+				CheckFileExists = true,
+				CheckPathExists = true,
+				DefaultExt = ".lsv",
+				Filter = "Larian Save file (*.lsv)|*.lsv",
+				Title = "Load Mod Order From Save..."
+			};
 
 			if (!String.IsNullOrEmpty(PathwayData.LastSaveFilePath) && Directory.Exists(PathwayData.LastSaveFilePath))
 			{
@@ -3466,14 +3305,14 @@ namespace DivinityModManager.ViewModels
 				}
 			}
 
-			if (dialog.ShowDialog(view) == true)
+			if (dialog.ShowDialog(View) == true)
 			{
 				PathwayData.LastSaveFilePath = Path.GetDirectoryName(dialog.FileName);
 				DivinityApp.Log($"Loading order from '{dialog.FileName}'.");
 				var newOrder = DivinityModDataLoader.GetLoadOrderFromSave(dialog.FileName, Settings.LoadOrderPath);
 				if (newOrder != null)
 				{
-					DivinityApp.Log($"Imported mod order: {String.Join(@"\n\t", newOrder.Order.Select(x => x.Name))}");
+					DivinityApp.Log($"Imported mod order: {String.Join(Environment.NewLine + "\t", newOrder.Order.Select(x => x.Name))}");
 					return newOrder;
 				}
 				else
@@ -3520,12 +3359,14 @@ namespace DivinityModManager.ViewModels
 
 		private void ImportOrderFromFile()
 		{
-			var dialog = new OpenFileDialog();
-			dialog.CheckFileExists = true;
-			dialog.CheckPathExists = true;
-			dialog.DefaultExt = ".json";
-			dialog.Filter = "JSON file (*.json)|*.json";
-			dialog.Title = "Load Mod Order From File...";
+			var dialog = new OpenFileDialog
+			{
+				CheckFileExists = true,
+				CheckPathExists = true,
+				DefaultExt = ".json",
+				Filter = "All formats (*.json;*.txt;*.tsv)|*.json;*.txt;*.tsv|JSON file (*.json)|*.json|Text file (*.txt)|*.txt|TSV file (*.tsv)|*.tsv",
+				Title = "Load Mod Order From File..."
+			};
 
 			if (!String.IsNullOrEmpty(Settings.LastLoadedOrderFilePath) && (Directory.Exists(Settings.LastLoadedOrderFilePath) | File.Exists(Settings.LastLoadedOrderFilePath)))
 			{
@@ -3550,16 +3391,38 @@ namespace DivinityModManager.ViewModels
 				}
 			}
 
-			if (dialog.ShowDialog(view) == true)
+			if (dialog.ShowDialog(View) == true)
 			{
 				Settings.LastLoadedOrderFilePath = Path.GetDirectoryName(dialog.FileName);
 				SaveSettings();
 				DivinityApp.Log($"Loading order from '{dialog.FileName}'.");
-				var newOrder = DivinityModDataLoader.LoadOrderFromFile(dialog.FileName);
+				var newOrder = DivinityModDataLoader.LoadOrderFromFile(dialog.FileName, addonMods);
 				if (newOrder != null)
 				{
-					DivinityApp.Log($"Imported mod order: {String.Join(@"\n\t", newOrder.Order.Select(x => x.Name))}");
-					AddNewModOrder(newOrder);
+					DivinityApp.Log($"Imported mod order:\n{String.Join(Environment.NewLine + "\t", newOrder.Order.Select(x => x.Name))}");
+					if (newOrder.IsDecipheredOrder)
+					{
+						if (SelectedModOrder != null)
+						{
+							SelectedModOrder.SetOrder(newOrder);
+							if (LoadModOrder(SelectedModOrder))
+							{
+								DivinityApp.Log($"Successfully re-loaded order '{SelectedModOrder.Name}' with imported order.");
+							}
+							else
+							{
+								DivinityApp.Log($"Failed to load order '{SelectedModOrder.Name}'");
+							}
+						}
+						else
+						{
+							AddNewModOrder(newOrder);
+						}
+					}
+					else
+					{
+						AddNewModOrder(newOrder);
+					}
 				}
 				else
 				{
@@ -3575,12 +3438,14 @@ namespace DivinityModManager.ViewModels
 			{
 				profileSavesDirectory = Path.GetFullPath(Path.Combine(SelectedProfile.Folder, "Savegames"));
 			}
-			var dialog = new OpenFileDialog();
-			dialog.CheckFileExists = true;
-			dialog.CheckPathExists = true;
-			dialog.DefaultExt = ".lsv";
-			dialog.Filter = "Larian Save file (*.lsv)|*.lsv";
-			dialog.Title = "Pick Save to Rename...";
+			var dialog = new OpenFileDialog
+			{
+				CheckFileExists = true,
+				CheckPathExists = true,
+				DefaultExt = ".lsv",
+				Filter = "Larian Save file (*.lsv)|*.lsv",
+				Title = "Pick Save to Rename..."
+			};
 
 			if (!String.IsNullOrEmpty(PathwayData.LastSaveFilePath) && Directory.Exists(PathwayData.LastSaveFilePath))
 			{
@@ -3598,22 +3463,24 @@ namespace DivinityModManager.ViewModels
 				}
 			}
 
-			if (dialog.ShowDialog(view) == true)
+			if (dialog.ShowDialog(View) == true)
 			{
 				string rootFolder = Path.GetDirectoryName(dialog.FileName);
 				string rootFileName = Path.GetFileNameWithoutExtension(dialog.FileName);
 				PathwayData.LastSaveFilePath = rootFolder;
 
-				var renameDialog = new SaveFileDialog();
-				renameDialog.CheckFileExists = false;
-				renameDialog.CheckPathExists = false;
-				renameDialog.DefaultExt = ".lsv";
-				renameDialog.Filter = "Larian Save file (*.lsv)|*.lsv";
-				renameDialog.Title = "Rename Save As...";
-				renameDialog.InitialDirectory = rootFolder;
-				renameDialog.FileName = rootFileName + "_1.lsv";
+				var renameDialog = new SaveFileDialog
+				{
+					CheckFileExists = false,
+					CheckPathExists = false,
+					DefaultExt = ".lsv",
+					Filter = "Larian Save file (*.lsv)|*.lsv",
+					Title = "Rename Save As...",
+					InitialDirectory = rootFolder,
+					FileName = rootFileName + "_1.lsv"
+				};
 
-				if (renameDialog.ShowDialog(view) == true)
+				if (renameDialog.ShowDialog(View) == true)
 				{
 					rootFolder = Path.GetDirectoryName(renameDialog.FileName);
 					PathwayData.LastSaveFilePath = rootFolder;
@@ -3651,7 +3518,7 @@ namespace DivinityModManager.ViewModels
 								}
 							}
 
-							view.AlertBar.SetSuccessAlert($"Successfully renamed '{dialog.FileName}' to '{renameDialog.FileName}'.", 15);
+							View.AlertBar.SetSuccessAlert($"Successfully renamed '{dialog.FileName}' to '{renameDialog.FileName}'.", 15);
 						}
 						catch (Exception ex)
 						{
@@ -3688,7 +3555,7 @@ namespace DivinityModManager.ViewModels
 				AutoUpdater.Start(DivinityApp.URL_UPDATE);
 				Settings.LastUpdateCheck = DateTimeOffset.Now.ToUnixTimeSeconds();
 				SaveSettings();
-				Task.Delay(1000).ContinueWith(_ =>
+				RxApp.MainThreadScheduler.Schedule(TimeSpan.FromSeconds(10), () =>
 				{
 					AutoUpdater.ReportErrors = false;
 				});
@@ -3697,7 +3564,7 @@ namespace DivinityModManager.ViewModels
 
 		public void OnViewActivated(MainWindow parentView)
 		{
-			view = parentView;
+			View = parentView;
 			DivinityApp.Commands.SetViewModel(this);
 
 			if (DebugMode)
@@ -3705,49 +3572,85 @@ namespace DivinityModManager.ViewModels
 				string lastMessage = "";
 				this.WhenAnyValue(x => x.MainProgressWorkText, x => x.MainProgressValue).Subscribe((ob) =>
 				{
-					if (lastMessage != ob.Item1)
+					if (!String.IsNullOrEmpty(ob.Item1) && lastMessage != ob.Item1)
 					{
-						DivinityApp.Log($"Loading({ob.Item2 * 100}%): {ob.Item1}");
+						DivinityApp.Log($"[{ob.Item2:P0}] {ob.Item1}");
 						lastMessage = ob.Item1;
-					}
-					else
-					{
-						DivinityApp.Log($"Loading({ob.Item2 * 100}%)");
 					}
 				});
 			}
 
-			LoadSettings();
+			var loaded = LoadSettings();
 			Keys.LoadKeybindings(this);
 			if (Settings.CheckForUpdates)
 			{
 				CheckForUpdates();
 			}
-			RefreshAsync_Start("Loading...");
-			SaveSettings(); // New values
-			IsInitialized = true;
+			SaveSettings();
+
+			if (loaded && Settings.SaveWindowLocation)
+			{
+				var window = Settings.Window;
+				View.WindowStartupLocation = WindowStartupLocation.Manual;
+
+				var screens = System.Windows.Forms.Screen.AllScreens;
+				var screen = screens.FirstOrDefault();
+				if (screen != null)
+				{
+					if (window.Screen > -1 && window.Screen < screens.Length - 1)
+					{
+						screen = screens[window.Screen];
+					}
+
+					View.Left = Math.Max(screen.WorkingArea.Left, Math.Min(screen.WorkingArea.Right, screen.WorkingArea.Left + window.X));
+					View.Top = Math.Max(screen.WorkingArea.Top, Math.Min(screen.WorkingArea.Bottom, screen.WorkingArea.Top + window.Y));
+				}
+
+				if (window.Maximized)
+				{
+					View.WindowState = WindowState.Maximized;
+				}
+			}
+
+			ModUpdatesViewVisible = ModUpdatesAvailable = false;
+			MainProgressTitle = "Loading...";
+			MainProgressValue = 0d;
+			CanCancelProgress = false;
+			MainProgressIsActive = true;
+			View.TaskbarItemInfo.ProgressState = System.Windows.Shell.TaskbarItemProgressState.Normal;
+			View.TaskbarItemInfo.ProgressValue = 0;
+			IsRefreshing = true;
+			RxApp.TaskpoolScheduler.ScheduleAsync(RefreshAsync);
 		}
 
-		public bool AutoChangedOrder { get; set; } = false;
+		public bool AutoChangedOrder { get; set; }
 		public ViewModelActivator Activator { get; }
 
-		private Regex filterPropertyPattern = new Regex("@([^\\s]+?)([\\s]+)([^@\\s]*)");
-		private Regex filterPropertyPatternWithQuotes = new Regex("@([^\\s]+?)([\\s\"]+)([^@\"]*)");
+		private readonly Regex filterPropertyPattern = new Regex("@([^\\s]+?)([\\s]+)([^@\\s]*)");
+		private readonly Regex filterPropertyPatternWithQuotes = new Regex("@([^\\s]+?)([\\s\"]+)([^@\"]*)");
 
-		private int totalActiveModsHidden = 0;
+		[Reactive] public int TotalActiveModsHidden { get; set; }
+		[Reactive] public int TotalInactiveModsHidden { get; set; }
 
-		public int TotalActiveModsHidden
+		private string HiddenToLabel(int totalHidden, int totalCount)
 		{
-			get => totalActiveModsHidden;
-			set { this.RaiseAndSetIfChanged(ref totalActiveModsHidden, value); }
+			if (totalHidden > 0)
+			{
+				return $"{totalCount - totalHidden} Matched, {totalHidden} Hidden";
+			}
+			else
+			{
+				return $"0 Matched";
+			}
 		}
 
-		private int totalInactiveModsHidden = 0;
-
-		public int TotalInactiveModsHidden
+		private string SelectedToLabel(int total, int totalHidden)
 		{
-			get => totalInactiveModsHidden;
-			set { this.RaiseAndSetIfChanged(ref totalInactiveModsHidden, value); }
+			if (totalHidden > 0)
+			{
+				return $", {total} Selected";
+			}
+			return $"{total} Selected";
 		}
 
 		public void OnFilterTextChanged(string searchText, IEnumerable<DivinityModData> modDataList)
@@ -3866,33 +3769,36 @@ namespace DivinityModManager.ViewModels
 			}
 		}
 
-		private MainWindowExceptionHandler exceptionHandler;
+		private readonly MainWindowExceptionHandler exceptionHandler;
 
 		public void ShowAlert(string message, AlertType alertType = AlertType.Info, int timeout = 0)
 		{
-			if (timeout < 0) timeout = 0;
-			switch (alertType)
+			RxApp.MainThreadScheduler.Schedule(() =>
 			{
-				case AlertType.Danger:
-					view.AlertBar.SetDangerAlert(message, timeout);
-					break;
-				case AlertType.Warning:
-					view.AlertBar.SetWarningAlert(message, timeout);
-					break;
-				case AlertType.Success:
-					view.AlertBar.SetSuccessAlert(message, timeout);
-					break;
-				case AlertType.Info:
-				default:
-					view.AlertBar.SetInformationAlert(message, timeout);
-					break;
-			}
+				if (timeout < 0) timeout = 0;
+				switch (alertType)
+				{
+					case AlertType.Danger:
+						View.AlertBar.SetDangerAlert(message, timeout);
+						break;
+					case AlertType.Warning:
+						View.AlertBar.SetWarningAlert(message, timeout);
+						break;
+					case AlertType.Success:
+						View.AlertBar.SetSuccessAlert(message, timeout);
+						break;
+					case AlertType.Info:
+					default:
+						View.AlertBar.SetInformationAlert(message, timeout);
+						break;
+				}
+			});
 		}
 
 		private Unit DeleteOrder(DivinityLoadOrder order)
 		{
-			MessageBoxResult result = Xceed.Wpf.Toolkit.MessageBox.Show(view, $"Delete load order '{order.Name}'? This cannot be undone.", "Confirm Order Deletion",
-				MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No, view.MainWindowMessageBox_OK.Style);
+			MessageBoxResult result = Xceed.Wpf.Toolkit.MessageBox.Show(View, $"Delete load order '{order.Name}'? This cannot be undone.", "Confirm Order Deletion",
+				MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No, View.MainWindowMessageBox_OK.Style);
 			if (result == MessageBoxResult.Yes)
 			{
 				SelectedModOrderIndex = 0;
@@ -3900,18 +3806,59 @@ namespace DivinityModManager.ViewModels
 				if (!String.IsNullOrEmpty(order.FilePath) && File.Exists(order.FilePath))
 				{
 					RecycleBinHelper.DeleteFile(order.FilePath, false, false);
-					view.AlertBar.SetWarningAlert($"Sent load order '{order.FilePath}' to the recycle bin.", 25);
+					View.AlertBar.SetWarningAlert($"Sent load order '{order.FilePath}' to the recycle bin.", 25);
 				}
 			}
 			return Unit.Default;
 		}
 
+		private void DeleteMods(List<DivinityModData> targetMods)
+		{
+			if (!IsDeletingFiles)
+			{
+				var targetUUIDs = targetMods.Select(x => x.UUID).ToHashSet();
+
+				var deleteFilesData = targetMods.Select(x => ModFileDeletionData.FromMod(x));
+				this.View.DeleteFilesView.ViewModel.Files.AddRange(deleteFilesData);
+
+				var workshopMods = WorkshopMods.Where(wm => targetUUIDs.Contains(wm.UUID) && File.Exists(wm.FilePath)).Select(x => ModFileDeletionData.FromMod(x, true));
+				this.View.DeleteFilesView.ViewModel.Files.AddRange(workshopMods);
+
+				this.View.DeleteFilesView.ViewModel.IsActive = true;
+			}
+		}
+
+		public void DeleteMod(DivinityModData mod)
+		{
+			DeleteMods(new List<DivinityModData>() { mod });
+		}
+
+		public void RemoveDeletedMods(HashSet<string> deletedMods, HashSet<string> deletedWorkshopMods = null, bool removeFromLoadOrder = true)
+		{
+			mods.RemoveKeys(deletedMods);
+
+			if (removeFromLoadOrder)
+			{
+				SelectedModOrder.Order.RemoveAll(x => deletedMods.Contains(x.UUID));
+				SelectedProfile.ModOrder.RemoveMany(deletedMods);
+				SelectedProfile.ActiveMods.RemoveAll(x => deletedMods.Contains(x.UUID));
+				SaveLoadOrder(true);
+			}
+
+			if (deletedWorkshopMods != null && deletedWorkshopMods.Count > 0)
+			{
+				workshopMods.RemoveKeys(deletedWorkshopMods);
+			}
+		}
+
 		private void ExtractSelectedMods_ChooseFolder()
 		{
-			var dialog = new Ookii.Dialogs.Wpf.VistaFolderBrowserDialog();
-			dialog.ShowNewFolderButton = true;
-			dialog.UseDescriptionForTitle = true;
-			dialog.Description = "Select folder to extract mod(s) to...";
+			var dialog = new Ookii.Dialogs.Wpf.VistaFolderBrowserDialog
+			{
+				ShowNewFolderButton = true,
+				UseDescriptionForTitle = true,
+				Description = "Select folder to extract mod(s) to..."
+			};
 
 			if (Settings.LastExtractOutputPath.IsExistingDirectory())
 			{
@@ -3926,7 +3873,7 @@ namespace DivinityModManager.ViewModels
 				dialog.RootFolder = Environment.SpecialFolder.Desktop;
 			}
 
-			if (dialog.ShowDialog(view) == true)
+			if (dialog.ShowDialog(View) == true)
 			{
 				Settings.LastExtractOutputPath = dialog.SelectedPath;
 				SaveSettings();
@@ -3986,12 +3933,12 @@ namespace DivinityModManager.ViewModels
 					{
 						if (successes >= totalWork)
 						{
-							view.AlertBar.SetSuccessAlert($"Successfully extracted all selected mods to '{dialog.SelectedPath}'.", 20);
+							View.AlertBar.SetSuccessAlert($"Successfully extracted all selected mods to '{dialog.SelectedPath}'.", 20);
 							Process.Start(openOutputPath);
 						}
 						else
 						{
-							view.AlertBar.SetDangerAlert($"Error occurred when extracting selected mods to '{dialog.SelectedPath}'.", 30);
+							View.AlertBar.SetDangerAlert($"Error occurred when extracting selected mods to '{dialog.SelectedPath}'.", 30);
 						}
 					});
 
@@ -4010,8 +3957,8 @@ namespace DivinityModManager.ViewModels
 			}
 			else
 			{
-				MessageBoxResult result = Xceed.Wpf.Toolkit.MessageBox.Show(view, $"Extract the following mods?\n'{String.Join("\n", SelectedPakMods.Select(x => $"{x.DisplayName}"))}", "Extract Mods?",
-				MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No, view.MainWindowMessageBox_OK.Style);
+				MessageBoxResult result = Xceed.Wpf.Toolkit.MessageBox.Show(View, $"Extract the following mods?\n'{String.Join("\n", SelectedPakMods.Select(x => $"{x.DisplayName}"))}", "Extract Mods?",
+				MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No, View.MainWindowMessageBox_OK.Style);
 				if (result == MessageBoxResult.Yes)
 				{
 					ExtractSelectedMods_ChooseFolder();
@@ -4024,14 +3971,16 @@ namespace DivinityModManager.ViewModels
 			if (SelectedAdventureMod == null || SelectedAdventureMod.IsEditorMod || SelectedAdventureMod.IsLarianMod || !File.Exists(SelectedAdventureMod.FilePath))
 			{
 				var displayName = SelectedAdventureMod != null ? SelectedAdventureMod.DisplayName : "";
-				view.AlertBar.SetWarningAlert($"Current adventure mod '{displayName}' is not extractable.", 30);
+				View.AlertBar.SetWarningAlert($"Current adventure mod '{displayName}' is not extractable.", 30);
 				return;
 			}
 
-			var dialog = new Ookii.Dialogs.Wpf.VistaFolderBrowserDialog();
-			dialog.ShowNewFolderButton = true;
-			dialog.UseDescriptionForTitle = true;
-			dialog.Description = "Select folder to extract mod to...";
+			var dialog = new Ookii.Dialogs.Wpf.VistaFolderBrowserDialog
+			{
+				ShowNewFolderButton = true,
+				UseDescriptionForTitle = true,
+				Description = "Select folder to extract mod to..."
+			};
 
 			if (Settings.LastExtractOutputPath.IsExistingDirectory())
 			{
@@ -4046,7 +3995,7 @@ namespace DivinityModManager.ViewModels
 				dialog.RootFolder = Environment.SpecialFolder.Desktop;
 			}
 
-			if (dialog.ShowDialog(view) == true)
+			if (dialog.ShowDialog(View) == true)
 			{
 				Settings.LastExtractOutputPath = dialog.SelectedPath;
 				SaveSettings();
@@ -4092,12 +4041,12 @@ namespace DivinityModManager.ViewModels
 					{
 						if (success)
 						{
-							view.AlertBar.SetSuccessAlert($"Successfully extracted adventure mod to '{dialog.SelectedPath}'.", 20);
+							View.AlertBar.SetSuccessAlert($"Successfully extracted adventure mod to '{dialog.SelectedPath}'.", 20);
 							Process.Start(openOutputPath);
 						}
 						else
 						{
-							view.AlertBar.SetDangerAlert($"Error occurred when extracting adventure mod to '{dialog.SelectedPath}'.", 30);
+							View.AlertBar.SetDangerAlert($"Error occurred when extracting adventure mod to '{dialog.SelectedPath}'.", 30);
 						}
 					});
 
@@ -4106,67 +4055,10 @@ namespace DivinityModManager.ViewModels
 			}
 		}
 
-		private void ExportOrderToListAs()
-		{
-			if (ActiveMods.Count > 0)
-			{
-				var startDirectory = Path.GetFullPath(!String.IsNullOrEmpty(Settings.LoadOrderPath) ? Settings.LoadOrderPath : Directory.GetCurrentDirectory());
-
-				if (!Directory.Exists(startDirectory))
-				{
-					Directory.CreateDirectory(startDirectory);
-				}
-
-				var dialog = new SaveFileDialog();
-				dialog.AddExtension = true;
-				dialog.DefaultExt = ".txt";
-				dialog.Filter = "Text file (*.txt)|*.txt";
-				dialog.InitialDirectory = startDirectory;
-
-				string outputName = Path.Combine(SelectedModOrder.Name + ".txt");
-				if (SelectedModOrder.Name.Equals("Current", StringComparison.OrdinalIgnoreCase))
-				{
-					outputName = $"{SelectedProfile.Name}_{SelectedModOrder.Name}.txt";
-				}
-
-				//dialog.RestoreDirectory = true;
-				dialog.FileName = DivinityModDataLoader.MakeSafeFilename(outputName, '_');
-				dialog.CheckFileExists = false;
-				dialog.CheckPathExists = false;
-				dialog.OverwritePrompt = true;
-				dialog.Title = "Export Load Order List As...";
-
-				if (dialog.ShowDialog(view) == true)
-				{
-					try
-					{
-						string text = "";
-						for (int i = 0; i < ActiveMods.Count; i++)
-						{
-							var mod = ActiveMods[i];
-							text += $"{mod.Index + 1}. {mod.DisplayName}";
-							if (i < ActiveMods.Count - 1) text += Environment.NewLine;
-						}
-						File.WriteAllText(dialog.FileName, text);
-						DivinityApp.Commands.OpenInFileExplorer(dialog.FileName);
-						view.AlertBar.SetSuccessAlert($"Saved mod load order to '{dialog.FileName}'", 10);
-					}
-					catch (Exception ex)
-					{
-						view.AlertBar.SetDangerAlert($"Failed to save mod load order to '{dialog.FileName}'", 20);
-					}
-				}
-			}
-			else
-			{
-				view.AlertBar.SetWarningAlert("Current order is empty.", 10);
-			}
-		}
-
-		private void InstallScriptExtender_DownloadStart(string exeDir)
+		private void InstallOsiExtender_DownloadStart(string exeDir)
 		{
 			double taskStepAmount = 1.0 / 3;
-			MainProgressTitle = $"Setting up the Script Extender...";
+			MainProgressTitle = $"Setting up the Osiris Extender...";
 			MainProgressValue = 0d;
 			MainProgressToken = new CancellationTokenSource();
 			CanCancelProgress = true;
@@ -4174,15 +4066,15 @@ namespace DivinityModManager.ViewModels
 
 			string dllDestination = Path.Combine(exeDir, DivinityApp.EXTENDER_UPDATER_FILE);
 
-			RxApp.TaskpoolScheduler.ScheduleAsync(async (ctrl, t) =>
+			RxApp.TaskpoolScheduler.ScheduleAsync((Func<IScheduler, CancellationToken, Task<IDisposable>>)(async (ctrl, t) =>
 			{
 				int successes = 0;
 				System.IO.Stream webStream = null;
 				System.IO.Stream unzippedEntryStream = null;
 				try
 				{
-					RxApp.MainThreadScheduler.Schedule(_ => MainProgressWorkText = $"Downloading {PathwayData.ScriptExtenderLatestReleaseUrl}...");
-					webStream = await WebHelper.DownloadFileAsStreamAsync(PathwayData.ScriptExtenderLatestReleaseUrl, MainProgressToken.Token);
+					RxApp.MainThreadScheduler.Schedule(_ => MainProgressWorkText = $"Downloading {PathwayData.OsirisExtenderLatestReleaseUrl}...");
+					webStream = await WebHelper.DownloadFileAsStreamAsync(PathwayData.OsirisExtenderLatestReleaseUrl, MainProgressToken.Token);
 					if (webStream != null)
 					{
 						successes += 1;
@@ -4213,8 +4105,8 @@ namespace DivinityModManager.ViewModels
 				finally
 				{
 					RxApp.MainThreadScheduler.Schedule(_ => MainProgressWorkText = $"Cleaning up...");
-					if (webStream != null) webStream.Close();
-					if (unzippedEntryStream != null) unzippedEntryStream.Close();
+					webStream?.Close();
+					unzippedEntryStream?.Close();
 					successes += 1;
 					IncreaseMainProgressValue(taskStepAmount);
 				}
@@ -4225,15 +4117,16 @@ namespace DivinityModManager.ViewModels
 				{
 					if (successes >= 3)
 					{
-						view.AlertBar.SetSuccessAlert($"Successfully installed the Extender updater {DivinityApp.EXTENDER_UPDATER_FILE} to '{exeDir}'.", 20);
+						this.View.AlertBar.SetSuccessAlert($"Successfully installed the Extender updater {DivinityApp.EXTENDER_UPDATER_FILE} to '{exeDir}'.", 20);
 						HighlightExtenderDownload = false;
 						Settings.ExtenderSettings.ExtenderUpdaterIsAvailable = true;
+						Settings.ExtenderSettings.ExtenderVersion = 56;
 						if (Settings.ExtenderSettings.ExtenderVersion <= -1)
 						{
-							if (!String.IsNullOrWhiteSpace(PathwayData.ScriptExtenderLatestReleaseVersion))
+							if (!String.IsNullOrWhiteSpace(PathwayData.OsirisExtenderLatestReleaseVersion))
 							{
 								var re = new Regex("v([0-9]+)");
-								var m = re.Match(PathwayData.ScriptExtenderLatestReleaseVersion);
+								var m = re.Match(PathwayData.OsirisExtenderLatestReleaseVersion);
 								if (m.Success)
 								{
 									if (int.TryParse(m.Groups[1].Value, out int version))
@@ -4243,10 +4136,10 @@ namespace DivinityModManager.ViewModels
 									}
 								}
 							}
-							else if (PathwayData.ScriptExtenderLatestReleaseUrl.Contains("v"))
+							else if (PathwayData.OsirisExtenderLatestReleaseUrl.Contains("v"))
 							{
 								var re = new Regex("v([0-9]+).*.zip");
-								var m = re.Match(PathwayData.ScriptExtenderLatestReleaseUrl);
+								var m = re.Match(PathwayData.OsirisExtenderLatestReleaseUrl);
 								if (m.Success)
 								{
 									if (int.TryParse(m.Groups[1].Value, out int version))
@@ -4261,28 +4154,28 @@ namespace DivinityModManager.ViewModels
 					}
 					else
 					{
-						view.AlertBar.SetDangerAlert($"Error occurred when installing the Extender updater {DivinityApp.EXTENDER_UPDATER_FILE}. Check the log.", 30);
+						this.View.AlertBar.SetDangerAlert($"Error occurred when installing the Extender updater {DivinityApp.EXTENDER_UPDATER_FILE}. Check the log.", 30);
 					}
 				});
 
 				return Disposable.Empty;
-			});
+			}));
 		}
 
-		private void InstallScriptExtender_Start()
+		private void InstallOsiExtender_Start()
 		{
 			if (!OpenRepoLinkToDownload)
 			{
 				if (!String.IsNullOrWhiteSpace(Settings.GameExecutablePath) && File.Exists(Settings.GameExecutablePath))
 				{
 					string exeDir = Path.GetDirectoryName(Settings.GameExecutablePath);
-					string messageText = String.Format(@"Download and install the Script Extender?
+					string messageText = String.Format(@"Download and install the Script Extender (ositools)?
 The Script Extender is used by various mods to extend the scripting language of the game, allowing new functionality.
 The extenders needs to only be installed once, as it can auto-update itself automatically when you launch the game.
 Download url: 
 {0}
 Directory the zip will be extracted to:
-{1}", PathwayData.ScriptExtenderLatestReleaseUrl, exeDir);
+{1}", PathwayData.OsirisExtenderLatestReleaseUrl, exeDir);
 
 					var result = AdonisUI.Controls.MessageBox.Show(new AdonisUI.Controls.MessageBoxModel
 					{
@@ -4294,7 +4187,7 @@ Directory the zip will be extracted to:
 
 					if (result == AdonisUI.Controls.MessageBoxResult.Yes)
 					{
-						InstallScriptExtender_DownloadStart(exeDir);
+						InstallOsiExtender_DownloadStart(exeDir);
 					}
 				}
 				else
@@ -4304,8 +4197,8 @@ Directory the zip will be extracted to:
 			}
 			else
 			{
-				DivinityApp.Log($"Getting a release download link failed for some reason. Opening repo url: {DivinityApp.EXTENDER_LATEST_URL}");
-				Process.Start(DivinityApp.EXTENDER_LATEST_URL);
+				DivinityApp.Log($"Getting a release download link failed for some reason. Opening repo url: https://github.com/Norbyte/ositools/releases/latest");
+				Process.Start("https://github.com/Norbyte/ositools/releases/latest");
 			}
 		}
 
@@ -4398,46 +4291,13 @@ Directory the zip will be extracted to:
 						tb.Select(0, 0);
 					}
 				}
-				else
-				{
-					DivinityApp.Log("Can't find OrdersComboBox!");
-				}
 			});
 			return Unit.Default;
 		}
 
 		public void ClearMissingMods()
 		{
-			//if (SelectedProfile.SavedLoadOrder == null)
-			//{
-			//	foreach (var uuid in SelectedProfile.ModOrder.ToList())
-			//	{
-			//		var activeModData = SelectedProfile.ActiveMods.FirstOrDefault(y => y.UUID == uuid);
-			//		if (activeModData != null)
-			//		{
-			//			var mod = mods.Items.FirstOrDefault(m => m.UUID.Equals(uuid, StringComparison.OrdinalIgnoreCase));
-			//			if (mod == null)
-			//			{
-			//				SelectedProfile.ActiveMods.Remove(activeModData);
-			//			}
-			//		}
-			//	}
-			//}
-
-			int totalRemoved = 0;
-
-			if (SelectedModOrder != null)
-			{
-				foreach (var entry in SelectedModOrder.Order.ToList())
-				{
-					var mod = mods.Items.FirstOrDefault(m => m.UUID == entry.UUID);
-					if (mod == null)
-					{
-						SelectedModOrder.Order.Remove(entry);
-						totalRemoved++;
-					}
-				}
-			}
+			var totalRemoved = SelectedModOrder != null ? SelectedModOrder.Order.RemoveAll(x => !ModExists(x.UUID)) : 0;
 
 			if (totalRemoved > 0)
 			{
@@ -4447,6 +4307,8 @@ Directory the zip will be extracted to:
 
 		private void LoadAppConfig()
 		{
+			AppSettingsLoaded = false;
+
 			if (File.Exists(DivinityApp.PATH_APP_FEATURES))
 			{
 				var appFeaturesDict = DivinityJsonUtils.SafeDeserializeFromPath<Dictionary<string, bool>>(DivinityApp.PATH_APP_FEATURES);
@@ -4502,7 +4364,7 @@ Directory the zip will be extracted to:
 							}
 							if (dict.TryGetValue("Type", out var modType))
 							{
-								mod.Type = (string)modType;
+								mod.ModType = (string)modType;
 							}
 							if (dict.TryGetValue("Author", out var author))
 							{
@@ -4523,16 +4385,16 @@ Directory the zip will be extracted to:
 							}
 							if (dict.TryGetValue("Version", out var vObj))
 							{
-								ulong version;
+								int version;
 								if (vObj is string vStr)
 								{
-									version = UInt64.Parse(vStr);
+									version = int.Parse(vStr);
 								}
 								else
 								{
-									version = Convert.ToUInt64(vObj);
+									version = Convert.ToInt32(vObj);
 								}
-								mod.Version = new DivinityModVersion2(version);
+								mod.Version = new DivinityModVersion(version);
 							}
 							if (dict.TryGetValue("Tags", out var tags))
 							{
@@ -4558,10 +4420,36 @@ Directory the zip will be extracted to:
 					//DivinityApp.LogMessage("Ignored mods:\n" + String.Join("\n", DivinityApp.IgnoredMods.Select(x => x.Name)));
 				}
 			}
+
+			AppSettingsLoaded = true;
+		}
+		public void OnKeyDown(Key key)
+		{
+			switch (key)
+			{
+				case Key.Up:
+				case Key.Right:
+				case Key.Down:
+				case Key.Left:
+					DivinityApp.IsKeyboardNavigating = true;
+					break;
+			}
+		}
+
+		public void OnKeyUp(Key key)
+		{
+			if (key == Keys.Confirm.Key)
+			{
+				CanMoveSelectedMods = true;
+			}
 		}
 
 		public MainWindowViewModel() : base()
 		{
+			MainProgressValue = 0d;
+			MainProgressIsActive = true;
+			StatusBarBusyIndicatorVisibility = Visibility.Collapsed;
+
 			exceptionHandler = new MainWindowExceptionHandler(this);
 			RxApp.DefaultExceptionHandler = exceptionHandler;
 
@@ -4585,23 +4473,54 @@ Directory the zip will be extracted to:
 				if (!disposables.Contains(this.Disposables)) disposables.Add(this.Disposables);
 			});
 
+			_isLocked = this.WhenAnyValue(x => x.IsDragging, x => x.IsRefreshing, (b1, b2) => b1 || b2).ToProperty(this, nameof(IsLocked));
+
+			_keys = new AppKeys(this);
+
 			#region Keys Setup
 			Keys.SaveDefaultKeybindings();
 
 			var canExecuteSaveCommand = this.WhenAnyValue(x => x.CanSaveOrder, (canSave) => canSave == true);
-			Keys.Save.AddAction(SaveLoadOrder, canExecuteSaveCommand);
+			Keys.Save.AddAction(() => SaveLoadOrder(), canExecuteSaveCommand);
 
 			var canExecuteSaveAsCommand = this.WhenAnyValue(x => x.CanSaveOrder, x => x.MainProgressIsActive, (canSave, p) => canSave && !p);
 			Keys.SaveAs.AddAction(SaveLoadOrderAs, canExecuteSaveAsCommand);
 			Keys.ImportMod.AddAction(OpenModImportDialog);
 			Keys.NewOrder.AddAction(() => AddNewModOrder());
-			Keys.ExportOrderToGame.AddAction(ExportLoadOrder);
 
-			var canRefreshObservable = this.WhenAnyValue(x => x.Refreshing, (r) => r == false).StartWith(true);
-			Keys.Refresh.AddAction(() => RefreshAsync_Start(), canRefreshObservable);
+			var canRefreshObservable = this.WhenAnyValue(x => x.IsRefreshing, b => !b).StartWith(true);
+			RefreshCommand = ReactiveCommand.Create(() =>
+			{
+				ModUpdatesViewData?.Clear();
+				ModUpdatesViewVisible = ModUpdatesAvailable = false;
+				MainProgressTitle = !IsInitialized ? "Loading..." : "Refreshing...";
+				MainProgressValue = 0d;
+				CanCancelProgress = false;
+				MainProgressIsActive = true;
+				mods.Clear();
+				gameMasterCampaigns.Clear();
+				Profiles.Clear();
+				workshopMods.Clear();
+				View.TaskbarItemInfo.ProgressState = System.Windows.Shell.TaskbarItemProgressState.Normal;
+				View.TaskbarItemInfo.ProgressValue = 0;
+				IsRefreshing = true;
+				RxApp.TaskpoolScheduler.ScheduleAsync(RefreshAsync);
+			}, canRefreshObservable, RxApp.MainThreadScheduler);
 
-			var canRefreshWorkshop = this.WhenAnyValue(x => x.Refreshing, x => x.RefreshingWorkshop, (r1, r2) => r1 == false && r2 == false && AppSettings.FeatureEnabled("Workshop")).StartWith(false);
-			Keys.RefreshWorkshop.AddAction(RefreshWorkshopAsync_Start, canRefreshWorkshop);
+
+			Keys.Refresh.AddAction(() => RefreshCommand.Execute(Unit.Default).Subscribe(), canRefreshObservable);
+
+			var canRefreshWorkshop = this.WhenAnyValue(x => x.IsRefreshing, x => x.IsRefreshingWorkshop, x => x.AppSettingsLoaded, (b1, b2, b3) => !b1 && !b2 && b3 && AppSettings.FeatureEnabled("Workshop")).StartWith(false);
+
+			RefreshWorkshopCommand = ReactiveCommand.Create(() =>
+			{
+				ModUpdatesViewData?.Clear();
+				ModUpdatesViewVisible = ModUpdatesAvailable = false;
+				workshopMods.Clear();
+				LoadWorkshopModDataBackground();
+			}, canRefreshWorkshop, RxApp.MainThreadScheduler);
+
+			Keys.RefreshWorkshop.AddAction(() => RefreshWorkshopCommand.Execute(Unit.Default).Subscribe(), canRefreshWorkshop);
 
 			IObservable<bool> canStartExport = this.WhenAny(x => x.MainProgressToken, (t) => t != null).StartWith(false);
 			Keys.ExportOrderToZip.AddAction(ExportLoadOrderToArchive_Start, canStartExport);
@@ -4615,7 +4534,6 @@ Directory the zip will be extracted to:
 			Keys.ImportOrderFromSaveAsNew.AddAction(ImportOrderFromSaveAsNew, canOpenDialogWindow);
 			Keys.ImportOrderFromFile.AddAction(ImportOrderFromFile, canOpenDialogWindow);
 			Keys.ImportOrderFromZipFile.AddAction(ImportOrderFromArchive, canOpenDialogWindow);
-
 
 			Keys.OpenDonationLink.AddAction(() =>
 			{
@@ -4651,6 +4569,49 @@ Directory the zip will be extracted to:
 					foreach (var m in Mods)
 					{
 						m.DisplayFileForName = !m.DisplayFileForName;
+					}
+				}
+			});
+
+			Keys.DeleteSelectedMods.AddAction(() =>
+			{
+				IEnumerable<DivinityModData> targetList = null;
+				if (DivinityApp.IsKeyboardNavigating)
+				{
+					var modLayout = this.View.GetModLayout();
+					if (modLayout != null)
+					{
+						if (modLayout.ActiveModsListView.IsKeyboardFocusWithin)
+						{
+							targetList = ActiveMods;
+						}
+						else
+						{
+							targetList = InactiveMods;
+						}
+					}
+				}
+				else
+				{
+					targetList = Mods;
+				}
+
+				if (targetList != null)
+				{
+					var selectedMods = targetList.Where(x => x.IsSelected);
+					var selectedEligableMods = selectedMods.Where(x => x.CanDelete).ToList();
+
+					if (selectedEligableMods.Count > 0)
+					{
+						DeleteMods(selectedEligableMods);
+					}
+					else
+					{
+						this.View.DeleteFilesView.ViewModel.Close();
+					}
+					if (selectedMods.Any(x => x.IsEditorMod))
+					{
+						ShowAlert("Editor mods cannot be deleted with the Mod Manager.", AlertType.Warning, 60);
 					}
 				}
 			});
@@ -4691,22 +4652,6 @@ Directory the zip will be extracted to:
 				}
 			});
 
-			var canOpenModsFolder = this.WhenAnyValue(x => x.PathwayData.DocumentsModsPath, (p) => !String.IsNullOrEmpty(p) && Directory.Exists(p));
-			Keys.OpenModsFolder.AddAction(() =>
-			{
-				Process.Start(PathwayData.DocumentsModsPath);
-			}, canOpenModsFolder);
-
-			var canOpenGameFolder = this.WhenAnyValue(x => x.Settings.GameExecutablePath, (p) => !String.IsNullOrEmpty(p) && File.Exists(p));
-			Keys.OpenGameFolder.AddAction(() =>
-			{
-				var folder = Path.GetDirectoryName(Settings.GameExecutablePath);
-				if (Directory.Exists(folder))
-				{
-					Process.Start(folder);
-				}
-			}, canOpenGameFolder);
-
 			RenameSaveCommand = ReactiveCommand.Create(RenameSave_Start, canOpenDialogWindow);
 
 			CopyOrderToClipboardCommand = ReactiveCommand.Create(() =>
@@ -4723,21 +4668,25 @@ Directory the zip will be extracted to:
 							if (i < ActiveMods.Count - 1) text += Environment.NewLine;
 						}
 						Clipboard.SetText(text);
-						view.AlertBar.SetInformationAlert("Copied mod order to clipboard.", 10);
+						this.View.AlertBar.SetInformationAlert("Copied mod order to clipboard.", 10);
 					}
 					else
 					{
-						view.AlertBar.SetWarningAlert("Current order is empty.", 10);
+						this.View.AlertBar.SetWarningAlert("Current order is empty.", 10);
 					}
 				}
 				catch (Exception ex)
 				{
-					view.AlertBar.SetDangerAlert($"Error copying order to clipboard: {ex}", 15);
+					this.View.AlertBar.SetDangerAlert($"Error copying order to clipboard: {ex}", 15);
 				}
 			});
 
 			var profileChanged = this.WhenAnyValue(x => x.SelectedProfileIndex, x => x.Profiles.Count).Select(x => Profiles.ElementAtOrDefault(x.Item1));
-			selectedprofile = profileChanged.ToProperty(this, nameof(SelectedProfile)).DisposeWith(this.Disposables);
+			_selectedProfile = profileChanged.ToProperty(this, nameof(SelectedProfile)).DisposeWith(this.Disposables);
+			var hasNonNullProfile = this.WhenAnyValue(x => x.SelectedProfile).Select(x => x != null);
+			_hasProfile = hasNonNullProfile.ToProperty(this, nameof(HasProfile)).DisposeWith(this.Disposables);
+
+			Keys.ExportOrderToGame.AddAction(ExportLoadOrder, hasNonNullProfile);
 
 			profileChanged.Subscribe((profile) =>
 			{
@@ -4756,16 +4705,17 @@ Directory the zip will be extracted to:
 				}
 			});
 
-			selectedModOrder = this.WhenAnyValue(x => x.SelectedModOrderIndex, x => x.ModOrderList.Count).
+			_selectedModOrder = this.WhenAnyValue(x => x.SelectedModOrderIndex, x => x.ModOrderList.Count).
 				Select(x => ModOrderList.ElementAtOrDefault(x.Item1)).ToProperty(this, nameof(SelectedModOrder));
-			isBaseLoadOrder = this.WhenAnyValue(x => x.SelectedModOrder).Select(x => x != null && x.Name == "Current").ToProperty(this, nameof(IsBaseLoadOrder));
+			_selectedModOrderName = this.WhenAnyValue(x => x.SelectedModOrder).WhereNotNull().Select(x => x.Name).ToProperty(this, nameof(SelectedModOrderName), true, RxApp.MainThreadScheduler);
+			_isBaseLoadOrder = this.WhenAnyValue(x => x.SelectedModOrder).Select(x => x != null && x.IsModSettings).ToProperty(this, nameof(IsBaseLoadOrder), true, RxApp.MainThreadScheduler);
 
 			//Throttle in case the index changes quickly in a short timespan
 			this.WhenAnyValue(vm => vm.SelectedModOrderIndex).ObserveOn(RxApp.MainThreadScheduler).Subscribe((_) =>
 			{
-				if (!this.Refreshing && SelectedModOrderIndex > -1)
+				if (!this.IsRefreshing && SelectedModOrderIndex > -1)
 				{
-					if (SelectedModOrder != null && !LoadingOrder)
+					if (SelectedModOrder != null && !IsLoadingOrder)
 					{
 						if (!SelectedModOrder.OrderEquals(ActiveMods.Select(x => x.UUID)))
 						{
@@ -4788,7 +4738,7 @@ Directory the zip will be extracted to:
 
 			this.WhenAnyValue(vm => vm.SelectedProfileIndex, (index) => index > -1 && index < Profiles.Count).Subscribe((b) =>
 			{
-				if (!this.Refreshing && b)
+				if (!this.IsRefreshing && b)
 				{
 					if (SelectedModOrder != null)
 					{
@@ -4801,13 +4751,44 @@ Directory the zip will be extracted to:
 				}
 			});
 
-			var modsConnecton = mods.Connect();
-			modsConnecton.Filter(x => !x.IsLarianMod && x.Type != "Adventure").Bind(out allMods).DisposeMany().Subscribe();
+			var modsConnection = mods.Connect();
+			modsConnection.Publish();
 
-			modsConnecton.Filter(x => x.Type == "Adventure" && (!x.IsHidden || x.UUID == DivinityApp.ORIGINS_UUID)).Bind(out adventureMods).DisposeMany().Subscribe();
-			this.WhenAnyValue(x => x.SelectedAdventureModIndex, x => x.AdventureMods.Count, (index, count) => index >= 0 && count > 0 && index < count).
+			modsConnection.Filter(x => x.IsUserMod).Bind(out _userMods).Subscribe();
+			modsConnection.Filter(x => x.CanAddToLoadOrder).Bind(out addonMods).Subscribe();
+			modsConnection.Filter(x => x.IsForcedLoaded).ObserveOn(RxApp.MainThreadScheduler).Bind(out _forceLoadedMods).Subscribe();
+
+			//Throttle filters so they only happen when typing stops for 500ms
+
+			this.WhenAnyValue(x => x.ActiveModFilterText).Throttle(TimeSpan.FromMilliseconds(500)).ObserveOn(RxApp.MainThreadScheduler).
+				Subscribe((s) => { OnFilterTextChanged(s, ActiveMods); });
+
+			this.WhenAnyValue(x => x.InactiveModFilterText).Throttle(TimeSpan.FromMilliseconds(500)).ObserveOn(RxApp.MainThreadScheduler).
+				Subscribe((s) => { OnFilterTextChanged(s, InactiveMods); });
+
+			ActiveMods.WhenAnyPropertyChanged(nameof(DivinityModData.Index)).Throttle(TimeSpan.FromMilliseconds(25)).Subscribe(_ =>
+			{
+				SelectedModOrder?.Sort(SortModOrder);
+			});
+
+			var selectedModsConnection = modsConnection.AutoRefresh(x => x.IsSelected, TimeSpan.FromMilliseconds(25)).AutoRefresh(x => x.IsActive, TimeSpan.FromMilliseconds(25)).Filter(x => x.IsSelected);
+
+			_activeSelected = selectedModsConnection.Filter(x => x.IsActive).Count().ToProperty(this, nameof(ActiveSelected), true, RxApp.MainThreadScheduler);
+			_inactiveSelected = selectedModsConnection.Filter(x => !x.IsActive).Count().ToProperty(this, nameof(InactiveSelected), true, RxApp.MainThreadScheduler);
+
+			_activeSelectedText = this.WhenAnyValue(x => x.ActiveSelected, x => x.TotalActiveModsHidden).Select(x => SelectedToLabel(x.Item1, x.Item2)).ToProperty(this, nameof(ActiveSelectedText), true, RxApp.MainThreadScheduler);
+			_inactiveSelectedText = this.WhenAnyValue(x => x.InactiveSelected, x => x.TotalInactiveModsHidden).Select(x => SelectedToLabel(x.Item1, x.Item2)).ToProperty(this, nameof(InactiveSelectedText), true, RxApp.MainThreadScheduler);
+
+			_activeModsFilterResultText = this.WhenAnyValue(x => x.TotalActiveModsHidden).Select(x => HiddenToLabel(x, ActiveMods.Count)).ToProperty(this, nameof(ActiveModsFilterResultText), true, RxApp.MainThreadScheduler);
+
+			_inactiveModsFilterResultText = this.WhenAnyValue(x => x.TotalInactiveModsHidden).Select(x => HiddenToLabel(x, InactiveMods.Count)).ToProperty(this, nameof(InactiveModsFilterResultText), true, RxApp.MainThreadScheduler);
+
+			DivinityApp.Events.OrderNameChanged += OnOrderNameChanged;
+
+			modsConnection.Filter(x => x.ModType == "Adventure" && (!x.IsHidden || x.UUID == DivinityApp.ORIGINS_UUID)).Bind(out adventureMods).DisposeMany().Subscribe();
+			_selectedAdventureMod = this.WhenAnyValue(x => x.SelectedAdventureModIndex, x => x.AdventureMods.Count, (index, count) => index >= 0 && count > 0 && index < count).
 				Where(b => b == true).Select(x => AdventureMods[SelectedAdventureModIndex]).
-				ToProperty(this, x => x.SelectedAdventureMod, out selectedAdventureMod).DisposeWith(this.Disposables);
+				ToProperty(this, x => x.SelectedAdventureMod).DisposeWith(this.Disposables);
 
 			var adventureModCanOpenObservable = this.WhenAnyValue(x => x.SelectedAdventureMod, (mod) => mod != null && !mod.IsLarianMod);
 			adventureModCanOpenObservable.Subscribe();
@@ -4845,7 +4826,7 @@ Directory the zip will be extracted to:
 			var canCheckForUpdates = this.WhenAnyValue(x => x.MainProgressIsActive, b => b == false);
 			void checkForUpdatesAction()
 			{
-				view.UserInvokedUpdate = true;
+				View.UserInvokedUpdate = true;
 				CheckForUpdates(true);
 			}
 			CheckForAppUpdatesCommand = ReactiveCommand.Create(checkForUpdatesAction, canCheckForUpdates);
@@ -4853,21 +4834,16 @@ Directory the zip will be extracted to:
 
 			canRenameOrder = this.WhenAnyValue(x => x.SelectedModOrderIndex, (i) => i > 0);
 
-			ToggleOrderRenamingCommand = ReactiveUI.ReactiveCommand.CreateFromTask<object, Unit>(ToggleRenamingLoadOrder, canRenameOrder);
+			ToggleOrderRenamingCommand = ReactiveCommand.CreateFromTask<object, Unit>(ToggleRenamingLoadOrder, canRenameOrder);
 
 			workshopMods.Connect().Bind(out workshopModsCollection).DisposeMany().Subscribe();
 
-			//modsConnecton.WhenAnyPropertyChanged("Name", "IsClassicMod").Subscribe((mod) =>
-			//{
-			//	mod.UpdateDisplayName();
-			//});
-
-			modsConnecton.AutoRefresh(x => x.IsSelected).Filter(x => x.IsSelected && !x.IsEditorMod && File.Exists(x.FilePath)).Bind(out selectedPakMods).Subscribe();
+			modsConnection.AutoRefresh(x => x.IsSelected).Filter(x => x.IsSelected && !x.IsEditorMod && File.Exists(x.FilePath)).Bind(out selectedPakMods).Subscribe();
 
 			// Blinky animation on the tools/download buttons if the extender is required by mods and is missing
 			if (AppSettings.FeatureEnabled("ScriptExtender"))
 			{
-				modsConnecton.ObserveOn(RxApp.MainThreadScheduler).AutoRefresh(x => x.ExtenderModStatus).
+				modsConnection.ObserveOn(RxApp.MainThreadScheduler).AutoRefresh(x => x.ExtenderModStatus).
 					Filter(x => x.ExtenderModStatus == DivinityExtenderModStatus.REQUIRED_MISSING || x.ExtenderModStatus == DivinityExtenderModStatus.REQUIRED_DISABLED).
 					Select(x => x.Count).Subscribe(totalWithRequirements =>
 					{
@@ -4901,48 +4877,10 @@ Directory the zip will be extracted to:
 			ModUpdatesViewData.CloseView = new Action<bool>((bool refresh) =>
 			{
 				ModUpdatesViewData.Clear();
-				if (refresh) RefreshAsync_Start();
+				if (refresh) RefreshCommand.Execute(Unit.Default).Subscribe();
 				ModUpdatesViewVisible = false;
-				view.Activate();
+				View.Activate();
 			});
-
-			DebugCommand = ReactiveCommand.Create(() => InactiveMods.Add(new DivinityModData() { Name = "Test" }));
-
-			//Throttle filters so they only happen when typing stops for 500ms
-
-			this.WhenAnyValue(x => x.ActiveModFilterText).Throttle(TimeSpan.FromMilliseconds(500)).ObserveOn(RxApp.MainThreadScheduler).
-				Subscribe((s) => { OnFilterTextChanged(s, ActiveMods); });
-
-			this.WhenAnyValue(x => x.InactiveModFilterText).Throttle(TimeSpan.FromMilliseconds(500)).ObserveOn(RxApp.MainThreadScheduler).
-				Subscribe((s) => { OnFilterTextChanged(s, InactiveMods); });
-
-			var activeModsConnection = this.ActiveMods.ToObservableChangeSet().ObserveOn(RxApp.MainThreadScheduler);
-			var inactiveModsConnection = this.InactiveMods.ToObservableChangeSet().ObserveOn(RxApp.MainThreadScheduler);
-
-			activeModsConnection.Subscribe((x) =>
-			{
-				for (int i = 0; i < ActiveMods.Count; i++)
-				{
-					var mod = ActiveMods[i];
-					mod.Index = i;
-				}
-			});
-
-			activeModsConnection.WhenAnyPropertyChanged("Index").Throttle(TimeSpan.FromMilliseconds(25)).Subscribe(mod =>
-			{
-				if (SelectedModOrder != null)
-				{
-					SelectedModOrder.Sort(SortModOrder);
-				}
-			});
-
-			activeModsConnection.AutoRefresh(x => x.IsSelected).
-				ToCollection().Select(x => x.Count(y => y.IsSelected)).ToProperty(this, x => x.ActiveSelected, out activeSelected);
-
-			inactiveModsConnection.AutoRefresh(x => x.IsSelected).
-				ToCollection().Select(x => x.Count(y => y.IsSelected)).ToProperty(this, x => x.InactiveSelected, out inactiveSelected);
-
-			DivinityApp.Events.OrderNameChanged += OnOrderNameChanged;
 
 			//var canSpeakOrder = this.WhenAnyValue(x => x.ActiveMods.Count, (c) => c > 0);
 
@@ -4967,44 +4905,21 @@ Directory the zip will be extracted to:
 			#region GameMaster Support
 
 			var gmModeChanged = this.WhenAnyValue(x => x.Settings.GameMasterModeEnabled);
-			adventureModBoxVisibility = gmModeChanged.Select(x => !x ? Visibility.Visible : Visibility.Collapsed).StartWith(Visibility.Visible).ToProperty(this, nameof(AdventureModBoxVisibility));
-			gameMasterModeVisibility = gmModeChanged.Select(x => x ? Visibility.Visible : Visibility.Collapsed).StartWith(Visibility.Collapsed).ToProperty(this, nameof(GameMasterModeVisibility));
-
-			//int lastSelectedAdventureModIndex = 0;
-			//gmModeChanged.Subscribe((b) =>
-			//{
-			//	//if(b)
-			//	//{
-			//	//	lastSelectedAdventureModIndex = SelectedAdventureModIndex;
-			//	//}
-			//	//else
-			//	//{
-			//	//	if(lastSelectedAdventureModIndex < AdventureMods.Count)
-			//	//	{
-			//	//		SelectedAdventureModIndex = lastSelectedAdventureModIndex;
-			//	//	}
-			//	//	else
-			//	//	{
-			//	//		SelectedAdventureModIndex = 0;
-			//	//	}
-			//	//}
-			//});
+			_adventureModBoxVisibility = gmModeChanged.Select(x => !x ? Visibility.Visible : Visibility.Collapsed).StartWith(Visibility.Visible).ToProperty(this, nameof(AdventureModBoxVisibility), true, RxApp.MainThreadScheduler);
+			_gameMasterModeVisibility = gmModeChanged.Select(x => x ? Visibility.Visible : Visibility.Collapsed).StartWith(Visibility.Collapsed).ToProperty(this, nameof(GameMasterModeVisibility), true, RxApp.MainThreadScheduler);
 
 			gameMasterCampaigns.Connect().Bind(out gameMasterCampaignsData).Subscribe();
-			//this.WhenAnyValue(x => x.SelectedGameMasterCampaignIndex).Select(x => GameMasterCampaigns.ElementAtOrDefault(x)).ToProperty(this, nameof(SelectedGameMasterCampaign));
-			var justSelectedGameMasterCampaign = this.WhenAnyValue(x => x.SelectedGameMasterCampaignIndex, x => x.GameMasterCampaigns.Count);
-			selectedGameMasterCampaign = justSelectedGameMasterCampaign.Select(x => GameMasterCampaigns.ElementAtOrDefault(x.Item1)).ToProperty(this, nameof(SelectedGameMasterCampaign));
 
-			//var gmCampaignChanged = this.WhenAnyValue(x => x.SelectedGameMasterCampaignIndex, x => x.GameMasterCampaigns.Count, (index, count) => index >= 0 && count > 0 && index < count).
-			//	Where(b => b == true).
-			//	Select(x => GameMasterCampaigns.ElementAtOrDefault(SelectedGameMasterCampaignIndex));
+			var justSelectedGameMasterCampaign = this.WhenAnyValue(x => x.SelectedGameMasterCampaignIndex, x => x.GameMasterCampaigns.Count);
+			_selectedGameMasterCampaign = justSelectedGameMasterCampaign.Select(x => GameMasterCampaigns.ElementAtOrDefault(x.Item1)).ToProperty(this, nameof(SelectedGameMasterCampaign));
+
 			Keys.ImportOrderFromSelectedGMCampaign.AddAction(() => LoadGameMasterCampaignModOrder(SelectedGameMasterCampaign), gmModeChanged);
 			justSelectedGameMasterCampaign.ObserveOn(RxApp.MainThreadScheduler).Subscribe((d) =>
 			{
-				if (!this.Refreshing && IsInitialized && (Settings != null && Settings.AutomaticallyLoadGMCampaignMods) && d.Item1 > -1)
+				if (!this.IsRefreshing && IsInitialized && (Settings != null && Settings.AutomaticallyLoadGMCampaignMods) && d.Item1 > -1)
 				{
 					var selectedCampaign = GameMasterCampaigns.ElementAtOrDefault(d.Item1);
-					if (selectedCampaign != null && !LoadingOrder)
+					if (selectedCampaign != null && !IsLoadingOrder)
 					{
 						if (LoadGameMasterCampaignModOrder(selectedCampaign))
 						{
@@ -5018,6 +4933,34 @@ Directory the zip will be extracted to:
 				}
 			});
 			#endregion
+
+			_isDeletingFiles = this.WhenAnyValue(x => x.View.DeleteFilesView.ViewModel.IsActive).ToProperty(this, nameof(IsDeletingFiles), true, RxApp.MainThreadScheduler);
+
+			_hideModList = this.WhenAnyValue(x => x.MainProgressIsActive, x => x.IsDeletingFiles, (a, b) => a || b).StartWith(true).ToProperty(this, nameof(HideModList), false, RxApp.MainThreadScheduler);
+
+			var forceLoadedModsConnection = this.ForceLoadedMods.ToObservableChangeSet().ObserveOn(RxApp.MainThreadScheduler);
+			_hasForceLoadedMods = forceLoadedModsConnection.Count().StartWith(0).Select(x => x > 0).ToProperty(this, nameof(HasForceLoadedMods), true, RxApp.MainThreadScheduler);
+
+			DivinityInteractions.ConfirmModDeletion.RegisterHandler((Func<InteractionContext<DeleteFilesViewConfirmationData, bool>, Task>)(async interaction =>
+			{
+				var sentenceStart = interaction.Input.PermanentlyDelete ? "Permanently delete" : "Delete";
+				var msg = $"{sentenceStart} {interaction.Input.Total} mod files?";
+
+				var confirmed = await Observable.Start((Func<bool>)(() =>
+				{
+					MessageBoxResult result = Xceed.Wpf.Toolkit.MessageBox.Show((Window)this.View, msg, "Confirm Mod Deletion",
+					MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No, (Style)this.View.MainWindowMessageBox_OK.Style);
+					if (result == MessageBoxResult.Yes)
+					{
+						return true;
+					}
+					return false;
+				}), RxApp.MainThreadScheduler);
+				interaction.SetOutput(confirmed);
+			}));
+
+			CanSaveOrder = true;
+			LayoutMode = 0;
 		}
 	}
 }
