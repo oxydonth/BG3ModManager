@@ -293,7 +293,7 @@ namespace DivinityModManager.Util
 		//BOM
 		private static readonly string _byteOrderMarkUtf8 = Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
 
-		private static System.IO.FileStream _GetAsyncStream(string filePath)
+		private static System.IO.FileStream GetAsyncStream(string filePath)
 		{
 			return new System.IO.FileStream(filePath,
 					System.IO.FileMode.Open,
@@ -308,7 +308,7 @@ namespace DivinityModManager.Util
 			var metaFile = Path.Combine(folder, "meta.lsx");
 			if (File.Exists(metaFile))
 			{
-				using (var fileStream = _GetAsyncStream(metaFile))
+				using (var fileStream = GetAsyncStream(metaFile))
 				{
 					var result = new byte[fileStream.Length];
 					await fileStream.ReadAsync(result, 0, (int)fileStream.Length, token);
@@ -404,10 +404,8 @@ namespace DivinityModManager.Util
 			return projects.ToList();
 		}
 
-		private static HashSet<string> _AllPaksNames = new HashSet<string>();
-
-		private static Regex multiPartPakPattern = new Regex("_[0-9]+.pak", RegexOptions.IgnoreCase | RegexOptions.Singleline);
-		private static Regex multiPartPakPatternNoExtension = new Regex("(_[0-9]+)$", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+		private static readonly HashSet<string> _AllPaksNames = new HashSet<string>();
+		private static readonly Regex multiPartPakPatternNoExtension = new Regex("(_[0-9]+)$", RegexOptions.IgnoreCase | RegexOptions.Singleline);
 
 		private static bool PakIsNotPartial(string path)
 		{
@@ -435,10 +433,10 @@ namespace DivinityModManager.Util
 			return false;
 		}
 
-		private static Regex _ModFolderPattern = new Regex("^(Mods|Public)/(.+?)/.+$");
-		private static string[] _IgnoredRecursiveFolders = new string[]
+		private static readonly Regex _ModFolderPattern = new Regex("^(Mods|Public)/(.+?)/.+$");
+		private static readonly string[] _IgnoredRecursiveFolders = new string[]
 		{
-			"Data",
+			"Baldur's Gate 3\\Data",
 			"Baldur's Gate 3\\bin",
 			"Localization",
 		};
@@ -770,7 +768,7 @@ namespace DivinityModManager.Util
 			return f.FileName.Equals("meta.lsf", SCOMP);
 		}
 
-		private static DirectoryEnumerationFilters GMMetaFilters = new DirectoryEnumerationFilters()
+		private static readonly DirectoryEnumerationFilters GMMetaFilters = new DirectoryEnumerationFilters()
 		{
 			InclusionFilter = CanProcessGMMetaFile
 		};
@@ -1384,8 +1382,10 @@ namespace DivinityModManager.Util
 					{
 						if (DivinityJsonUtils.TrySafeDeserializeFromPath<List<DivinitySerializedModData>>(loadOrderFile, out var exportedOrder))
 						{
-							order = new DivinityLoadOrder();
-							order.IsDecipheredOrder = true;
+							order = new DivinityLoadOrder
+							{
+								IsDecipheredOrder = true
+							};
 							order.AddRange(exportedOrder);
 							DivinityApp.Log(String.Join("\n", order.Order.Select(x => x.UUID)));
 							var modGUIDs = allMods.Select(x => x.UUID).ToHashSet();
@@ -1843,9 +1843,11 @@ namespace DivinityModManager.Util
 							var jsonObj = JObject.Parse(text);
 							if (jsonObj != null)
 							{
-								osiConfig = new DivinityModScriptExtenderConfig();
-								osiConfig.RequiredExtensionVersion = jsonObj.GetValue<int>("RequiredExtensionVersion", -1);
-								osiConfig.FeatureFlags = jsonObj.GetValue<List<string>>("FeatureFlags", null);
+								osiConfig = new DivinityModScriptExtenderConfig
+								{
+									RequiredExtensionVersion = jsonObj.GetValue<int>("RequiredExtensionVersion", -1),
+									FeatureFlags = jsonObj.GetValue<List<string>>("FeatureFlags", null)
+								};
 								return osiConfig;
 							}
 						}
@@ -1870,20 +1872,22 @@ namespace DivinityModManager.Util
 						string text = await sr.ReadToEndAsync();
 						if (!String.IsNullOrWhiteSpace(text))
 						{
-							var osiConfig = DivinityJsonUtils.SafeDeserialize<DivinityModScriptExtenderConfig>(text);
-							if (osiConfig != null)
+							var config = DivinityJsonUtils.SafeDeserialize<DivinityModScriptExtenderConfig>(text);
+							if (config != null)
 							{
-								return osiConfig;
+								return config;
 							}
 							else
 							{
 								var jsonObj = JObject.Parse(text);
 								if (jsonObj != null)
 								{
-									osiConfig = new DivinityModScriptExtenderConfig();
-									osiConfig.RequiredExtensionVersion = jsonObj.GetValue<int>("RequiredExtensionVersion", -1);
-									osiConfig.FeatureFlags = jsonObj.GetValue<List<string>>("FeatureFlags", null);
-									return osiConfig;
+									config = new DivinityModScriptExtenderConfig
+									{
+										RequiredExtensionVersion = jsonObj.GetValue<int>("RequiredExtensionVersion", -1),
+										FeatureFlags = jsonObj.GetValue<List<string>>("FeatureFlags", null)
+									};
+									return config;
 								}
 							}
 						}
