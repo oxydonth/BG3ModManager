@@ -39,7 +39,7 @@ namespace DivinityModManager.Util
 				{
 					Process.Start(Path.GetFullPath(path));
 				}
-				catch (System.ComponentModel.Win32Exception ex) // No File Association
+				catch (System.ComponentModel.Win32Exception) // No File Association
 				{
 					Process.Start("explorer.exe", $"\"{Path.GetFullPath(path)}\"");
 				}

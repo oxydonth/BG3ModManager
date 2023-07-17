@@ -66,7 +66,7 @@ namespace DivinityModManager.Views
 			set => ViewModel = (MainWindowViewModel)value;
 		}
 
-		private Dictionary<string, MenuItem> menuItems = new Dictionary<string, MenuItem>();
+		private readonly Dictionary<string, MenuItem> menuItems = new Dictionary<string, MenuItem>();
 		public Dictionary<string, MenuItem> MenuItems => menuItems;
 
 		public HorizontalModLayout GetModLayout()
@@ -74,7 +74,7 @@ namespace DivinityModManager.Views
 			return MainContentPresenter.FindVisualChildren<HorizontalModLayout>().FirstOrDefault();
 		}
 
-		private System.Windows.Interop.WindowInteropHelper _hwnd;
+		private readonly System.Windows.Interop.WindowInteropHelper _hwnd;
 
 		public MainWindow()
 		{
@@ -127,8 +127,10 @@ namespace DivinityModManager.Views
 			var res = this.TryFindResource("ModUpdaterPanel");
 			if (res != null && res is ModUpdatesLayout modUpdaterPanel)
 			{
-				Binding binding = new Binding("ModUpdatesViewData");
-				binding.Source = ViewModel;
+				var binding = new Binding("ModUpdatesViewData")
+				{
+					Source = ViewModel
+				};
 				modUpdaterPanel.SetBinding(ModUpdatesLayout.DataContextProperty, binding);
 			}
 
@@ -322,19 +324,22 @@ namespace DivinityModManager.Views
 				if (String.IsNullOrEmpty(key.DisplayName))
 					key.DisplayName = menuSettings.DisplayName;
 
-				MenuItem parentMenuItem;
-				if (!menuItems.TryGetValue(menuSettings.Parent, out parentMenuItem))
+				if (!menuItems.TryGetValue(menuSettings.Parent, out MenuItem parentMenuItem))
 				{
-					parentMenuItem = new MenuItem();
-					parentMenuItem.Header = menuSettings.Parent;
+					parentMenuItem = new MenuItem
+					{
+						Header = menuSettings.Parent
+					};
 					TopMenuBar.Items.Add(parentMenuItem);
 					menuItems.Add(menuSettings.Parent, parentMenuItem);
 				}
 
-				MenuItem newEntry = new MenuItem();
-				newEntry.Header = menuSettings.DisplayName;
-				newEntry.InputGestureText = key.ToString();
-				newEntry.Command = key.Command;
+				MenuItem newEntry = new MenuItem
+				{
+					Header = menuSettings.DisplayName,
+					InputGestureText = key.ToString(),
+					Command = key.Command
+				};
 				BindingOperations.SetBinding(newEntry, MenuItem.CommandProperty, new Binding { Path = new PropertyPath("Command"), Source = key });
 				parentMenuItem.Items.Add(newEntry);
 				if (!String.IsNullOrWhiteSpace(menuSettings.Tooltip))
@@ -448,10 +453,7 @@ namespace DivinityModManager.Views
 			if (loseFocus && sender is ComboBox comboBox)
 			{
 				var tb = comboBox.FindVisualChildren<TextBox>().FirstOrDefault();
-				if (tb != null)
-				{
-					tb.Select(0, 0);
-				}
+				tb?.Select(0, 0);
 			}
 		}
 
@@ -505,7 +507,7 @@ namespace DivinityModManager.Views
 			}
 		}
 
-		private Dictionary<string, string> _shortcutButtonBindings = new Dictionary<string, string>()
+		private readonly Dictionary<string, string> _shortcutButtonBindings = new Dictionary<string, string>()
 		{
 			["OpenWorkshopFolderButton"] = "Keys.OpenWorkshopFolder.Command",
 			["OpenModsFolderButton"] = "Keys.OpenModsFolder.Command",

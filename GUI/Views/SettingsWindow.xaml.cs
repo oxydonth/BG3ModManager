@@ -40,50 +40,6 @@ namespace DivinityModManager.Views
 			InitializeComponent();
 		}
 
-		private int AddExportDefaultsEntry(int row, BoolToVisibilityConverter boolToVisibilityConverter)
-		{
-			var exportDefault = typeof(DivinityModManagerSettings).GetProperty(nameof(DivinityModManagerSettings.ExportDefaultExtenderSettings))
-			.GetCustomAttributes(typeof(SettingsEntryAttribute), true).Cast<SettingsEntryAttribute>().FirstOrDefault();
-			row++;
-			TextBlock tb = new TextBlock();
-			tb.Text = exportDefault.DisplayName;
-			tb.ToolTip = exportDefault.Tooltip;
-			SettingsAutoGrid.Children.Add(tb);
-			Grid.SetRow(tb, row);
-
-			CheckBox cb = new CheckBox();
-			cb.ToolTip = exportDefault.Tooltip;
-			cb.VerticalAlignment = VerticalAlignment.Center;
-			//cb.HorizontalAlignment = HorizontalAlignment.Right;
-			cb.SetBinding(CheckBox.IsCheckedProperty, new Binding(nameof(DivinityModManagerSettings.ExportDefaultExtenderSettings))
-			{
-				Source = ViewModel,
-				Mode = BindingMode.TwoWay,
-				UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
-			});
-			SettingsAutoGrid.Children.Add(cb);
-			Grid.SetRow(cb, row);
-			Grid.SetColumn(cb, 1);
-
-			if (exportDefault.IsDebug)
-			{
-				tb.SetBinding(TextBlock.VisibilityProperty, new Binding("DebugModeEnabled")
-				{
-					Source = ViewModel,
-					Converter = boolToVisibilityConverter,
-					FallbackValue = Visibility.Collapsed
-				});
-				cb.SetBinding(CheckBox.VisibilityProperty, new Binding("DebugModeEnabled")
-				{
-					Source = ViewModel,
-					Converter = boolToVisibilityConverter,
-					FallbackValue = Visibility.Collapsed
-				});
-			}
-
-			return row;
-		}
-
 		public void Init(MainWindowViewModel vm)
 		{
 			ViewModel = vm.Settings;
