@@ -2,6 +2,7 @@
 _Backup/*
 LSLib/*
 _Releases/
+External/
 
 _Assets/
 !/DivinityModManagerGUI_WPF/Resources/
