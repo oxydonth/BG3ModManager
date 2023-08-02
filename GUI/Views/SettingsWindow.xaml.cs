@@ -47,12 +47,12 @@ namespace DivinityModManager.Views
 
 			BindingHelper.CreateCommandBinding(this.SaveSettingsButton, "SaveSettingsCommand", ViewModel);
 
-			KeybindingsListView.ItemsSource = vm.Keys.All;
 			KeybindingsListView.SetBinding(ListView.ItemsSourceProperty, new Binding("All")
 			{
 				Source = vm.Keys,
 				Mode = BindingMode.OneWay
 			});
+
 			KeybindingsListView.SetBinding(ListView.SelectedItemProperty, new Binding("SelectedHotkey")
 			{
 				Source = ViewModel,
@@ -77,13 +77,24 @@ namespace DivinityModManager.Views
 
 		private bool isSettingKeybinding = false;
 
+		private void ClearFocus()
+		{
+			foreach (var item in KeybindingsListView.Items)
+			{
+				if (item is HotkeyEditorControl hotkey && hotkey.IsEditing)
+				{
+					hotkey.SetEditing(false);
+				}
+			}
+		}
+
 		private void FocusSelectedHotkey()
 		{
 			ListViewItem row = (ListViewItem)KeybindingsListView.ItemContainerGenerator.ContainerFromIndex(KeybindingsListView.SelectedIndex);
 			var hotkeyControls = row.FindVisualChildren<HotkeyEditorControl>();
 			foreach (var c in hotkeyControls)
 			{
-				c.HotkeyTextBox.Focus();
+				c.SetEditing(true);
 				isSettingKeybinding = true;
 			}
 		}

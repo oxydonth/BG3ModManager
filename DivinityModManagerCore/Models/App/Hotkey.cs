@@ -36,31 +36,11 @@ namespace DivinityModManager.Models.App
 	{
 		public string ID { get; set; }
 
-		private string _displayName = "";
-		public string DisplayName
-		{
-			get => _displayName;
-			set
-			{
-				this.RaiseAndSetIfChanged(ref _displayName, value);
-				this.RaisePropertyChanged("ToolTip");
-			}
-		}
+		[Reactive] public string DisplayName { get; set; }
 
-		public string ToolTip
-		{
-			get
-			{
-				if (!IsDefault)
-				{
-					return DisplayName + " (Modified)";
-				}
-				else
-				{
-					return DisplayName;
-				}
-			}
-		}
+		private readonly ObservableAsPropertyHelper<string> _tooltip;
+		public string Tooltip => _tooltip.Value;
+
 		[Reactive] public string DisplayBindingText { get; private set; }
 
 		[DataMember]
@@ -79,12 +59,16 @@ namespace DivinityModManager.Models.App
 
 		[Reactive] public bool Enabled { get; set; }
 		[Reactive] public bool CanEdit { get; set; }
-		[Reactive] public bool IsDefault { get; set; }
-		[Reactive] public bool IsSelected { get; set; }
-		[Reactive] public string ModifiedText { get; set; }
 
-		private Key _defaultKey;
-		private ModifierKeys _defaultModifiers;
+		private readonly ObservableAsPropertyHelper<bool> _isDefault;
+		public bool IsDefault => _isDefault.Value;
+		[Reactive] public bool IsSelected { get; set; }
+
+		private readonly ObservableAsPropertyHelper<string> _modifiedText;
+		public string ModifiedText => _modifiedText.Value;
+
+		private readonly Key _defaultKey = Key.None;
+		private readonly ModifierKeys _defaultModifiers = ModifierKeys.None;
 
 		public Key DefaultKey => _defaultKey;
 		public ModifierKeys DefaultModifiers => _defaultModifiers;
@@ -136,12 +120,16 @@ namespace DivinityModManager.Models.App
 			DisplayBindingText = ToString();
 		}
 
-		public Hotkey()
+		public Hotkey(Key key = Key.None, ModifierKeys modifiers = ModifierKeys.None)
 		{
+			DisplayName = "";
+			Key = key;
+			Modifiers = modifiers;
+			_defaultKey = key;
+			_defaultModifiers = modifiers;
+
 			Enabled = true;
 			CanEdit = true;
-			IsDefault = true;
-			ModifiedText = "";
 
 			_actions = new List<Action>();
 
@@ -151,39 +139,20 @@ namespace DivinityModManager.Models.App
 			_canExecuteCommand = this.WhenAnyObservable(x => x._canExecuteConditions).ToProperty(this, nameof(CanExecuteCommand), false, RxApp.MainThreadScheduler);
 			Command = ReactiveCommand.Create(Invoke, this.WhenAnyValue(x => x.CanExecuteCommand));
 
-			var canReset = this.WhenAnyValue(x => x.Key, x => x.Modifiers, (k, m) => k != _defaultKey || m != _defaultModifiers).StartWith(false);
-			ResetCommand = ReactiveCommand.Create(ResetToDefault, canReset);
+			_isDefault = this.WhenAnyValue(x => x.Key, x => x.Modifiers).Select(x => x.Item1 == _defaultKey && x.Item2 == _defaultModifiers).StartWith(true).ToProperty(this, nameof(IsDefault));
+
+			var isDefaultObservable = this.WhenAnyValue(x => x.IsDefault);
+
+			_modifiedText = isDefaultObservable.Select(b => !b ? "*" : "").StartWith("").ToProperty(this, nameof(ModifiedText), scheduler:RxApp.MainThreadScheduler);
+
+			_tooltip = this.WhenAnyValue(x => x.DisplayName, x => x.IsDefault).Select(x => x.Item2 ? $"{x.Item1} (Modified)" : x.Item1).ToProperty(this, nameof(Tooltip), scheduler:RxApp.MainThreadScheduler);
+
+			var canReset = isDefaultObservable.Select(b => !b).StartWith(false);
 			var canClear = this.WhenAnyValue(x => x.Key, x => x.Modifiers, (k, m) => k != Key.None).StartWith(false);
+
+			ResetCommand = ReactiveCommand.Create(ResetToDefault, canReset);
 			ClearCommand = ReactiveCommand.Create(Clear, canClear);
-
-			this.WhenAnyValue(x => x.Key, x => x.Modifiers, (k, m) => k == _defaultKey && m == _defaultModifiers).BindTo(this, x => x.IsDefault);
-			var isDefaultChanged = this.WhenAnyValue(x => x.IsDefault);
-			isDefaultChanged.Subscribe((b) =>
-			{
-				this.RaisePropertyChanged("ToolTip");
-			});
-
-			isDefaultChanged.Select(b => !b ? "*" : "").BindTo(this, x => x.ModifiedText);
 		}
-
-		private void Init(Key key, ModifierKeys modifiers)
-		{
-			Key = key;
-			Modifiers = modifiers;
-			_defaultKey = key;
-			_defaultModifiers = modifiers;
-		}
-
-		public Hotkey(Key key) : this()
-		{
-			Init(key, ModifierKeys.None);
-		}
-
-		public Hotkey(Key key, ModifierKeys modifiers) : this()
-		{
-			Init(key, modifiers);
-		}
-	
 
 		public override string ToString()
 		{

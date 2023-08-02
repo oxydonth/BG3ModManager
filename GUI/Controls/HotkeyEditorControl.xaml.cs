@@ -42,10 +42,28 @@ namespace DivinityModManager.Controls
 			set => SetValue(FocusReturnTargetProperty, value);
 		}
 
-		public void StopEditing()
+		public static readonly DependencyProperty IsEditingProperty =
+		DependencyProperty.Register("IsEditing", typeof(bool), typeof(HotkeyEditorControl));
+
+		public bool IsEditing
 		{
-			Keyboard.ClearFocus();
-			Keyboard.Focus(FocusReturnTarget);
+			get => (bool)GetValue(IsEditingProperty);
+			set => SetValue(IsEditingProperty, value);
+		}
+
+		public void SetEditing(bool enabled)
+		{
+			IsEditing = enabled;
+
+			if (enabled)
+			{
+				HotkeyTextBox.Focus();
+			}
+			else
+			{
+				Keyboard.ClearFocus();
+				Keyboard.Focus(FocusReturnTarget);
+			}
 		}
 
 		private void SetKeybind(Key key = Key.None, ModifierKeys modifierKeys = ModifierKeys.None)
@@ -53,7 +71,7 @@ namespace DivinityModManager.Controls
 			Hotkey.Key = key;
 			Hotkey.Modifiers = modifierKeys;
 			Hotkey.UpdateDisplayBindingText();
-			StopEditing();
+			SetEditing(false);
 		}
 
 		private void HotkeyTextBox_PreviewKeyUp(object sender, KeyEventArgs e)
@@ -76,7 +94,7 @@ namespace DivinityModManager.Controls
 			if(modifiers == ModifierKeys.Shift && key == Key.Back)
 			{
 				Hotkey.ResetToDefault();
-				StopEditing();
+				SetEditing(false);
 				return;
 			}
 
@@ -86,13 +104,14 @@ namespace DivinityModManager.Controls
 				SetKeybind();
 				return;
 			}
+
 			// Pressing enter without modifiers removes focus
 			// If the hotkey's default key is Return, and it's set to Return, stop editing as well.
-			if (modifiers == ModifierKeys.None && key == Key.Return && (Hotkey.DefaultKey != Key.Return || Hotkey.Key == Hotkey.DefaultKey))
-			{
-				StopEditing();
-				return;
-			}
+			//if (modifiers == ModifierKeys.None && key == Key.Return && (Hotkey.DefaultKey != Key.Return || Hotkey.Key == Hotkey.DefaultKey))
+			//{
+			//	SetEditing(false);
+			//	return;
+			//}
 
 			// If no actual key was pressed - return
 			if (key == Key.LeftCtrl ||
@@ -123,6 +142,11 @@ namespace DivinityModManager.Controls
 		{
 			// Disables focusing on right click;
 			e.Handled = true;
+		}
+
+		private void HotkeyButton_Click(object sender, RoutedEventArgs e)
+		{
+			if (!IsEditing) SetEditing(true);
 		}
 	}
 }

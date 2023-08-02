@@ -208,13 +208,13 @@
 												VerticalAlignment="Bottom"
 												IsHitTestVisible="False"
 												TextAlignment="Left">
-												<Run Foreground="Lime" Text="{Binding ModifiedText}" />
-												<Run Text="{Binding DisplayName}" /></TextBlock>
+												<Run Foreground="Lime" Text="{Binding ModifiedText, Mode=OneWay}" />
+												<Run Text="{Binding DisplayName, Mode=OneWay}" /></TextBlock>
 										</DataTemplate>
 									</GridViewColumn.CellTemplate>
 								</GridViewColumn>
 								<GridViewColumn
-									Width="400"
+									Width="200"
 									Header="Keybinding"
 									HeaderTemplate="{StaticResource GridViewTextblockHeaderTemplate}">
 									<GridViewColumn.CellTemplate>
