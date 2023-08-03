@@ -1276,6 +1276,10 @@ namespace DivinityModManager.ViewModels
 
 				var profiles = await DivinityModDataLoader.LoadProfileDataAsync(PathwayData.DocumentsProfilesPath);
 				DivinityApp.Log($"Loaded '{profiles.Count}' profiles.");
+				if(profiles.Count > 0)
+				{
+					DivinityApp.Log(String.Join(Environment.NewLine, profiles.Select(x => $"{x.Name} | {x.UUID}")));
+				}
 				return profiles;
 			}
 			else
