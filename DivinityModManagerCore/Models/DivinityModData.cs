@@ -158,7 +158,7 @@ namespace DivinityModManager.Models
 			}
 			else
 			{
-				if (!DivinityApp.DeveloperModeEnabled && UUID == DivinityApp.ORIGINS_UUID)
+				if (!DivinityApp.DeveloperModeEnabled && UUID == DivinityApp.MAIN_CAMPAIGN_UUID)
 				{
 					return "Main";
 				}
