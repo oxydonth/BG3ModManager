@@ -103,15 +103,6 @@ namespace DivinityModManager.Util
 			return false;
 		}
 
-		private static int SafeConvertString(string str)
-		{
-			if (!String.IsNullOrWhiteSpace(str) && int.TryParse(str, out int val))
-			{
-				return val;
-			}
-			return -1;
-		}
-
 		private static ulong SafeConvertStringUnsigned(string str)
 		{
 			if (!String.IsNullOrWhiteSpace(str) && UInt64.TryParse(str, out ulong val))
@@ -177,8 +168,9 @@ namespace DivinityModManager.Util
 				if (versionNode != null)
 				{
 					//DivinityApp.LogMessage($"Version node: {versionNode.ToString()}");
+					//DOS2 Classic Mods <version major="3" minor="1" revision="3" build="5" />
 					//DE Mods <version major="3" minor="6" revision="2" build="0" />
-					//Classic Mods <version major="3" minor="1" revision="3" build="5" />
+					//BG3 Mods <version major="4" minor="0" revision="9" build="331"/>
 					if (TryGetAttribute(versionNode, "major", out var headerMajorStr))
 					{
 						ulong.TryParse(headerMajorStr, out headerMajor);
@@ -653,15 +645,6 @@ namespace DivinityModManager.Util
 			return defaultValue;
 		}
 
-		private static T GetNodeAttribute<T>(Node node, string key, T defaultValue)
-		{
-			if (node.Attributes.TryGetValue(key, out var att))
-			{
-				return (T)Convert.ChangeType(att.Value, typeof(T));
-			}
-			return defaultValue;
-		}
-
 		private static DivinityGameMasterCampaign ParseGameMasterCampaignMetaFile(Resource meta)
 		{
 			try
@@ -986,10 +969,10 @@ namespace DivinityModManager.Util
 					string profileUUID = "";
 
 					//Console.WriteLine($"Folder: {Path.GetFileName(folder)} Blacklisted: {IgnoredMods.Any(m => Path.GetFileName(folder).Equals(m.Folder, SCOMP))}");
-					var profileFile = Path.Combine(folder, "profile.lsb");
-					if (File.Exists(profileFile))
+					var profileFile = GetProfileFile(folder);
+					if (profileFile != null)
 					{
-						var profileRes = await LoadResourceAsync(profileFile, LSLib.LS.Enums.ResourceFormat.LSB);
+						var profileRes = await LoadResourceAsync(profileFile.FullName);
 						if (profileRes != null && profileRes.Regions.TryGetValue("PlayerProfile", out var region))
 						{
 							if (region.Attributes.TryGetValue("PlayerProfileDisplayName", out var profileDisplayNameAtt))
@@ -1078,6 +1061,23 @@ namespace DivinityModManager.Util
 			return profiles;
 		}
 
+		public static async Task<Resource> LoadResourceAsync(string path)
+		{
+			return await Task.Run(() =>
+			{
+				try
+				{
+					var resource = LSLib.LS.ResourceUtils.LoadResource(path);
+					return resource;
+				}
+				catch (Exception ex)
+				{
+					DivinityApp.Log($"Error loading '{path}': {ex}");
+					return null;
+				}
+			});
+		}
+
 		public static async Task<Resource> LoadResourceAsync(string path, LSLib.LS.Enums.ResourceFormat resourceFormat)
 		{
 			return await Task.Run(() =>
@@ -1144,34 +1144,6 @@ namespace DivinityModManager.Util
 			return files.FirstOrDefault();
 		}
 
-		public static string GetSelectedProfileUUID(string profilePath)
-		{
-
-			FileInfo playerprofilesFile = GetPlayerProfilesFile(profilePath);
-			string activeProfileUUID = "";
-			if (playerprofilesFile != null)
-			{
-				try
-				{
-					DivinityApp.Log($"Loading playerprofiles at '{playerprofilesFile.FullName}'");
-					var res = ResourceUtils.LoadResource(playerprofilesFile.FullName);
-					if (res != null && res.Regions.TryGetValue("UserProfiles", out var region))
-					{
-						if (region.Attributes.TryGetValue("ActiveProfile", out var att))
-						{
-							DivinityApp.Log($"ActiveProfile | '{att.Type} {att.Value}'");
-							activeProfileUUID = (string)att.Value;
-						}
-					}
-				}
-				catch (Exception ex)
-				{
-					DivinityApp.Log($"Error loading {playerprofilesFile}: {ex}");
-				}
-			}
-			return activeProfileUUID;
-		}
-
 		public static bool ExportedSelectedProfile(string profilePath, string profileUUID)
 		{
 			var conversionParams = ResourceConversionParameters.FromGameVersion(DivinityApp.GAME);
@@ -1205,12 +1177,12 @@ namespace DivinityModManager.Util
 
 		public static async Task<string> GetSelectedProfileUUIDAsync(string profilePath)
 		{
-			var playerprofilesFile = Path.Combine(profilePath, "playerprofiles.lsb");
+			var playerprofilesFile = GetPlayerProfilesFile(profilePath);
 			string activeProfileUUID = "";
-			if (File.Exists(playerprofilesFile))
+			if (playerprofilesFile != null)
 			{
-				DivinityApp.Log($"Loading playerprofiles.lsb at '{playerprofilesFile}'");
-				var res = await LoadResourceAsync(playerprofilesFile, LSLib.LS.Enums.ResourceFormat.LSB);
+				DivinityApp.Log($"Loading playerprofiles at '{playerprofilesFile}'");
+				var res = await LoadResourceAsync(playerprofilesFile.FullName);
 				if (res != null && res.Regions.TryGetValue("UserProfiles", out var region))
 				{
 					//DivinityApp.LogMessage($"ActiveProfile | Getting root node '{String.Join(";", region.Attributes.Keys)}'");
@@ -1221,6 +1193,10 @@ namespace DivinityModManager.Util
 						activeProfileUUID = (string)att.Value;
 					}
 				}
+			}
+			else
+			{
+				DivinityApp.Log("No playerprofilesFile found.");
 			}
 			return activeProfileUUID;
 		}
@@ -1575,23 +1551,30 @@ namespace DivinityModManager.Util
 			}
 		}
 
-		public static List<DivinityModData> GetDependencyMods(DivinityModData mod, IEnumerable<DivinityModData> allMods, IEnumerable<DivinityLoadOrderEntry> order)
+		public static List<DivinityModData> GetDependencyMods(DivinityModData mod, IEnumerable<DivinityModData> allMods, HashSet<string> addedMods)
 		{
 			List<DivinityModData> mods = new List<DivinityModData>();
-			//var dependencies = mod.Dependencies.Items.Where(x => (!order.Any(y => y.UUID == x.UUID) && !IgnoreMod(x.UUID)));
-			foreach (var d in mod.Dependencies.Items.Where(x => !IgnoreModDependency(x.UUID)))
+			foreach (var d in mod.Dependencies.Items)
 			{
 				var dependencyModData = allMods.FirstOrDefault(x => x.UUID == d.UUID);
 				if (dependencyModData != null)
 				{
-					var dependencyMods = GetDependencyMods(dependencyModData, allMods, order);
+					var dependencyMods = GetDependencyMods(dependencyModData, allMods, addedMods);
 					if (dependencyMods.Count > 0)
 					{
-						mods.AddRange(dependencyMods);
+						foreach(var m in dependencyMods)
+						{
+							if(!addedMods.Contains(m.UUID))
+							{
+								addedMods.Add(m.UUID);
+								mods.Add(m);
+							}
+						}
 					}
-					if (!order.Any(x => x.UUID == dependencyModData.UUID) && !mods.Any(x => x.UUID == dependencyModData.UUID))
+					if (!addedMods.Contains(dependencyModData.UUID))
 					{
 						mods.Add(dependencyModData);
+						addedMods.Add(dependencyModData.UUID);
 					}
 				}
 			}
@@ -1601,13 +1584,16 @@ namespace DivinityModManager.Util
 		public static List<DivinityModData> BuildOutputList(IEnumerable<DivinityLoadOrderEntry> order, IEnumerable<DivinityModData> allMods, bool addDependencies = true, DivinityModData selectedAdventure = null)
 		{
 			List<DivinityModData> orderList = new List<DivinityModData>();
+			var addedMods = new HashSet<string>();
+
 			if (selectedAdventure != null)
 			{
 				if (addDependencies && selectedAdventure.HasDependencies)
 				{
-					orderList.AddRange(GetDependencyMods(selectedAdventure, allMods, order));
+					orderList.AddRange(GetDependencyMods(selectedAdventure, allMods, addedMods));
 				}
 				orderList.Add(selectedAdventure);
+				addedMods.Add(selectedAdventure.UUID);
 			}
 
 			foreach (var m in order.Where(x => !x.Missing))
@@ -1617,12 +1603,13 @@ namespace DivinityModManager.Util
 				{
 					if (addDependencies && mData.HasDependencies)
 					{
-						orderList.AddRange(GetDependencyMods(mData, allMods, order));
+						orderList.AddRange(GetDependencyMods(mData, allMods, addedMods));
 					}
 
-					if (!orderList.Any(x => x.UUID == mData.UUID))
+					if (!addedMods.Contains(mData.UUID))
 					{
 						orderList.Add(mData);
+						addedMods.Add(mData.UUID);
 					}
 				}
 				else
@@ -1630,6 +1617,7 @@ namespace DivinityModManager.Util
 					DivinityApp.Log($"[*ERROR*] Missing mod for mod in order: '{m.Name}'.");
 				}
 			}
+
 			return orderList;
 		}
 
