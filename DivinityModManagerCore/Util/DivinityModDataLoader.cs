@@ -218,6 +218,7 @@ namespace DivinityModManager.Util
 						ModType = GetAttributeWithId(moduleInfoNode, "Type", ""),
 						HeaderVersion = new DivinityModVersion2(headerMajor, headerMinor, headerRevision, headerBuild)
 					};
+
 					var tagsText = GetAttributeWithId(moduleInfoNode, "Tags", "");
 					if (!String.IsNullOrWhiteSpace(tagsText))
 					{
@@ -1147,18 +1148,18 @@ namespace DivinityModManager.Util
 		public static bool ExportedSelectedProfile(string profilePath, string profileUUID)
 		{
 			var conversionParams = ResourceConversionParameters.FromGameVersion(DivinityApp.GAME);
-			var playerprofilesFile = Path.Combine(profilePath, "playerprofiles.lsb");
-			if (File.Exists(playerprofilesFile))
+			var playerprofilesFile = GetPlayerProfilesFile(profilePath);
+			if (playerprofilesFile != null)
 			{
 				try
 				{
-					var res = ResourceUtils.LoadResource(playerprofilesFile, LSLib.LS.Enums.ResourceFormat.LSB);
+					var res = ResourceUtils.LoadResource(playerprofilesFile.FullName);
 					if (res != null && res.Regions.TryGetValue("UserProfiles", out var region))
 					{
 						if (region.Attributes.TryGetValue("ActiveProfile", out var att))
 						{
 							att.Value = profileUUID;
-							ResourceUtils.SaveResource(res, playerprofilesFile, LSLib.LS.Enums.ResourceFormat.LSB, conversionParams);
+							ResourceUtils.SaveResource(res, playerprofilesFile.FullName, conversionParams);
 							return true;
 						}
 					}
@@ -1554,7 +1555,8 @@ namespace DivinityModManager.Util
 		public static List<DivinityModData> GetDependencyMods(DivinityModData mod, IEnumerable<DivinityModData> allMods, HashSet<string> addedMods)
 		{
 			List<DivinityModData> mods = new List<DivinityModData>();
-			foreach (var d in mod.Dependencies.Items)
+			var dependencies = mod.Dependencies.Items.Where(x => !IgnoreModDependency(x.UUID));
+			foreach (var d in dependencies)
 			{
 				var dependencyModData = allMods.FirstOrDefault(x => x.UUID == d.UUID);
 				if (dependencyModData != null)

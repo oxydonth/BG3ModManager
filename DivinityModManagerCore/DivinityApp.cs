@@ -37,7 +37,7 @@ namespace DivinityModManager
 		public const string PATH_DEFAULT_PATHWAYS = @"Resources/DefaultPathways.json";
 		public const string PATH_IGNORED_MODS = @"Resources/IgnoredMods.json";
 
-		public const string ORIGINS_UUID = "991c9c7a-fb80-40cb-8f0d-b92d4e80e9b1";
+		public const string ORIGINS_UUID = "28ac9ce2-2aba-8cda-b3b5-6e922f71b6b8";
 		public const string GAMEMASTER_UUID = "NotYetAvailableInBG3";
 
 		public const string EXTENDER_REPO_URL = "Norbyte/bg3se";

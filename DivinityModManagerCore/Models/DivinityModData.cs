@@ -158,6 +158,10 @@ namespace DivinityModManager.Models
 			}
 			else
 			{
+				if (!DivinityApp.DeveloperModeEnabled && UUID == DivinityApp.ORIGINS_UUID)
+				{
+					return "Main";
+				}
 				return !IsClassicMod ? Name : Name + " [Classic]";
 			}
 		}

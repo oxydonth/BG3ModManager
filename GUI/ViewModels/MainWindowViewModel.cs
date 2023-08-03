@@ -4195,7 +4195,7 @@ Directory the zip will be extracted to:
 								}
 							}
 							DivinityApp.IgnoredMods.Add(mod);
-							//DivinityApp.LogMessage($"Ignored mod added: Name({mod.Name}) UUID({mod.UUID}) Type({mod.Type})");
+							DivinityApp.Log($"Ignored mod added: Name({mod.Name}) UUID({mod.UUID})");
 						}
 					}
 

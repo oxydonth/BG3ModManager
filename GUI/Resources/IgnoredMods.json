@@ -4,6 +4,7 @@
 	"b176a0ac-d79f-ed9d-5a87-5c2c80874e10",
 	"e0a4d990-7b9b-8fa9-d7c6-04017c6cf5b1",
 	"ed539163-bb70-431b-96a7-f5b2eda5376b",
+	"3d0c5ff8-c95d-c907-ff3e-34b204f1c630",
 	"991c9c7a-fb80-40cb-8f0d-b92d4e80e9b1",
 	"e5c9077e-1fca-4f24-b55d-464f512c98a8",
 	"9dff4c3b-fda7-43de-a763-ce1383039999"
@@ -26,6 +27,16 @@
 	  "Folder": "Shared",
 	  "Version": 36029297386049870,
 	  "Type": "Add-on",
+	  "Targets": "Story",
+	  "Author": "Larian Studios",
+	  "Description": ""
+	},
+	{
+	  "Name": "SharedDev",
+	  "UUID": "3d0c5ff8-c95d-c907-ff3e-34b204f1c630",
+	  "Folder": "SharedDev",
+	  "Version": 36028797022575353,
+	  "Type": "Adventure",
 	  "Targets": "Story",
 	  "Author": "Larian Studios",
 	  "Description": ""
