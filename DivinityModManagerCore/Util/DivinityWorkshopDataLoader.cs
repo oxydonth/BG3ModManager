@@ -19,19 +19,7 @@ namespace DivinityModManager.Util
 		private static readonly string STEAM_API_GET_WORKSHOP_DATA_URL = "https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/?";
 		private static readonly string STEAM_API_GET_WORKSHOP_MODS_URL = "https://api.steampowered.com/IPublishedFileService/QueryFiles/v1/?";
 
-		private static string CreatePublishFileIds(List<DivinityModData> mods)
-		{
-			string output = "";
-			for (int i = 0; i < mods.Count; i++)
-			{
-				var mod = mods[i];
-				output += output + $"publishedfileids[{i}]: {mod.WorkshopData.ID}";
-				if (i < mods.Count - 1) output += ", ";
-			}
-			return output;
-		}
-
-		private static List<string> ignoredTags = new List<string>{"Add-on", "Adventure", "GM", "Arena", "Story", "Definitive Edition"};
+		private static readonly List<string> ignoredTags = new List<string>{"Add-on", "Adventure", "GM", "Arena", "Story", "Definitive Edition"};
 		private static List<string> GetWorkshopTags(IWorkshopPublishFileDetails data)
 		{
 			var tags = data.tags.Where(t => !ignoredTags.Contains(t.tag)).Select(x => x.tag).ToList();
