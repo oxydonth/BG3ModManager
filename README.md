@@ -1,7 +1,7 @@
-LaughingLeader's BG3 Mod Manager
+LaughingLeader's Baldur's Gate 3 Mod Manager
 =======
 
-A work-in-progress mod manager for Baldur's Gate 3.
+A mod manager for [Baldur's Gate 3](https://store.steampowered.com/app/1086940/Baldurs_Gate_3/).
 
 # Setup
 
