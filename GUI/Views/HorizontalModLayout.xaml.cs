@@ -506,7 +506,7 @@ namespace DivinityModManager.Views
 
 					var gridLengthConverter = new GridLengthConverter();
 					var zeroHeight = (GridLength)gridLengthConverter.ConvertFrom(0);
-					var forceModsHeight = (GridLength)gridLengthConverter.ConvertFrom("1*");
+					var forceModsHeight = (GridLength)gridLengthConverter.ConvertFrom("2*");
 
 					d(ViewModel.WhenAnyValue(x => x.HasForceLoadedMods).ObserveOn(RxApp.MainThreadScheduler).Subscribe((b) =>
 					{

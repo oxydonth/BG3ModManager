@@ -21,10 +21,16 @@
 			<ResourceDictionary.MergedDictionaries>
 				<ResourceDictionary Source="../Themes/MainResourceDictionary.xaml" />
 			</ResourceDictionary.MergedDictionaries>
-			<Style x:Key="ListViewItemMouseEvents" BasedOn="{StaticResource DivinityModDataListItem}" TargetType="{x:Type ListViewItem}">
+			<Style
+				x:Key="ListViewItemMouseEvents"
+				BasedOn="{StaticResource DivinityModDataListItem}"
+				TargetType="{x:Type ListViewItem}">
 				<!--<EventSetter Event="PreviewMouseLeftButtonDown" Handler="ListViewItem_ModifySelection" />-->
 			</Style>
-			<Style x:Key="ModOrderListViewWithDrag" BasedOn="{StaticResource ModOrderListView}" TargetType="ListView">
+			<Style
+				x:Key="ModOrderListViewWithDrag"
+				BasedOn="{StaticResource ModOrderListView}"
+				TargetType="ListView">
 				<Setter Property="dd:DragDrop.DragDirectlySelectedOnly" Value="True" />
 				<Setter Property="dd:DragDrop.IsDragSource" Value="True" />
 				<Setter Property="dd:DragDrop.IsDropTarget" Value="True" />
@@ -110,7 +116,7 @@
 				<Grid.RowDefinitions>
 					<RowDefinition Name="ActiveModsListRow" Height="10*" />
 					<RowDefinition Name="ActiveModsListGridRow" Height="Auto" />
-					<RowDefinition Name="ActiveModsListForcedModsRow" Height="1*" />
+					<RowDefinition Name="ActiveModsListForcedModsRow" Height="2*" />
 				</Grid.RowDefinitions>
 				<c:ModListView
 					x:Name="ActiveModsListView"
@@ -129,22 +135,34 @@
 					Grid.Row="1"
 					Height="4"
 					HorizontalAlignment="Stretch"
-					VerticalAlignment="Stretch" />
-				<c:ModListView
-					x:Name="ForceLoadedModsListView"
-					Grid.Row="2"
-					MaxHeight="99999"
-					behavior:ScreenReaderHelperBehavior.Name="Force-Loaded Mods"
-					HideHeader="True"
-					ItemContainerStyle="{StaticResource DivinityModDataListItem}"
-					LinkedHeaderListView="{Binding ElementName=ActiveModsListView}"
-					View="{DynamicResource HeaderlessModGridView}" />
+					VerticalAlignment="Stretch"
+					Background="{DynamicResource {x:Static adonisUI:Brushes.Layer1BackgroundBrush}}" />
+				<Grid Grid.Row="2">
+					<Grid.RowDefinitions>
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="*" />
+					</Grid.RowDefinitions>
+					<TextBlock
+						HorizontalAlignment="Center"
+						FontSize="16"
+						Text="Overrides" />
+					<c:ModListView
+						x:Name="ForceLoadedModsListView"
+						Grid.Row="1"
+						MaxHeight="99999"
+						behavior:ScreenReaderHelperBehavior.Name="Force-Loaded Mods"
+						HideHeader="True"
+						ItemContainerStyle="{StaticResource DivinityModDataListItem}"
+						LinkedHeaderListView="{Binding ElementName=ActiveModsListView}"
+						View="{DynamicResource HeaderlessModGridView}" />
+				</Grid>
 			</Grid>
 		</Grid>
-		<GridSplitter Grid.Column="1"
-		              Width="4"
-		              HorizontalAlignment="Stretch"
-		              VerticalAlignment="Stretch" />
+		<GridSplitter
+			Grid.Column="1"
+			Width="4"
+			HorizontalAlignment="Stretch"
+			VerticalAlignment="Stretch" />
 		<Grid Grid.Column="2" HorizontalAlignment="Stretch">
 			<Grid.RowDefinitions>
 				<RowDefinition Height="Auto" />
