@@ -182,5 +182,7 @@ namespace DivinityModManager.Models
 			Revision = headerRevision;
 			Build = headerBuild;
 		}
+
+		public static readonly DivinityModVersion2 Empty = new DivinityModVersion2(0, 0, 0, 0);
 	}
 }

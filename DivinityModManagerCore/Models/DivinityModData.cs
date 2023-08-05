@@ -293,6 +293,7 @@ namespace DivinityModManager.Models
 
 		public DivinityModData(bool isBaseGameMod = false) : base()
 		{
+			Targets = "";
 			Index = -1;
 			CanDrag = true;
 
@@ -375,7 +376,7 @@ namespace DivinityModManager.Models
 			canDelete = this.WhenAnyValue(x => x.IsEditorMod, x => x.IsLarianMod, x => x.FilePath,
 				(a, b, c) => !a && !b && File.Exists(c)).StartWith(false).ToProperty(this, nameof(CanDelete));
 			canAddToLoadOrder = this.WhenAnyValue(x => x.ModType, x => x.IsLarianMod, x => x.IsForcedLoaded,
-				(a, b, c) => a != "Adventure" && !b && !c).StartWith(true).ToProperty(this, nameof(CanAddToLoadOrder));
+				(modType, isLarianMod, isForceLoaded) => modType != "Adventure" && !isLarianMod && !isForceLoaded).StartWith(true).ToProperty(this, nameof(CanAddToLoadOrder));
 		}
 	}
 }

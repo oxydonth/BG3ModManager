@@ -463,14 +463,13 @@ namespace DivinityModManager.Util
 						{
 							metaFiles.Add(f);
 						}
-						else if (!hasBuiltinDirectory)
+						else
 						{
 							var modFolderMatch = _ModFolderPattern.Match(f.Name);
 							if (modFolderMatch.Success)
 							{
 								var modFolder = Path.GetFileName(modFolderMatch.Groups[2].Value.TrimEnd(Path.DirectorySeparatorChar));
-								if (!builtinModOverrides.ContainsKey(modFolder) && builtinMods.TryGetValue(modFolder, out var builtinMod))
-								{
+								if (!builtinModOverrides.ContainsKey(modFolder) && builtinMods.TryGetValue(modFolder, out var builtinMod)){
 									hasBuiltinDirectory = true;
 									builtinModOverrides[builtinMod.Folder] = builtinMod;
 									DivinityApp.Log($"Found a mod overriding a builtin directory. Pak({pakName}) Folder({modFolder}) File({f.Name}");
@@ -511,53 +510,78 @@ namespace DivinityModManager.Util
 							modData = ParseMetaFile(text);
 						}
 					}
-
-					if (modData != null)
+				}
+				else
+				{
+					if(hasBuiltinDirectory)
 					{
-						modData.HasBuiltinOverride = hasBuiltinDirectory;
-						if (hasBuiltinDirectory)
+						//var pakData = new DivinityPakFile()
+						//{
+						//	FilePath = pakPath,
+						//	BuiltinOverrideModsText = String.Join(Environment.NewLine, builtinModOverrides.Values.OrderBy(x => x.Name).Select(x => $"{x.Folder} ({x.Name})"))
+						//};
+						//overridePaks.Add(pakData);
+						modData = new DivinityModData()
 						{
-							modData.BuiltinOverrideModsText = String.Join(Environment.NewLine, builtinModOverrides.Values.OrderBy(x => x.Name).Select(x => $"{x.Folder} ({x.Name})"));
-							modData.IsForcedLoaded = true;
-						}
-						modData.FilePath = pakPath;
-						try
-						{
-							modData.LastModified = File.GetChangeTime(pakPath);
-							modData.LastUpdated = modData.LastModified.Value;
-						}
-						catch (PlatformNotSupportedException ex)
-						{
-							DivinityApp.Log($"Error getting pak last modified date for '{pakPath}': {ex}");
-						}
+							FilePath = pakPath,
+							Name = Path.GetFileNameWithoutExtension(pakPath),
+							Folder = builtinModOverrides.FirstOrDefault().Key,
+							Description = "This file overrides base game data.",
+							ModType = "File Override",
+							UUID = pakPath,
+						};
+						DivinityApp.Log($"Adding a file override mod pak '{modData.Name}'.");
+					}
+				}
 
-						modData.IsUserMod = true;
+				if (modData != null)
+				{
+					modData.HasBuiltinOverride = hasBuiltinDirectory;
+					if (hasBuiltinDirectory)
+					{
+						modData.BuiltinOverrideModsText = String.Join(Environment.NewLine, builtinModOverrides.Values.OrderBy(x => x.Name).Select(x => $"{x.Folder} ({x.Name})"));
+						modData.IsForcedLoaded = true;
+					}
+					modData.FilePath = pakPath;
+					try
+					{
+						modData.LastModified = File.GetChangeTime(pakPath);
+						modData.LastUpdated = modData.LastModified.Value;
+					}
+					catch (PlatformNotSupportedException ex)
+					{
+						DivinityApp.Log($"Error getting pak last modified date for '{pakPath}': {ex}");
+					}
 
-						if (osiConfigInfo != null)
+					modData.IsUserMod = true;
+
+					if (osiConfigInfo != null)
+					{
+						var osiToolsConfig = await LoadScriptExtenderConfigAsync(osiConfigInfo);
+						if (osiToolsConfig != null)
 						{
-							var osiToolsConfig = await LoadScriptExtenderConfigAsync(osiConfigInfo);
-							if (osiToolsConfig != null)
-							{
-								modData.ScriptExtenderData = osiToolsConfig;
-								if (modData.ScriptExtenderData.RequiredExtensionVersion > -1) modData.HasScriptExtenderSettings = true;
-							}
-							else
-							{
-								DivinityApp.Log($"Failed to parse OsiToolsConfig.json for '{pakPath}'.");
-							}
+							modData.ScriptExtenderData = osiToolsConfig;
+							if (modData.ScriptExtenderData.RequiredExtensionVersion > -1) modData.HasScriptExtenderSettings = true;
 						}
+						else
+						{
+							DivinityApp.Log($"Failed to parse OsiToolsConfig.json for '{pakPath}'.");
+						}
+					}
 
-						//DivinityApp.Log($"Loaded mod '{modData.Name}'.");
-						return modData;
+					//DivinityApp.Log($"Loaded mod '{modData.Name}'.");
+					return modData;
+				}
+				else
+				{
+					if(metaFile == null)
+					{
+						DivinityApp.Log($"No meta.lsx for mod pak '{pakPath}'.");
 					}
 					else
 					{
 						DivinityApp.Log($"Error: Failed to parse meta.lsx for mod pak '{pakPath}'.");
 					}
-				}
-				else
-				{
-					DivinityApp.Log($"Error: No meta.lsx for mod pak '{pakPath}'.");
 				}
 			}
 

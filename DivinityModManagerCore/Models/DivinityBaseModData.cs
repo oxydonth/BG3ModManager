@@ -155,6 +155,15 @@ namespace DivinityModManager.Models
 
 		public DivinityBaseModData()
 		{
+			Version = DivinityModVersion2.Empty;
+			HeaderVersion = DivinityModVersion2.Empty;
+			PublishVersion = DivinityModVersion2.Empty;
+			MD5 = "";
+			Author = "";
+			Folder = "";
+			UUID = "";
+			Name = "";
+
 			HelpText = "";
 			Visibility = Visibility.Visible;
 			fileName = this.WhenAnyValue(x => x.FilePath).Select(f => Path.GetFileName(f)).ToProperty(this, nameof(FileName));
