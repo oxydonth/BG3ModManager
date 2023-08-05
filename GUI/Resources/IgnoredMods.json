@@ -62,6 +62,16 @@
 	  "Description": ""
 	},
 	{
+	  "Name": "Game",
+	  "UUID": "Game",
+	  "Folder": "Game",
+	  "Version": 36028797018963968,
+	  "Type": "Add-on",
+	  "Targets": "Story",
+	  "Author": "Larian Studios",
+	  "Description": "Not an actual mod. This is the Public/Game folder."
+	},
+	{
 	  "Name": "DiceSet_01",
 	  "UUID": "e842840a-2449-588c-b0c4-22122cfce31b",
 	  "Folder": "DiceSet_01",
