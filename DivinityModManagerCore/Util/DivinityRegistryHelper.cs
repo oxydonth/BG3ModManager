@@ -51,7 +51,7 @@ namespace DivinityModManager.Util
 			}
 			catch (Exception e)
 			{
-				DivinityApp.Log($"Error reading registry subKey ({subKey}): {e.ToString()}");
+				DivinityApp.Log($"Error reading registry subKey ({subKey}): {e}");
 			}
 			return null;
 		}
@@ -200,7 +200,6 @@ namespace DivinityModManager.Util
 							foreach (var folderPath in libraryFolders)
 							{
 								string checkFolder = Path.Combine(folderPath, "steamapps", "common", steamGameInstallPath);
-								DivinityApp.Log(checkFolder);
 								if (!String.IsNullOrEmpty(checkFolder) && Directory.Exists(checkFolder))
 								{
 									DivinityApp.Log($"Found game at '{checkFolder}'.");

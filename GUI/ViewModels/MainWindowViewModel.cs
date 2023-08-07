@@ -1050,6 +1050,7 @@ namespace DivinityModManager.ViewModels
 				{
 					string installPath = DivinityRegistryHelper.GetGameInstallPath(AppSettings.DefaultPathways.Steam.RootFolderName,
 						AppSettings.DefaultPathways.GOG.Registry_32, AppSettings.DefaultPathways.GOG.Registry_64);
+
 					if (!String.IsNullOrEmpty(installPath) && Directory.Exists(installPath))
 					{
 						PathwayData.InstallPath = installPath;
@@ -1072,8 +1073,15 @@ namespace DivinityModManager.ViewModels
 						}
 
 						string gameDataPath = Path.Combine(installPath, AppSettings.DefaultPathways.GameDataFolder).Replace("\\", "/");
-						DivinityApp.Log($"Set game data path to '{gameDataPath}'.");
-						Settings.GameDataPath = gameDataPath;
+						if (Directory.Exists(gameDataPath))
+						{
+							DivinityApp.Log($"Set game data path to '{gameDataPath}'.");
+							Settings.GameDataPath = gameDataPath;
+						}
+						else
+						{
+							DivinityApp.Log($"Failed to find game data path at '{gameDataPath}'.");
+						}
 					}
 				}
 				else
@@ -1096,6 +1104,45 @@ namespace DivinityModManager.ViewModels
 							Settings.GameExecutablePath = exePath.Replace("\\", "/");
 							DivinityApp.Log($"Exe path set to '{exePath}'.");
 						}
+					}
+				}
+
+
+				if (!Directory.Exists(Settings.GameDataPath))
+				{
+					DivinityApp.Log("Failed to find game data path. Asking user for help.");
+
+					var dialog = new Ookii.Dialogs.Wpf.VistaFolderBrowserDialog()
+					{
+						Multiselect = false,
+						Description = "Set the path to the Baldur's Gate 3 Data folder",
+						UseDescriptionForTitle = true,
+						SelectedPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)
+					};
+					if (dialog.ShowDialog(View.Main) == true)
+					{
+						Settings.GameDataPath = dialog.SelectedPath;
+						PathwayData.InstallPath = Directory.GetParent(Settings.GameDataPath)?.FullName;
+					}
+				}
+
+				if (!File.Exists(Settings.GameExecutablePath))
+				{
+					DivinityApp.Log("Failed to find game exe. Asking user for help.");
+
+					var dialog = new Ookii.Dialogs.Wpf.VistaOpenFileDialog()
+					{
+						Multiselect = false,
+						CheckFileExists = true,
+						CheckPathExists = true,
+						Title = "Set the path to bg3.exe",
+						FileName = "bg3.exe",
+						InitialDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)
+					};
+
+					if (dialog.ShowDialog(View.Main) == true)
+					{
+						Settings.GameExecutablePath = dialog.FileName;
 					}
 				}
 
