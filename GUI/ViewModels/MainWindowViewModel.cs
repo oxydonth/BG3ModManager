@@ -564,7 +564,7 @@ namespace DivinityModManager.ViewModels
 				Settings.WorkshopPath = "";
 			}
 
-			canOpenGameExe = this.WhenAnyValue(x => x.Settings.GameExecutablePath, (p) => !String.IsNullOrEmpty(p) && File.Exists(p)).StartWith(false);
+			canOpenGameExe = this.WhenAnyValue(x => x.Settings.GameExecutablePath, p => !String.IsNullOrEmpty(p) && File.Exists(p)).StartWith(false);
 			canOpenLogDirectory = this.WhenAnyValue(x => x.Settings.ExtenderLogDirectory, (f) => Directory.Exists(f)).StartWith(false);
 
 			Keys.DownloadScriptExtender.AddAction(() => InstallScriptExtender_Start());
@@ -628,11 +628,23 @@ namespace DivinityModManager.ViewModels
 					}
 				}
 
-				DivinityApp.Log($"Opening game exe at: {Settings.GameExecutablePath} with args {launchParams}");
+				var exePath = Settings.GameExecutablePath;
+				var exeDir = Path.GetDirectoryName(exePath);
+
+				if (Settings.LaunchDX11)
+				{
+					var nextExe = Path.Combine(exeDir, "bg3_dx11.exe");
+					if(File.Exists(nextExe))
+					{
+						exePath = nextExe;
+					}
+				}
+
+				DivinityApp.Log($"Opening game exe at: {exePath} with args {launchParams}");
 				Process proc = new Process();
-				proc.StartInfo.FileName = Settings.GameExecutablePath;
+				proc.StartInfo.FileName = exePath;
 				proc.StartInfo.Arguments = launchParams;
-				proc.StartInfo.WorkingDirectory = Path.GetDirectoryName(Settings.GameExecutablePath);
+				proc.StartInfo.WorkingDirectory = exeDir;
 				proc.Start();
 
 				if (Settings.ActionOnGameLaunch != DivinityGameLaunchWindowAction.None)
