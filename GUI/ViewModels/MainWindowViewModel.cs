@@ -1050,7 +1050,7 @@ namespace DivinityModManager.ViewModels
 				{
 					string installPath = DivinityRegistryHelper.GetGameInstallPath(AppSettings.DefaultPathways.Steam.RootFolderName,
 						AppSettings.DefaultPathways.GOG.Registry_32, AppSettings.DefaultPathways.GOG.Registry_64);
-					if (Directory.Exists(installPath))
+					if (!String.IsNullOrEmpty(installPath) && Directory.Exists(installPath))
 					{
 						PathwayData.InstallPath = installPath;
 						if (!File.Exists(Settings.GameExecutablePath))
