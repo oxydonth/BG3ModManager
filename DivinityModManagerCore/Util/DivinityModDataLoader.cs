@@ -446,6 +446,7 @@ namespace DivinityModManager.Util
 
 				var metaFiles = new List<AbstractFileInfo>();
 				var hasBuiltinDirectory = false;
+				var hasModFolderData = false;
 				var builtinModOverrides = new Dictionary<string, DivinityModData>();
 
 				AbstractFileInfo osiConfigInfo = null;
@@ -473,6 +474,10 @@ namespace DivinityModManager.Util
 									hasBuiltinDirectory = true;
 									builtinModOverrides[builtinMod.Folder] = builtinMod;
 									DivinityApp.Log($"Found a mod overriding a builtin directory. Pak({pakName}) Folder({modFolder}) File({f.Name}");
+								}
+								else
+								{
+									hasModFolderData = true;
 								}
 							}
 						}
@@ -510,6 +515,10 @@ namespace DivinityModManager.Util
 							modData = ParseMetaFile(text);
 						}
 					}
+					if(modData != null && hasBuiltinDirectory)
+					{
+						modData.IsForceLoadedMergedMod = hasModFolderData;
+					}
 				}
 				else
 				{
@@ -536,11 +545,10 @@ namespace DivinityModManager.Util
 
 				if (modData != null)
 				{
-					modData.HasBuiltinOverride = hasBuiltinDirectory;
 					if (hasBuiltinDirectory)
 					{
 						modData.BuiltinOverrideModsText = String.Join(Environment.NewLine, builtinModOverrides.Values.OrderBy(x => x.Name).Select(x => $"{x.Folder} ({x.Name})"));
-						modData.IsForcedLoaded = true;
+						modData.IsForceLoaded = true;
 					}
 					modData.FilePath = pakPath;
 					try

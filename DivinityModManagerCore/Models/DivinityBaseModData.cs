@@ -68,7 +68,11 @@ namespace DivinityModManager.Models
 		[Reactive] public bool IsUserMod { get; set; }
 
 		/// <summary>True if the mod has a base game mod directory. This data is always loaded regardless if the mod is enabled or not.</summary>
-		[Reactive] public bool HasBuiltinOverride { get; set; }
+		[Reactive] public bool IsForceLoaded { get; set; }
+		/// <summary>
+		/// Whether the mod has files of its own (i.e. it overrides Gustav, but it has Public/ModFolder/Assets files etc).
+		/// </summary>
+		[Reactive] public bool IsForceLoadedMergedMod { get; set; }
 		[Reactive] public string BuiltinOverrideModsText { get; set; }
 
 		[Reactive] public string HelpText { get; set; }

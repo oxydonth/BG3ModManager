@@ -1389,7 +1389,7 @@ namespace DivinityModManager.ViewModels
 							}*/
 
 							//Adds mods that will always be "enabled"
-							//ForceLoadedMods.AddRange(Mods.Where(x => !x.IsActive && x.IsForcedLoaded));
+							//ForceLoadedMods.AddRange(Mods.Where(x => !x.IsActive && x.IsForceLoaded));
 
 							Settings.LastOrder = nextOrder?.Name;
 						}
@@ -4568,7 +4568,7 @@ Directory the zip will be extracted to:
 
 			modsConnection.Filter(x => x.IsUserMod).Bind(out _userMods).Subscribe();
 			modsConnection.Filter(x => x.CanAddToLoadOrder).Bind(out addonMods).Subscribe();
-			modsConnection.Filter(x => x.IsForcedLoaded).ObserveOn(RxApp.MainThreadScheduler).Bind(out _forceLoadedMods).Subscribe();
+			modsConnection.Filter(x => x.IsForceLoaded && !x.IsForceLoadedMergedMod).ObserveOn(RxApp.MainThreadScheduler).Bind(out _forceLoadedMods).Subscribe();
 
 			//Throttle filters so they only happen when typing stops for 500ms
 

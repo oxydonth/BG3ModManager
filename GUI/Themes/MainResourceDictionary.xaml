@@ -621,13 +621,17 @@
 			<StackPanel
 				Margin="2"
 				Orientation="Vertical"
-				Visibility="{Binding HasBuiltinOverride, Converter={StaticResource BoolToVisibilityConverter}, FallbackValue=Collapsed}">
+				Visibility="{Binding IsForceLoaded, Converter={StaticResource BoolToVisibilityConverter}, FallbackValue=Collapsed}">
 				<Separator Background="{DynamicResource {x:Static adonisUI:Brushes.Layer1HighlightBorderBrush}}" />
 				<TextBlock Foreground="OrangeRed">
 					This mod overrides base game files directly.<LineBreak />
 					As long as this mod exists in the Mods folder,<LineBreak />
 					these files will be overwritten, even if the mod is disabled.</TextBlock>
 				<TextBlock Text="If this is intended, you can ignore this warning." />
+				<TextBlock
+					Foreground="Lime"
+					Text="This mod can be rearranged in the load order, due to it also having files of its own. Note that disabling it will not disable the file overrides."
+					Visibility="{Binding IsForceLoadedMergedMod, Converter={StaticResource BoolToVisibilityConverter}, FallbackValue=Collapsed}" />
 				<TextBlock Foreground="OrangeRed" Text="Overwritten builtin folders:" />
 				<TextBlock Text="{Binding BuiltinOverrideModsText}" />
 			</StackPanel>

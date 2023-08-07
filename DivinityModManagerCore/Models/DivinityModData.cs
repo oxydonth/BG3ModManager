@@ -183,7 +183,6 @@ namespace DivinityModManager.Models
 		[Reactive] public bool HasScriptExtenderSettings { get; set; }
 
 		[Reactive] public bool IsEditorMod { get; set; }
-		[Reactive] public bool IsForcedLoaded { get; set; }
 
 		[Reactive] public bool IsActive { get; set; }
 
@@ -302,9 +301,9 @@ namespace DivinityModManager.Models
 			dependencyCount = connection.Count().StartWith(0).ToProperty(this, nameof(TotalDependencies));
 			hasDependencies = this.WhenAnyValue(x => x.TotalDependencies, c => c > 0).StartWith(false).ToProperty(this, nameof(HasDependencies));
 			dependencyVisibility = this.WhenAnyValue(x => x.HasDependencies, b => b ? Visibility.Visible : Visibility.Collapsed).StartWith(Visibility.Collapsed).ToProperty(this, nameof(DependencyVisibility));
-			this.WhenAnyValue(x => x.IsActive, x => x.IsClassicMod, x => x.IsForcedLoaded).Subscribe((b) =>
+			this.WhenAnyValue(x => x.IsActive, x => x.IsClassicMod, x => x.IsForceLoaded, x => x.IsForceLoadedMergedMod).Subscribe((b) =>
 			{
-				if (b.Item3)
+				if (b.Item3 && !b.Item4)
 				{
 					CanDrag = false;
 				}
@@ -322,7 +321,7 @@ namespace DivinityModManager.Models
 				}
 			});
 
-			this.WhenAnyValue(x => x.IsClassicMod, x => x.IsForcedLoaded, x => x.IsEditorMod).Subscribe((b) =>
+			this.WhenAnyValue(x => x.IsClassicMod, x => x.IsForceLoaded, x => x.IsEditorMod).Subscribe((b) =>
 			{
 				if (b.Item1)
 				{
@@ -374,9 +373,9 @@ namespace DivinityModManager.Models
 				!String.IsNullOrEmpty(x.Item1) || x.Item2 || !String.IsNullOrEmpty(x.Item3))).StartWith(true).ToProperty(this, nameof(HasToolTip));
 
 			canDelete = this.WhenAnyValue(x => x.IsEditorMod, x => x.IsLarianMod, x => x.FilePath,
-				(a, b, c) => !a && !b && File.Exists(c)).StartWith(false).ToProperty(this, nameof(CanDelete));
-			canAddToLoadOrder = this.WhenAnyValue(x => x.ModType, x => x.IsLarianMod, x => x.IsForcedLoaded,
-				(modType, isLarianMod, isForceLoaded) => modType != "Adventure" && !isLarianMod && !isForceLoaded).StartWith(true).ToProperty(this, nameof(CanAddToLoadOrder));
+				(isEditorMod, isLarianMod, path) => !isEditorMod && !isLarianMod && File.Exists(path)).StartWith(false).ToProperty(this, nameof(CanDelete));
+			canAddToLoadOrder = this.WhenAnyValue(x => x.ModType, x => x.IsLarianMod, x => x.IsForceLoaded, x => x.IsForceLoadedMergedMod,
+				(modType, isLarianMod, isForceLoaded, isMergedMod) => modType != "Adventure" && !isLarianMod && (!isForceLoaded || isMergedMod)).StartWith(true).ToProperty(this, nameof(CanAddToLoadOrder));
 		}
 	}
 }
