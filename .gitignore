@@ -347,3 +347,11 @@ ASALocalRun/
 .vscode/settings.json
 GUI/DivinityModManager.ico
 PublishRelease.py
+
+# LSlib dll
+/DivinityModManagerCore/LSLib.dll
+/DivinityModManagerCore/LSLibNative.dll
+/DivinityModManagerCore/LZ4.dll
+/DivinityModManagerCore/OpenTK.dll
+/DivinityModManagerCore/QUT.ShiftReduceParser.dll
+/DivinityModManagerCore/zlib.net.dll
