@@ -347,3 +347,6 @@ ASALocalRun/
 .vscode/settings.json
 GUI/DivinityModManager.ico
 PublishRelease.py
+
+# LSlib DLLs
+/External/lslib
