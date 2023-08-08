@@ -347,13 +347,13 @@ namespace DivinityModManager.Models
 				}
 			});
 
-			this.WhenAnyValue(x => x.HeaderVersion).Select(x => x != null && x.Minor == 1).Subscribe((b) =>
+			/*this.WhenAnyValue(x => x.HeaderVersion).Select(x => x != null && x.Minor == 1).Subscribe((b) =>
 			{
 				if (b)
 				{
 					IsClassicMod = true;
 				}
-			});
+			});*/
 
 			if (!isBaseGameMod)
 			{
