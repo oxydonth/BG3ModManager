@@ -596,7 +596,7 @@ namespace DivinityModManager.Util
 			return null;
 		}
 
-		private static async Task<DivinityModData> LoadModDataFromPakAsync(string pakPath, Dictionary<string, DivinityModData> builtinMods, CancellationToken cts)
+		public static async Task<DivinityModData> LoadModDataFromPakAsync(string pakPath, Dictionary<string, DivinityModData> builtinMods, CancellationToken cts)
 		{
 			try
 			{

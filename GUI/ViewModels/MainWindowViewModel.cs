@@ -48,6 +48,7 @@ using SharpCompress.Readers;
 using System.Reactive.Subjects;
 using System.Windows.Markup;
 using DivinityModManager.Models.Extender;
+using DynamicData.Kernel;
 
 namespace DivinityModManager.ViewModels
 {
@@ -1464,14 +1465,29 @@ namespace DivinityModManager.ViewModels
 			bool success = false;
 			if (Path.GetExtension(filePath).Equals(".pak", StringComparison.OrdinalIgnoreCase))
 			{
+				var builtinMods = DivinityApp.IgnoredMods.ToDictionary(x => x.Folder, x => x);
+				var outputFilePath = Path.Combine(PathwayData.DocumentsModsPath, Path.GetFileName(filePath));
 				try
 				{
 					using (System.IO.FileStream sourceStream = File.Open(filePath, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.Read, 8192, true))
 					{
-						using (System.IO.FileStream destinationStream = File.Create(Path.Combine(PathwayData.DocumentsModsPath, Path.GetFileName(filePath))))
+						using (System.IO.FileStream destinationStream = File.Create(outputFilePath))
 						{
 							await sourceStream.CopyToAsync(destinationStream, 8192, t);
 							success = true;
+						}
+					}
+
+					if (success)
+					{
+						var mod = await DivinityModDataLoader.LoadModDataFromPakAsync(outputFilePath, builtinMods, t);
+						if (mod != null)
+						{
+							await Observable.Start(() =>
+							{
+								AddImportedMod(mod);
+								return Unit.Default;
+							}, RxApp.MainThreadScheduler);
 						}
 					}
 				}
@@ -2637,11 +2653,36 @@ namespace DivinityModManager.ViewModels
 			}
 		}
 
+		private void AddImportedMod(DivinityModData mod)
+		{
+			var existingMod = mods.Items.FirstOrDefault(x => x.UUID == mod.UUID);
+			if (existingMod != null)
+			{
+				mod.IsSelected = existingMod.IsSelected;
+				if (existingMod.IsActive)
+				{
+					mod.Index = existingMod.Index;
+					ActiveMods.ReplaceOrAdd(existingMod, mod);
+				}
+				else
+				{
+					InactiveMods.ReplaceOrAdd(existingMod, mod);
+				}
+			}
+			else
+			{
+				InactiveMods.Add(mod);
+			}
+			mods.AddOrUpdate(mod);
+			DivinityApp.Log($"Imported Mod: {mod}");
+		}
+
 		private async Task<bool> ImportSevenZipArchiveAsync(string outputDirectory, System.IO.Stream stream, Dictionary<string, string> jsonFiles, CancellationToken t)
 		{
 			int successes = 0;
 			int total = 0;
 			stream.Position = 0;
+			var builtinMods = DivinityApp.IgnoredMods.ToDictionary(x => x.Folder, x => x);
 			using (var archiveStream = SevenZipArchive.Open(stream))
 			{
 				foreach (var entry in archiveStream.Entries)
@@ -2653,6 +2694,7 @@ namespace DivinityModManager.ViewModels
 						{
 							total += 1;
 							string outputFilePath = Path.Combine(outputDirectory, entry.Key);
+							var success = false;
 							using (var entryStream = entry.OpenEntryStream())
 							{
 								using (var fs = File.Create(outputFilePath, 4096, System.IO.FileOptions.Asynchronous))
@@ -2660,12 +2702,25 @@ namespace DivinityModManager.ViewModels
 									try
 									{
 										await entryStream.CopyToAsync(fs, 4096, MainProgressToken.Token);
-										successes += 1;
+										success = true;
 									}
 									catch (Exception ex)
 									{
 										DivinityApp.Log($"Error copying file '{entry.Key}' from archive to '{outputFilePath}':\n{ex}");
 									}
+								}
+							}
+							if (success)
+							{
+								var mod = await DivinityModDataLoader.LoadModDataFromPakAsync(outputFilePath, builtinMods, t);
+								if (mod != null)
+								{
+									successes += 1;
+									await Observable.Start(() =>
+									{
+										AddImportedMod(mod);
+										return Unit.Default;
+									}, RxApp.MainThreadScheduler);
 								}
 							}
 						}
@@ -2703,6 +2758,7 @@ namespace DivinityModManager.ViewModels
 			int successes = 0;
 			int total = 0;
 			stream.Position = 0;
+			var builtinMods = DivinityApp.IgnoredMods.ToDictionary(x => x.Folder, x => x);
 			using (var reader = SharpCompress.Readers.ReaderFactory.Open(stream))
 			{
 				while (reader.MoveToNextEntry())
@@ -2714,6 +2770,7 @@ namespace DivinityModManager.ViewModels
 						{
 							total += 1;
 							string outputFilePath = Path.Combine(outputDirectory, reader.Entry.Key);
+							bool success = false;
 							using (var entryStream = reader.OpenEntryStream())
 							{
 								using (var fs = File.Create(outputFilePath, 4096, System.IO.FileOptions.Asynchronous))
@@ -2721,12 +2778,27 @@ namespace DivinityModManager.ViewModels
 									try
 									{
 										await entryStream.CopyToAsync(fs, 4096, MainProgressToken.Token);
+										success = true;
 										successes += 1;
 									}
 									catch (Exception ex)
 									{
 										DivinityApp.Log($"Error copying file '{reader.Entry.Key}' from archive to '{outputFilePath}':\n{ex}");
 									}
+								}
+							}
+
+							if (success)
+							{
+								var mod = await DivinityModDataLoader.LoadModDataFromPakAsync(outputFilePath, builtinMods, t);
+								if (mod != null)
+								{
+									successes += 1;
+									await Observable.Start(() =>
+									{
+										AddImportedMod(mod);
+										return Unit.Default;
+									}, RxApp.MainThreadScheduler);
 								}
 							}
 						}
@@ -4371,7 +4443,6 @@ Directory the zip will be extracted to:
 				IsRefreshing = true;
 				RxApp.TaskpoolScheduler.ScheduleAsync(RefreshAsync);
 			}, canRefreshObservable, RxApp.MainThreadScheduler);
-
 
 			Keys.Refresh.AddAction(() => RefreshCommand.Execute(Unit.Default).Subscribe(), canRefreshObservable);
 
