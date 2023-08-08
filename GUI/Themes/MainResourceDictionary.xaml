@@ -533,16 +533,6 @@
 							Color="Black" />
 					</TextBlock.Effect>
 				</TextBlock>
-				<TextBlock
-					Margin="2"
-					Foreground="Red"
-					Text=" (Classic)"
-					Visibility="{Binding IsClassicMod, Converter={StaticResource BoolToVisibilityConverter}}" />
-				<TextBlock
-					Margin="2"
-					Foreground="Lime"
-					Text=" (Definitive Edition)"
-					Visibility="{Binding IsClassicMod, Converter={StaticResource BoolToVisibilityConverterReversed}}" />
 			</StackPanel>
 			<Separator Background="{DynamicResource {x:Static adonisUI:Brushes.Layer1HighlightBorderBrush}}" />
 			<TextBlock
@@ -687,16 +677,6 @@
 							Color="Black" />
 					</TextBlock.Effect>
 				</TextBlock>
-				<TextBlock
-					Margin="2"
-					Foreground="Red"
-					Text=" (Classic)"
-					Visibility="{Binding IsClassicMod, Converter={StaticResource BoolToVisibilityConverter}}" />
-				<TextBlock
-					Margin="2"
-					Foreground="Lime"
-					Text=" (Definitive Edition)"
-					Visibility="{Binding IsClassicMod, Converter={StaticResource BoolToVisibilityConverterReversed}}" />
 			</StackPanel>
 			<Separator Background="{DynamicResource {x:Static adonisUI:Brushes.Layer1HighlightBorderBrush}}" />
 			<TextBlock
@@ -822,16 +802,6 @@
 							Color="Black" />
 					</TextBlock.Effect>
 				</TextBlock>
-				<TextBlock
-					Margin="2"
-					Foreground="Red"
-					Text=" (Classic)"
-					Visibility="{Binding IsClassicMod, Converter={StaticResource BoolToVisibilityConverter}}" />
-				<TextBlock
-					Margin="2"
-					Foreground="Lime"
-					Text=" (Definitive Edition)"
-					Visibility="{Binding IsClassicMod, Converter={StaticResource BoolToVisibilityConverterReversed}}" />
 			</StackPanel>
 			<Separator Background="{DynamicResource {x:Static adonisUI:Brushes.Layer1HighlightBorderBrush}}" />
 			<TextBlock
