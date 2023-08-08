@@ -3779,13 +3779,16 @@ namespace DivinityModManager.ViewModels
 				SelectedModOrder.Order.RemoveAll(x => deletedMods.Contains(x.UUID));
 				SelectedProfile.ModOrder.RemoveMany(deletedMods);
 				SelectedProfile.ActiveMods.RemoveAll(x => deletedMods.Contains(x.UUID));
-				SaveLoadOrder(true);
+				//SaveLoadOrder(true);
 			}
 
 			if (deletedWorkshopMods != null && deletedWorkshopMods.Count > 0)
 			{
 				workshopMods.RemoveKeys(deletedWorkshopMods);
 			}
+
+			InactiveMods.RemoveMany(InactiveMods.Where(x => deletedMods.Contains(x.UUID)));
+			ActiveMods.RemoveMany(ActiveMods.Where(x => deletedMods.Contains(x.UUID)));
 		}
 
 		private void ExtractSelectedMods_ChooseFolder()
@@ -4893,7 +4896,7 @@ Directory the zip will be extracted to:
 			DivinityInteractions.ConfirmModDeletion.RegisterHandler((Func<InteractionContext<DeleteFilesViewConfirmationData, bool>, Task>)(async interaction =>
 			{
 				var sentenceStart = interaction.Input.PermanentlyDelete ? "Permanently delete" : "Delete";
-				var msg = $"{sentenceStart} {interaction.Input.Total} mod files?";
+				var msg = $"{sentenceStart} {interaction.Input.Total} mod file(s)?";
 
 				var confirmed = await Observable.Start((Func<bool>)(() =>
 				{

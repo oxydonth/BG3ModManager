@@ -147,6 +147,7 @@ namespace DivinityModManager.Views
 
 				this.DeleteFilesView.ViewModel.FileDeletionComplete += (o, e) =>
 				{
+					DivinityApp.Log($"Deleted {e.TotalFilesDeleted} file(s).");
 					if (e.TotalFilesDeleted > 0)
 					{
 						var deletedUUIDs = e.DeletedFiles.Where(x => !x.IsWorkshop).Select(x => x.UUID).ToHashSet();

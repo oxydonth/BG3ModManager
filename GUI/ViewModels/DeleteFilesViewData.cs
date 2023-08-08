@@ -133,8 +133,8 @@ namespace DivinityModManager.ViewModels
 				await Task.Delay(500);
 				RxApp.MainThreadScheduler.Schedule(() =>
 				{
-					Close();
 					FileDeletionComplete?.Invoke(this, eventArgs);
+					Close();
 				});
 			}
 			return true;
