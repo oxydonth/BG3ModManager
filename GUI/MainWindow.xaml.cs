@@ -200,7 +200,7 @@ namespace DivinityModManager.Views
 			//Trace.WriteLine($"[OnGotFocus] {sender} {e.Source}");
 		}
 
-		private void OpenPreferences(bool switchToKeybindings = false)
+		public void OpenPreferences(bool switchToKeybindings = false, bool forceOpen = false)
 		{
 			if (!SettingsWindow.IsVisible)
 			{
@@ -213,7 +213,7 @@ namespace DivinityModManager.Views
 				SettingsWindow.Owner = this;
 				ViewModel.Settings.SettingsWindowIsOpen = true;
 			}
-			else
+			else if(!forceOpen)
 			{
 				SettingsWindow.Hide();
 				ViewModel.Settings.SettingsWindowIsOpen = false;

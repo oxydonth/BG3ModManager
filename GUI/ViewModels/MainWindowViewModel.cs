@@ -628,6 +628,18 @@ namespace DivinityModManager.ViewModels
 					}
 				}
 
+				if (Settings.SkipLauncher && launchParams.IndexOf("skip-launcher") < 0)
+				{
+					if (String.IsNullOrWhiteSpace(launchParams))
+					{
+						launchParams = "--skip-launcher";
+					}
+					else
+					{
+						launchParams = "--skip-launcher " + launchParams;
+					}
+				}
+
 				var exePath = Settings.GameExecutablePath;
 				var exeDir = Path.GetDirectoryName(exePath);
 
@@ -2026,6 +2038,12 @@ namespace DivinityModManager.ViewModels
 					}
 					BuildModOrderList(0, lastOrderName);
 					MainProgressValue += taskStepAmount;
+
+					if(!GameDirectoryFound)
+					{
+						ShowAlert("Game Data folder is not valid. Please set it in the preferences window and refresh.", AlertType.Danger);
+						View.OpenPreferences(false, true);
+					}
 					return Unit.Default;
 				}, RxApp.MainThreadScheduler);
 
