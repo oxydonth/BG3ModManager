@@ -1,11 +1,9 @@
 ## Custom
-_Backup/*
-LSLib/*
-_Releases/
-External/
-
 _Assets/
-!/DivinityModManagerGUI_WPF/Resources/
+PublishRelease.py
+
+# External Libraries, such as lslib
+External/
 
 ## Visual Studio Code specific files and folder
 .vscode/*
@@ -131,9 +129,6 @@ _ReSharper*/
 *.DotSettings.user
 
 # JustCode is a .NET coding add-in
-# Tests
-DivinityModManagerGUI_Avalonia/*
-
 .JustCode
 
 # TeamCity is a build add-in
@@ -344,9 +339,3 @@ ASALocalRun/
 .mfractor/
 *.zip
 *.psd
-.vscode/settings.json
-GUI/DivinityModManager.ico
-PublishRelease.py
-
-# LSlib DLLs
-/External/lslib
