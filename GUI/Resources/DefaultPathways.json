@@ -14,5 +14,6 @@
 		"ExePath": "bin\\bg3.exe"
 	},
 	"DocumentsGameFolder": "Larian Studios\\Baldur's Gate 3",
+	"AppDataGameFolder": "%LOCALAPPDATA%\\Larian Studios\\Baldur's Gate 3",
 	"GameDataFolder": "Data"
 }

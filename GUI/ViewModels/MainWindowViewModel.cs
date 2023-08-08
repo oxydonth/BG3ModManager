@@ -1108,41 +1108,38 @@ namespace DivinityModManager.ViewModels
 				}
 
 
-				if (!Directory.Exists(Settings.GameDataPath))
+				if (!Directory.Exists(Settings.GameDataPath) || !File.Exists(Settings.GameExecutablePath))
 				{
 					DivinityApp.Log("Failed to find game data path. Asking user for help.");
 
 					var dialog = new Ookii.Dialogs.Wpf.VistaFolderBrowserDialog()
 					{
 						Multiselect = false,
-						Description = "Set the path to the Baldur's Gate 3 Data folder",
+						Description = "Set the path to the Baldur's Gate 3 root installation folder",
 						UseDescriptionForTitle = true,
 						SelectedPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)
 					};
 					if (dialog.ShowDialog(View.Main) == true)
 					{
-						Settings.GameDataPath = dialog.SelectedPath;
-						PathwayData.InstallPath = Directory.GetParent(Settings.GameDataPath)?.FullName;
-					}
-				}
-
-				if (!File.Exists(Settings.GameExecutablePath))
-				{
-					DivinityApp.Log("Failed to find game exe. Asking user for help.");
-
-					var dialog = new Ookii.Dialogs.Wpf.VistaOpenFileDialog()
-					{
-						Multiselect = false,
-						CheckFileExists = true,
-						CheckPathExists = true,
-						Title = "Set the path to bg3.exe",
-						FileName = "bg3.exe",
-						InitialDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)
-					};
-
-					if (dialog.ShowDialog(View.Main) == true)
-					{
-						Settings.GameExecutablePath = dialog.FileName;
+						var dataDirectory = Path.Combine(dialog.SelectedPath, AppSettings.DefaultPathways.GameDataFolder);
+						var exePath = Path.Combine(dialog.SelectedPath, AppSettings.DefaultPathways.Steam.ExePath);
+						if (!File.Exists(exePath))
+						{
+							exePath = Path.Combine(dialog.SelectedPath, AppSettings.DefaultPathways.GOG.ExePath);
+						}
+						if (Directory.Exists(dataDirectory))
+						{
+							Settings.GameDataPath = dataDirectory;
+						}
+						else
+						{
+							ShowAlert("Failed to find Data folder with given installation directory.", AlertType.Danger);
+						}
+						if(File.Exists(exePath))
+						{
+							Settings.GameExecutablePath = exePath;
+						}
+						PathwayData.InstallPath = dialog.SelectedPath;
 					}
 				}
 
