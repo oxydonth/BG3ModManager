@@ -1522,6 +1522,10 @@ namespace DivinityModManager.Util
 				{
 					DivinityApp.Log($"Failed to write file '{outputFilePath}': {ex}");
 				}
+				catch (Exception ex)
+				{
+					DivinityApp.Log($"Error exporting file '{outputFilePath}': {ex}");
+				}
 			}
 			return false;
 		}

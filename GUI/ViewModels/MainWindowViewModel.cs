@@ -568,7 +568,7 @@ namespace DivinityModManager.ViewModels
 			canOpenGameExe = this.WhenAnyValue(x => x.Settings.GameExecutablePath, p => !String.IsNullOrEmpty(p) && File.Exists(p)).StartWith(false);
 			canOpenLogDirectory = this.WhenAnyValue(x => x.Settings.ExtenderLogDirectory, (f) => Directory.Exists(f)).StartWith(false);
 
-			Keys.DownloadScriptExtender.AddAction(() => InstallScriptExtender_Start());
+			//Keys.DownloadScriptExtender.AddAction(() => InstallScriptExtender_Start());
 
 			var canOpenModsFolder = this.WhenAnyValue(x => x.PathwayData.DocumentsModsPath, (p) => !String.IsNullOrEmpty(p) && Directory.Exists(p));
 			Keys.OpenModsFolder.AddAction(() =>
@@ -2494,7 +2494,7 @@ namespace DivinityModManager.ViewModels
 					{
 						await Observable.Start((Func<Unit>)(() =>
 						{
-							string msg = $"Problem exporting load order to '{outputPath}'";
+							string msg = $"Problem exporting load order to '{outputPath}'. Is the file locked?";
 							ShowAlert(msg, AlertType.Danger);
 							this.View.MainWindowMessageBox_OK.WindowBackground = new SolidColorBrush(Color.FromRgb(219, 40, 40));
 							this.View.MainWindowMessageBox_OK.Closed += this.MainWindowMessageBox_Closed_ResetColor;
