@@ -271,18 +271,20 @@
 								CommandParameter="{x:Null}"
 								Header="Game Launch Params"
 								ToolTip="Parameters to pass to the game executable when launching the game through the mod manager">
+								<MenuItem Header="-continueGame" ToolTip="Automatically load the last save when loading into the main menu" />
 								<MenuItem Header="-storylog 1" ToolTip="Enables the story log" />
 								<MenuItem Header="--logPath &quot;&quot;" ToolTip="A directory to write story logs to" />
-								<MenuItem Header="-asserts 1" ToolTip="Purpose unknown." />
-								<MenuItem Header="-stats 1" ToolTip="Purpose unknown." />
-								<MenuItem Header="-dynamicStory 1" ToolTip="Purpose unknown." />
-								<MenuItem Header="-externalcrashhandler" ToolTip="Purpose unknown." />
-								<MenuItem Header="-nametag &quot;&quot;" ToolTip="Purpose unknown." />
-								<MenuItem Header="--cpuLimit &quot;&quot;" ToolTip="Purpose unknown." />
-								<MenuItem Header="-module &quot;&quot;" ToolTip="Purpose unknown." />
-								<MenuItem Header="+connect_lobby &quot;&quot;" ToolTip="Purpose unknown." />
-								<MenuItem Header="-locaupdater 1" ToolTip="Purpose unknown." />
-								<MenuItem Header="-mediaPath &quot;&quot;" ToolTip="Purpose unknown." />
+								<MenuItem Header="--cpuLimit x" ToolTip="Limit the cpu to x amount of threads (unknown if this works)" />
+								<MenuItem Header="-asserts 1" Visibility="{Binding DebugModeEnabled, Converter={StaticResource BoolToVisibilityConverter}}" />
+								<MenuItem Header="-stats 1" Visibility="{Binding DebugModeEnabled, Converter={StaticResource BoolToVisibilityConverter}}" />
+								<MenuItem Header="-dynamicStory 1" Visibility="{Binding DebugModeEnabled, Converter={StaticResource BoolToVisibilityConverter}}" />
+								<MenuItem Header="-externalcrashhandler" Visibility="{Binding DebugModeEnabled, Converter={StaticResource BoolToVisibilityConverter}}" />
+								<MenuItem Header="-nametag &quot;&quot;" Visibility="{Binding DebugModeEnabled, Converter={StaticResource BoolToVisibilityConverter}}" />
+								<MenuItem Header="--cpuLimit &quot;&quot;" Visibility="{Binding DebugModeEnabled, Converter={StaticResource BoolToVisibilityConverter}}" />
+								<MenuItem Header="-module &quot;&quot;" Visibility="{Binding DebugModeEnabled, Converter={StaticResource BoolToVisibilityConverter}}" />
+								<MenuItem Header="+connect_lobby &quot;&quot;" Visibility="{Binding DebugModeEnabled, Converter={StaticResource BoolToVisibilityConverter}}" />
+								<MenuItem Header="-locaupdater 1" Visibility="{Binding DebugModeEnabled, Converter={StaticResource BoolToVisibilityConverter}}" />
+								<MenuItem Header="-mediaPath &quot;&quot;" Visibility="{Binding DebugModeEnabled, Converter={StaticResource BoolToVisibilityConverter}}" />
 								<MenuItem
 									Command="{Binding ClearLaunchParamsCommand}"
 									CommandParameter="{x:Null}"
