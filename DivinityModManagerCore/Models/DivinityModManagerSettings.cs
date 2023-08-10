@@ -235,7 +235,7 @@ namespace DivinityModManager.Models
 			CheckForUpdates = true;
 			LastUpdateCheck = -1;
 			SelectedTabIndex = 0;
-			SaveWindowLocation = true;
+			SaveWindowLocation = false;
 			TelemetryDisabled = false;
 			LaunchDX11 = false;
 			SkipLauncher = true;
