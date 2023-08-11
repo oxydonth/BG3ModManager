@@ -2019,28 +2019,37 @@ namespace DivinityModManager.ViewModels
 				{
 					LoadAppConfig();
 					SetLoadedMods(loadedMods);
-					SetLoadedGMCampaigns(loadedGMCampaigns);
+					//SetLoadedGMCampaigns(loadedGMCampaigns);
 
 					Profiles.AddRange(loadedProfiles);
 
 					SavedModOrderList = savedModOrderList;
 
-					if (!String.IsNullOrWhiteSpace(selectedProfileUUID))
+					var index = Profiles.IndexOf(Profiles.FirstOrDefault(p => p.ProfileName == "Public"));
+					if (index > -1)
 					{
-						var index = Profiles.IndexOf(Profiles.FirstOrDefault(p => p.UUID == selectedProfileUUID));
-						if (index > -1)
+						SelectedProfileIndex = index;
+					}
+					else
+					{
+						if (!String.IsNullOrWhiteSpace(selectedProfileUUID))
 						{
-							SelectedProfileIndex = index;
+
+							index = Profiles.IndexOf(Profiles.FirstOrDefault(p => p.UUID == selectedProfileUUID));
+							if (index > -1)
+							{
+								SelectedProfileIndex = index;
+							}
+							else
+							{
+								SelectedProfileIndex = 0;
+								DivinityApp.Log($"Profile '{selectedProfileUUID}' not found {Profiles.Count}/{loadedProfiles.Count}.");
+							}
 						}
 						else
 						{
 							SelectedProfileIndex = 0;
-							DivinityApp.Log($"Profile '{selectedProfileUUID}' not found {Profiles.Count}/{loadedProfiles.Count}.");
 						}
-					}
-					else
-					{
-						SelectedProfileIndex = 0;
 					}
 
 					MainProgressWorkText = "Building mod order list...";
