@@ -4633,6 +4633,7 @@ namespace DivinityModManager.ViewModels
 			var canCheckForUpdates = this.WhenAnyValue(x => x.MainProgressIsActive, b => b == false);
 			void checkForUpdatesAction()
 			{
+				ShowAlert("Checking for updates...", AlertType.Info, 90);
 				View.UserInvokedUpdate = true;
 				CheckForUpdates(true);
 			}

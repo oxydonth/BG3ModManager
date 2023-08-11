@@ -109,7 +109,25 @@ namespace DivinityModManager.Views
 
 			CheckForUpdatesCommand = ReactiveCommand.Create<UpdateInfoEventArgs, Unit>(e =>
 			{
-				DivinityApp.Log("CheckForUpdatesCommand");
+				if (MainWindow.Self.UserInvokedUpdate)
+				{
+					if (e.Error == null)
+					{
+						if (e.IsUpdateAvailable)
+						{
+							MainWindow.Self.AlertBar.SetSuccessAlert("Update found!", 30);
+						}
+						else
+						{
+							MainWindow.Self.AlertBar.SetInformationAlert("Already up-to-date.", 30);
+						}
+					}
+					else
+					{
+						MainWindow.Self.AlertBar.SetDangerAlert("Error occurred when checking for updates.", 60);
+					}
+				}
+
 				if (e.Error == null)
 				{
 					CheckArgs(e);
