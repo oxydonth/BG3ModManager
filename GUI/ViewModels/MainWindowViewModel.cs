@@ -1169,17 +1169,12 @@ namespace DivinityModManager.ViewModels
 		private void SetLoadedMods(IEnumerable<DivinityModData> loadedMods)
 		{
 			mods.Clear();
-			foreach (var m in DivinityApp.IgnoredMods)
-			{
-				mods.AddOrUpdate(m);
-				DivinityApp.Log($"Added ignored mod: Name({m.Name}) UUID({m.UUID}) Type({m.ModType}) Version({m.Version.VersionInt})");
-			}
 			foreach (var m in loadedMods)
 			{
 				if (m.IsLarianMod)
 				{
 					var existingIgnoredMod = DivinityApp.IgnoredMods.FirstOrDefault(x => x.UUID == m.UUID);
-					if (existingIgnoredMod != null)
+					if (existingIgnoredMod != null && existingIgnoredMod != m)
 					{
 						DivinityApp.IgnoredMods.Remove(existingIgnoredMod);
 					}
@@ -1276,7 +1271,6 @@ namespace DivinityModManager.ViewModels
 
 			if (GameDirectoryFound)
 			{
-				GameDirectoryFound = true;
 				string modsDirectory = Path.Combine(Settings.GameDataPath, "Mods");
 				if (Directory.Exists(modsDirectory))
 				{
@@ -1293,6 +1287,10 @@ namespace DivinityModManager.ViewModels
 				baseMods = await RunTask(DivinityModDataLoader.LoadBuiltinModsAsync(Settings.GameDataPath, cancelTokenSource.Token), null);
 				cancelTokenSource = GetCancellationToken(int.MaxValue);
 				await IncreaseMainProgressValueAsync(taskStepAmount);
+			}
+			else
+			{
+				baseMods = DivinityApp.IgnoredMods.ToList();
 			}
 
 			if (baseMods != null) MergeModLists(finalMods, baseMods);
@@ -1958,7 +1956,7 @@ namespace DivinityModManager.ViewModels
 		{
 			DivinityApp.Log($"Refreshing data asynchronously...");
 
-			double taskStepAmount = 1.0 / 11;
+			double taskStepAmount = 1.0 / 10;
 
 			List<DivinityLoadOrderEntry> lastActiveOrder = null;
 			string lastOrderName = "";
@@ -1998,9 +1996,9 @@ namespace DivinityModManager.ViewModels
 					await IncreaseMainProgressValueAsync(taskStepAmount);
 				}
 
-				await SetMainProgressTextAsync("Loading GM Campaigns...");
-				var loadedGMCampaigns = await LoadGameMasterCampaignsAsync(taskStepAmount);
-				await IncreaseMainProgressValueAsync(taskStepAmount);
+				//await SetMainProgressTextAsync("Loading GM Campaigns...");
+				//var loadedGMCampaigns = await LoadGameMasterCampaignsAsync(taskStepAmount);
+				//await IncreaseMainProgressValueAsync(taskStepAmount);
 
 				await SetMainProgressTextAsync("Loading external load orders...");
 				var savedModOrderList = await RunTask(LoadExternalLoadOrdersAsync(), new List<DivinityLoadOrder>());
