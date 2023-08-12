@@ -2861,14 +2861,7 @@ namespace DivinityModManager.ViewModels
 					var extension = Path.GetExtension(archivePath);
 					if (extension.Equals(".7z", StringComparison.OrdinalIgnoreCase) || extension.Equals(".7zip", StringComparison.OrdinalIgnoreCase))
 					{
-						if (SevenZipArchive.IsSevenZipFile(fileStream))
-						{
-							success = await ImportSevenZipArchiveAsync(outputDirectory, fileStream, jsonFiles, t);
-						}
-						else
-						{
-							DivinityApp.Log($"File ({archivePath}) is not a 7z archive.");
-						}
+						success = await ImportSevenZipArchiveAsync(outputDirectory, fileStream, jsonFiles, t);
 					}
 					else
 					{
@@ -2881,10 +2874,10 @@ namespace DivinityModManager.ViewModels
 			catch (Exception ex)
 			{
 				DivinityApp.Log($"Error extracting package: {ex}");
-				RxApp.MainThreadScheduler.Schedule((Action<Action>)(_ =>
+				RxApp.MainThreadScheduler.Schedule(_ =>
 				{
 					this.View.AlertBar.SetDangerAlert($"Error extracting archive (check the log): {ex.Message}", 0);
-				}));
+				});
 			}
 			finally
 			{
