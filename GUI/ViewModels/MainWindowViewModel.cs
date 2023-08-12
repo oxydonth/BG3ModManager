@@ -2661,6 +2661,12 @@ namespace DivinityModManager.ViewModels
 
 		private void AddImportedMod(DivinityModData mod)
 		{
+			if(mod.IsForceLoaded && !mod.IsForceLoadedMergedMod)
+			{
+				mods.AddOrUpdate(mod);
+				DivinityApp.Log($"Imported Override Mod: {mod}");
+				return;
+			}
 			var existingMod = mods.Items.FirstOrDefault(x => x.UUID == mod.UUID);
 			if (existingMod != null)
 			{
