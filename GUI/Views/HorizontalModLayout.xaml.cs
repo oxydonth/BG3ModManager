@@ -150,9 +150,13 @@ namespace DivinityModManager.Views
 					{
 						listView = ActiveModsListView;
 					}
-					else
+					else if(dataList == ViewModel.InactiveMods)
 					{
 						listView = InactiveModsListView;
+					}
+					else if (dataList == ViewModel.ForceLoadedMods)
+					{
+						listView = ForceLoadedModsListView;
 					}
 				}
 
@@ -228,6 +232,7 @@ namespace DivinityModManager.Views
 
 		private IDisposable updatingActiveViewSelection;
 		private IDisposable updatingInactiveViewSelection;
+		private IDisposable updatingForcedViewSelection;
 
 		private void ActiveModListView_ItemContainerStatusChanged(EventArgs e)
 		{
@@ -256,6 +261,23 @@ namespace DivinityModManager.Views
 						UpdateViewSelection(ViewModel.InactiveMods, InactiveModsListView);
 						updatingInactiveViewSelection.Dispose();
 						updatingInactiveViewSelection = null;
+					});
+				}
+
+			}
+		}
+
+		private void ForceLoadedModsListView_ItemContainerStatusChanged(EventArgs e)
+		{
+			if (ForceLoadedModsListView.ItemContainerGenerator.Status == System.Windows.Controls.Primitives.GeneratorStatus.ContainersGenerated)
+			{
+				if (updatingForcedViewSelection == null)
+				{
+					updatingForcedViewSelection = RxApp.MainThreadScheduler.Schedule(TimeSpan.FromMilliseconds(25), () =>
+					{
+						UpdateViewSelection(ViewModel.ForceLoadedMods, ForceLoadedModsListView);
+						updatingForcedViewSelection.Dispose();
+						updatingForcedViewSelection = null;
 					});
 				}
 
@@ -458,6 +480,7 @@ namespace DivinityModManager.Views
 
 					d(this.ActiveModsListView.ItemContainerGenerator.Events().StatusChanged.ObserveOn(RxApp.MainThreadScheduler).Subscribe(ActiveModListView_ItemContainerStatusChanged));
 					d(this.InactiveModsListView.ItemContainerGenerator.Events().StatusChanged.ObserveOn(RxApp.MainThreadScheduler).Subscribe(InactiveModListView_ItemContainerStatusChanged));
+					d(this.ForceLoadedModsListView.ItemContainerGenerator.Events().StatusChanged.ObserveOn(RxApp.MainThreadScheduler).Subscribe(ForceLoadedModsListView_ItemContainerStatusChanged));
 
 					d(Observable.FromEventPattern<SelectionChangedEventArgs>(ActiveModsListView, "SelectionChanged")
 					.ObserveOn(RxApp.MainThreadScheduler)
@@ -471,6 +494,13 @@ namespace DivinityModManager.Views
 					.Subscribe((e) =>
 					{
 						UpdateIsSelected(e.EventArgs, ViewModel.InactiveMods);
+					}));
+
+					d(Observable.FromEventPattern<SelectionChangedEventArgs>(ForceLoadedModsListView, "SelectionChanged")
+					.ObserveOn(RxApp.MainThreadScheduler)
+					.Subscribe((e) =>
+					{
+						UpdateIsSelected(e.EventArgs, ViewModel.ForceLoadedMods);
 					}));
 
 					d(this.ViewModel.WhenAnyValue(x => x.OrderJustLoaded).ObserveOn(RxApp.MainThreadScheduler).Subscribe((b) =>

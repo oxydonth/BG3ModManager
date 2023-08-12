@@ -325,13 +325,13 @@ namespace DivinityModManager.Models
 			{
 				if (b.Item1)
 				{
-					this.SelectedColor = "#32BF0808";
+					this.SelectedColor = "#64BF0808";
 					this.ListColor = "#32FA0202";
 					HasColorOverride = true;
 				}
 				else if (b.Item2)
 				{
-					this.SelectedColor = "#32F38F00";
+					this.SelectedColor = "#64F38F00";
 					this.ListColor = "#32C17200";
 					HasColorOverride = true;
 				}

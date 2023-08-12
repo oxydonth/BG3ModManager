@@ -268,6 +268,10 @@
 			</Setter.Value>
 		</Setter>
 		<Setter Property="HorizontalContentAlignment" Value="Stretch" />
+		<!--
+			IsSelected is set via ActiveModListView_ItemContainerStatusChanged.UpdateViewSelection instead,
+			so focus and selection can be more finely controlled.
+		-->
 		<!--<Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />-->
 		<Setter Property="Visibility" Value="{Binding Visibility, FallbackValue='Visible'}" />
 		<Setter Property="FocusVisualStyle">
