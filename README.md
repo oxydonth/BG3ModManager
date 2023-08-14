@@ -15,6 +15,11 @@ A mod manager for [Baldur's Gate 3](https://store.steampowered.com/app/1086940/B
 6. Organize your active mods for a given profile, then click the first export button (Export Load Order to Game), or click File -> Export Order to Game, to export your active load order to the game. This updates the `modsettings.lsx` file that the game reads.
  [![Exporting Load Orders](https://i.imgur.com/m9IBQrj.png)](https://i.imgur.com/m9IBQrjQ.png)
 
+# Important Tips  
+* Make sure you don't have any subfolders in your mods folder (`%LOCALAPPDATA%\Larian Studios\Baldur's Gate 3\Mods`). This causes the game to reset your `modsettings.lsx`!
+* Ensure the Game Data Path is set in Settings -> Preferences, and that you have a campaign selected (i.e. "Main"). The game must have a campaign exported to the modsettings.lsx, or it will fail to load the main menu scene.
+* If your modsettings.lsx still resets when loading into the game, this means that one or more of your mods are encountering an error, and the game is clear the load order.
+
 # Current Features:
 
 * Reorganize mod load orders with a quick drag-and-drop interface. Allows reordering multiple mods at once.
