@@ -17,8 +17,9 @@ A mod manager for [Baldur's Gate 3](https://store.steampowered.com/app/1086940/B
 
 # Important Tips  
 * Make sure you don't have any subfolders in your mods folder (`%LOCALAPPDATA%\Larian Studios\Baldur's Gate 3\Mods`). This causes the game to reset your `modsettings.lsx`!
-* Ensure the Game Data Path is set in Settings -> Preferences, and that you have a campaign selected (i.e. "Main"). The game must have a campaign exported to the modsettings.lsx, or it will fail to load the main menu scene.
-* If your modsettings.lsx still resets when loading into the game, this means that one or more of your mods are encountering an error, and the game is clear the load order.
+* Ensure the `Game Data Path` is set in Settings -> Preferences to the game's data folder, where all the various .pak files are (Gustav.pak etc).
+* Make sure you have a campaign selected (i.e. "Main"). The game must have a campaign exported to the `modsettings.lsx`, or it will fail to load the main menu scene / have other issues.
+* If your `modsettings.lsx` still resets when loading into the game, this means that one or more of your mods are encountering an error, and the game is clearing the load order.
 
 # Current Features:
 
