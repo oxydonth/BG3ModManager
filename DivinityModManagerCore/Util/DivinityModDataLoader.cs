@@ -447,6 +447,7 @@ namespace DivinityModManager.Util
 
 				var metaFiles = new List<AbstractFileInfo>();
 				var hasBuiltinDirectory = false;
+				var isOverridingBuiltinDirectory = false;
 				var hasModFolderData = false;
 				var builtinModOverrides = new Dictionary<string, DivinityModData>();
 
@@ -471,13 +472,15 @@ namespace DivinityModManager.Util
 							if (modFolderMatch.Success)
 							{
 								var modFolder = Path.GetFileName(modFolderMatch.Groups[2].Value.TrimEnd(Path.DirectorySeparatorChar));
-								if (!IgnoreBuiltinPath.Any(x => f.Name.Contains(x))
-									&& !builtinModOverrides.ContainsKey(modFolder)
-									&& builtinMods.TryGetValue(modFolder, out var builtinMod))
+								if (!builtinModOverrides.ContainsKey(modFolder) && builtinMods.TryGetValue(modFolder, out var builtinMod))
 								{
 									hasBuiltinDirectory = true;
 									builtinModOverrides[builtinMod.Folder] = builtinMod;
-									DivinityApp.Log($"Found a mod overriding a builtin directory. Pak({pakName}) Folder({modFolder}) File({f.Name}");
+									if(!IgnoreBuiltinPath.Any(x => f.Name.Contains(x)))
+									{
+										isOverridingBuiltinDirectory = true;
+									}
+									DivinityApp.Log($"Found a mod with a builtin directory. Pak({pakName}) Folder({modFolder}) File({f.Name}");
 								}
 								else
 								{
@@ -488,22 +491,32 @@ namespace DivinityModManager.Util
 					}
 				}
 
+				var metaCount = metaFiles.Count;
 				AbstractFileInfo metaFile = null;
-				for (int i = 0; i < metaFiles.Count; i++)
+
+				if (metaCount == 0)
 				{
-					var f = metaFiles[i];
-					if (metaFile == null)
+					// Assume it's an override mod since it doesn't have a meta file.
+					isOverridingBuiltinDirectory = hasBuiltinDirectory;
+				}
+				else
+				{
+					for (int i = 0; i < metaCount; i++)
 					{
-						metaFile = f;
-					}
-					else
-					{
-						var parentDir = Directory.GetParent(f.Name);
-						// A pak may have multiple meta.lsx files for overriding NumPlayers or something. Match against the pak name in that case.
-						if (pakName.Contains(parentDir.Name))
+						var f = metaFiles[i];
+						if (metaFile == null)
 						{
 							metaFile = f;
-							break;
+						}
+						else
+						{
+							var parentDir = Directory.GetParent(f.Name);
+							// A pak may have multiple meta.lsx files for overriding NumPlayers or something. Match against the pak name in that case.
+							if (pakName.Contains(parentDir.Name))
+							{
+								metaFile = f;
+								break;
+							}
 						}
 					}
 				}
@@ -519,14 +532,14 @@ namespace DivinityModManager.Util
 							modData = ParseMetaFile(text);
 						}
 					}
-					if(modData != null && hasBuiltinDirectory)
+					if(modData != null && isOverridingBuiltinDirectory)
 					{
 						modData.IsForceLoadedMergedMod = hasModFolderData;
 					}
 				}
 				else
 				{
-					if(hasBuiltinDirectory)
+					if(isOverridingBuiltinDirectory)
 					{
 						//var pakData = new DivinityPakFile()
 						//{
@@ -549,7 +562,7 @@ namespace DivinityModManager.Util
 
 				if (modData != null)
 				{
-					if (hasBuiltinDirectory)
+					if (isOverridingBuiltinDirectory)
 					{
 						modData.BuiltinOverrideModsText = String.Join(Environment.NewLine, builtinModOverrides.Values.OrderBy(x => x.Name).Select(x => $"{x.Folder} ({x.Name})"));
 						modData.IsForceLoaded = true;
