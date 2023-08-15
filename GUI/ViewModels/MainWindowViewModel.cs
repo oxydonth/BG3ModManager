@@ -1257,20 +1257,16 @@ namespace DivinityModManager.ViewModels
 			var cancelTokenSource = GetCancellationToken(int.MaxValue);
 			CanCancelProgress = false;
 
-			if (Directory.Exists(PathwayData.DocumentsModsPath))
-			{
-				DivinityApp.Log($"Loading mods from '{PathwayData.DocumentsModsPath}'.");
-				await SetMainProgressTextAsync("Loading mods from documents folder...");
-				cancelTokenSource.CancelAfter(TimeSpan.FromMinutes(10));
-				modPakData = await RunTask(DivinityModDataLoader.LoadModPackageDataAsync(PathwayData.DocumentsModsPath, cancelTokenSource.Token), null);
-				cancelTokenSource = GetCancellationToken(int.MaxValue);
-				await IncreaseMainProgressValueAsync(taskStepAmount);
-			}
-
 			GameDirectoryFound = Directory.Exists(Settings.GameDataPath);
 
 			if (GameDirectoryFound)
 			{
+				await SetMainProgressTextAsync("Loading base game mods from data folder...");
+				cancelTokenSource = GetCancellationToken(30000);
+				baseMods = await RunTask(DivinityModDataLoader.LoadBuiltinModsAsync(Settings.GameDataPath, cancelTokenSource.Token), null);
+				cancelTokenSource = GetCancellationToken(int.MaxValue);
+				await IncreaseMainProgressValueAsync(taskStepAmount);
+
 				string modsDirectory = Path.Combine(Settings.GameDataPath, "Mods");
 				if (Directory.Exists(modsDirectory))
 				{
@@ -1281,16 +1277,20 @@ namespace DivinityModManager.ViewModels
 					cancelTokenSource = GetCancellationToken(int.MaxValue);
 					await IncreaseMainProgressValueAsync(taskStepAmount);
 				}
-
-				await SetMainProgressTextAsync("Loading base game mods from data folder...");
-				cancelTokenSource = GetCancellationToken(30000);
-				baseMods = await RunTask(DivinityModDataLoader.LoadBuiltinModsAsync(Settings.GameDataPath, cancelTokenSource.Token), null);
-				cancelTokenSource = GetCancellationToken(int.MaxValue);
-				await IncreaseMainProgressValueAsync(taskStepAmount);
 			}
 			else
 			{
 				baseMods = DivinityApp.IgnoredMods.ToList();
+			}
+
+			if (Directory.Exists(PathwayData.DocumentsModsPath))
+			{
+				DivinityApp.Log($"Loading mods from '{PathwayData.DocumentsModsPath}'.");
+				await SetMainProgressTextAsync("Loading mods from documents folder...");
+				cancelTokenSource.CancelAfter(TimeSpan.FromMinutes(10));
+				modPakData = await RunTask(DivinityModDataLoader.LoadModPackageDataAsync(PathwayData.DocumentsModsPath, cancelTokenSource.Token), null);
+				cancelTokenSource = GetCancellationToken(int.MaxValue);
+				await IncreaseMainProgressValueAsync(taskStepAmount);
 			}
 
 			if (baseMods != null) MergeModLists(finalMods, baseMods);
@@ -4140,6 +4140,16 @@ namespace DivinityModManager.ViewModels
 				ignoredModsData = DivinityJsonUtils.SafeDeserializeFromPath<IgnoredModsData>(DivinityApp.PATH_IGNORED_MODS);
 				if (ignoredModsData != null)
 				{
+					if(ignoredModsData.IgnoreBuiltinPath != null)
+					{
+						foreach(var path in ignoredModsData.IgnoreBuiltinPath)
+						{
+							if(!String.IsNullOrEmpty(path))
+							{
+								DivinityModDataLoader.IgnoreBuiltinPath.Add(path.Replace(Path.DirectorySeparator, "/"));
+							}
+						}
+					}
 					DivinityApp.IgnoredMods.Clear();
 					foreach (var dict in ignoredModsData.Mods)
 					{
