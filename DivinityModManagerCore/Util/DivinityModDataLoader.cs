@@ -36,6 +36,7 @@ namespace DivinityModManager.Util
 		public static ulong HEADER_BUILD = 5;
 
 		private static readonly string[] VersionAttributes = new string[] { "Version64", "Version" };
+		public static readonly HashSet<string> IgnoreBuiltinPath = new HashSet<string>();
 
 		public static bool IgnoreMod(string modUUID)
 		{
@@ -470,7 +471,10 @@ namespace DivinityModManager.Util
 							if (modFolderMatch.Success)
 							{
 								var modFolder = Path.GetFileName(modFolderMatch.Groups[2].Value.TrimEnd(Path.DirectorySeparatorChar));
-								if (!builtinModOverrides.ContainsKey(modFolder) && builtinMods.TryGetValue(modFolder, out var builtinMod)){
+								if (!IgnoreBuiltinPath.Any(x => f.Name.Contains(x))
+									&& !builtinModOverrides.ContainsKey(modFolder)
+									&& builtinMods.TryGetValue(modFolder, out var builtinMod))
+								{
 									hasBuiltinDirectory = true;
 									builtinModOverrides[builtinMod.Folder] = builtinMod;
 									DivinityApp.Log($"Found a mod overriding a builtin directory. Pak({pakName}) Folder({modFolder}) File({f.Name}");

@@ -9,6 +9,9 @@
 	"e5c9077e-1fca-4f24-b55d-464f512c98a8",
 	"9dff4c3b-fda7-43de-a763-ce1383039999"
   ],
+  "IgnoreBuiltinPath": [
+	"Game/GUI/Assets/Tooltips"
+  ],
   "Mods": [
 	{
 	  "Name": "Gustav",
