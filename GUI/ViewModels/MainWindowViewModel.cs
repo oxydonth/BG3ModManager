@@ -1058,7 +1058,7 @@ namespace DivinityModManager.ViewModels
 					DivinityApp.Log($"Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments, Environment.SpecialFolderOption.DoNotVerify) return a non-existent path?\nResult({Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments, Environment.SpecialFolderOption.DoNotVerify)})");
 				}
 
-				if (String.IsNullOrEmpty(currentGameDataPath) || !Directory.Exists(currentGameDataPath))
+				if (String.IsNullOrWhiteSpace(currentGameDataPath) || !Directory.Exists(currentGameDataPath))
 				{
 					string installPath = DivinityRegistryHelper.GetGameInstallPath(AppSettings.DefaultPathways.Steam.RootFolderName,
 						AppSettings.DefaultPathways.GOG.Registry_32, AppSettings.DefaultPathways.GOG.Registry_64);
@@ -1257,11 +1257,12 @@ namespace DivinityModManager.ViewModels
 			var cancelTokenSource = GetCancellationToken(int.MaxValue);
 			CanCancelProgress = false;
 
-			GameDirectoryFound = Directory.Exists(Settings.GameDataPath);
+			GameDirectoryFound = !String.IsNullOrWhiteSpace(Settings.GameDataPath) && Directory.Exists(Settings.GameDataPath);
 
 			if (GameDirectoryFound)
 			{
 				await SetMainProgressTextAsync("Loading base game mods from data folder...");
+				DivinityApp.Log($"GameDataPath is '{Settings.GameDataPath}'.");
 				cancelTokenSource = GetCancellationToken(30000);
 				baseMods = await RunTask(DivinityModDataLoader.LoadBuiltinModsAsync(Settings.GameDataPath, cancelTokenSource.Token), null);
 				cancelTokenSource = GetCancellationToken(int.MaxValue);
@@ -1278,9 +1279,20 @@ namespace DivinityModManager.ViewModels
 					await IncreaseMainProgressValueAsync(taskStepAmount);
 				}
 			}
-			else
+
+			if(!GameDirectoryFound || baseMods.Count < DivinityApp.IgnoredMods.Count)
 			{
-				baseMods = DivinityApp.IgnoredMods.ToList();
+				if(baseMods.Count == 0)
+				{
+					baseMods.AddRange(DivinityApp.IgnoredMods);
+				}
+				else
+				{
+					foreach (var mod in DivinityApp.IgnoredMods)
+					{
+						if (!baseMods.Any(x => x.UUID == mod.UUID)) baseMods.Add(mod);
+					}
+				}
 			}
 
 			if (Directory.Exists(PathwayData.DocumentsModsPath))
