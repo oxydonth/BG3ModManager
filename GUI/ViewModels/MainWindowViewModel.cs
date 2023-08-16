@@ -1625,6 +1625,10 @@ Directory the zip will be extracted to:
 					await IncreaseMainProgressValueAsync(taskStepAmount);
 				}
 			}
+			if(baseMods == null)
+			{
+				baseMods = new List<DivinityModData>();
+			}
 
 			if(!GameDirectoryFound || baseMods.Count < DivinityApp.IgnoredMods.Count)
 			{
