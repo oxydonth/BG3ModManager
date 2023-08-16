@@ -8,11 +8,19 @@ body:
       value: |
         Thanks for taking the time to fill out this bug report!
   - type: input
+    id: os
+    attributes:
+      label: Operating System
+      description: The operating system you're using (Windows 10 / 11, Linux with Wine, Mac etc). Note that only Windows is officially supported.
+      placeholder: Windows 10
+    validations:
+      required: true
+  - type: input
     id: version
     attributes:
       label: BG3 Mod Manager Version
       description: The version of the mod manager when you encountered this issue (visible on the window title bar).
-      placeholder: 1.0.9.0
+      placeholder: 1.0.9.1
     validations:
       required: true
   - type: input
@@ -20,7 +28,7 @@ body:
     attributes:
       label: BG3 Game Version
       description: The version of Baldur's Gate 3 when you encountered this issue.
-      placeholder: Full Release Hotfix 2
+      placeholder: Full Release Hotfix 4
     validations:
       required: true
   - type: textarea
