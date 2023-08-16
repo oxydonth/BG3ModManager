@@ -166,6 +166,34 @@
 				</ScrollViewer>
 			</TabItem>
 			<TabItem
+				x:Name="ScriptExtenderTab"
+				FocusManager.FocusedElement="{Binding ElementName=ExtenderSettingsAutoGrid}"
+				Header="Script Extender">
+				<Grid>
+					<Grid.RowDefinitions>
+						<RowDefinition Height="*" />
+						<RowDefinition Height="auto" />
+					</Grid.RowDefinitions>
+					<ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+						<autogrid:AutoGrid
+							x:Name="ExtenderSettingsAutoGrid"
+							Margin="10,0"
+							ChildMargin="4"
+							ColumnCount="2"
+							Columns="*,*"
+							RowCount="1"
+							RowHeight="*"
+							Rows="auto">
+							<TextBlock Text="Export Default Values" ToolTip="Export all values, even if it matches a default extender value." />
+							<CheckBox
+								VerticalAlignment="Center"
+								IsChecked="{Binding ExportDefaultExtenderSettings, UpdateSourceTrigger=PropertyChanged}"
+								ToolTip="Default: False (Unchecked)" />
+						</autogrid:AutoGrid>
+					</ScrollViewer>
+				</Grid>
+			</TabItem>
+			<TabItem
 				x:Name="KeybindingsTabItem"
 				FocusManager.FocusedElement="{Binding ElementName=KeybindingsListView}"
 				Header="Keyboard Shortcuts">

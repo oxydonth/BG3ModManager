@@ -1064,7 +1064,11 @@ Directory the zip will be extracted to:
 				string outputFile = Path.Combine(Path.GetDirectoryName(Settings.GameExecutablePath), "ScriptExtenderSettings.json");
 				try
 				{
-					var jsonSettings = new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Ignore, Formatting = Formatting.Indented };
+					var jsonSettings = new JsonSerializerSettings { 
+						DefaultValueHandling = DefaultValueHandling.Ignore,
+						NullValueHandling = NullValueHandling.Ignore,
+						Formatting = Formatting.Indented };
+
 					if (Settings.ExportDefaultExtenderSettings)
 					{
 						jsonSettings.DefaultValueHandling = DefaultValueHandling.Include;

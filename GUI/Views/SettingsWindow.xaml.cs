@@ -40,6 +40,179 @@ namespace DivinityModManager.Views
 			InitializeComponent();
 		}
 
+		private int AddExportDefaultsEntry(int row, BoolToVisibilityConverter boolToVisibilityConverter)
+		{
+			var exportDefault = typeof(DivinityModManagerSettings).GetProperty(nameof(DivinityModManagerSettings.ExportDefaultExtenderSettings))
+			.GetCustomAttributes(typeof(SettingsEntryAttribute), true).Cast<SettingsEntryAttribute>().FirstOrDefault();
+			row++;
+			TextBlock tb = new TextBlock();
+			tb.Text = exportDefault.DisplayName;
+			tb.ToolTip = exportDefault.Tooltip;
+			ExtenderSettingsAutoGrid.Children.Add(tb);
+			Grid.SetRow(tb, row);
+
+			CheckBox cb = new CheckBox();
+			cb.ToolTip = exportDefault.Tooltip;
+			cb.VerticalAlignment = VerticalAlignment.Center;
+			//cb.HorizontalAlignment = HorizontalAlignment.Right;
+			cb.SetBinding(CheckBox.IsCheckedProperty, new Binding(nameof(DivinityModManagerSettings.ExportDefaultExtenderSettings))
+			{
+				Source = ViewModel,
+				Mode = BindingMode.TwoWay,
+				UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
+			});
+			ExtenderSettingsAutoGrid.Children.Add(cb);
+			Grid.SetRow(cb, row);
+			Grid.SetColumn(cb, 1);
+
+			if (exportDefault.IsDebug)
+			{
+				tb.SetBinding(TextBlock.VisibilityProperty, new Binding("DebugModeEnabled")
+				{
+					Source = ViewModel,
+					Converter = boolToVisibilityConverter,
+					FallbackValue = Visibility.Collapsed
+				});
+				cb.SetBinding(CheckBox.VisibilityProperty, new Binding("DebugModeEnabled")
+				{
+					Source = ViewModel,
+					Converter = boolToVisibilityConverter,
+					FallbackValue = Visibility.Collapsed
+				});
+			}
+
+			return row;
+		}
+
+		private void CreateExtenderSettings()
+		{
+			var props = from p in typeof(ScriptExtenderSettings).GetProperties()
+						let attr = p.GetCustomAttributes(typeof(SettingsEntryAttribute), true)
+						where attr.Length == 1
+						select new { Property = p, Attribute = attr.First() as SettingsEntryAttribute };
+
+			int count = props.Count() + 1;
+			int row = 0;
+
+			ExtenderSettingsAutoGrid.Children.Clear();
+
+			ExtenderSettingsAutoGrid.RowCount = count;
+			ExtenderSettingsAutoGrid.Rows = String.Join(",", Enumerable.Repeat("auto", count));
+
+			BoolToVisibilityConverter boolToVisibilityConverter = (BoolToVisibilityConverter)FindResource("BoolToVisibilityConverter");
+
+			//Add ExportDefaultExtenderSettings manually here, since it's not technically an extender setting
+			row = AddExportDefaultsEntry(row, boolToVisibilityConverter);
+
+			foreach (var prop in props)
+			{
+				TextBlock tb = new TextBlock();
+				tb.Text = prop.Attribute.DisplayName;
+				tb.ToolTip = prop.Attribute.Tooltip;
+				ExtenderSettingsAutoGrid.Children.Add(tb);
+				Grid.SetRow(tb, row);
+
+				if (prop.Attribute.IsDebug)
+				{
+					tb.SetBinding(TextBlock.VisibilityProperty, new Binding("DebugModeEnabled")
+					{
+						Source = ViewModel,
+						Converter = boolToVisibilityConverter,
+						FallbackValue = Visibility.Collapsed
+					});
+				}
+
+				var propType = Type.GetTypeCode(prop.Property.PropertyType);
+
+				if (prop.Attribute.DisplayName == "Osiris Debugger Flags")
+				{
+					propType = TypeCode.String;
+				}
+
+				switch (propType)
+				{
+					case TypeCode.Boolean:
+						CheckBox cb = new CheckBox();
+						cb.ToolTip = prop.Attribute.Tooltip;
+						cb.VerticalAlignment = VerticalAlignment.Center;
+						//cb.HorizontalAlignment = HorizontalAlignment.Right;
+						cb.SetBinding(CheckBox.IsCheckedProperty, new Binding(prop.Property.Name)
+						{
+							Source = ViewModel.ExtenderSettings,
+							Mode = BindingMode.TwoWay,
+							UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
+						});
+						if (prop.Attribute.IsDebug)
+						{
+							cb.SetBinding(CheckBox.VisibilityProperty, new Binding("DebugModeEnabled")
+							{
+								Source = ViewModel,
+								Converter = boolToVisibilityConverter,
+								FallbackValue = Visibility.Collapsed
+							});
+						}
+						ExtenderSettingsAutoGrid.Children.Add(cb);
+						Grid.SetRow(cb, row);
+						Grid.SetColumn(cb, 1);
+						break;
+
+					case TypeCode.String:
+						UnfocusableTextBox utb = new UnfocusableTextBox();
+						utb.ToolTip = prop.Attribute.Tooltip;
+						utb.VerticalAlignment = VerticalAlignment.Center;
+						//utb.HorizontalAlignment = HorizontalAlignment.Stretch;
+						utb.TextAlignment = TextAlignment.Left;
+						utb.SetBinding(UnfocusableTextBox.TextProperty, new Binding(prop.Property.Name)
+						{
+							Source = ViewModel.ExtenderSettings,
+							Mode = BindingMode.TwoWay,
+							UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
+						});
+						if (prop.Attribute.IsDebug)
+						{
+							utb.SetBinding(CheckBox.VisibilityProperty, new Binding("DebugModeEnabled")
+							{
+								Source = ViewModel,
+								Converter = boolToVisibilityConverter,
+								FallbackValue = Visibility.Collapsed
+							});
+						}
+						ExtenderSettingsAutoGrid.Children.Add(utb);
+						Grid.SetRow(utb, row);
+						Grid.SetColumn(utb, 1);
+						break;
+					case TypeCode.Int32:
+					case TypeCode.Int64:
+						IntegerUpDown ud = new IntegerUpDown();
+						ud.ToolTip = prop.Attribute.Tooltip;
+						ud.VerticalAlignment = VerticalAlignment.Center;
+						ud.HorizontalAlignment = HorizontalAlignment.Left;
+						ud.Padding = new Thickness(4, 2, 4, 2);
+						ud.AllowTextInput = true;
+						ud.SetBinding(IntegerUpDown.ValueProperty, new Binding(prop.Property.Name)
+						{
+							Source = ViewModel.ExtenderSettings,
+							Mode = BindingMode.TwoWay,
+							UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
+						});
+						if (prop.Attribute.IsDebug)
+						{
+							ud.SetBinding(VisibilityProperty, new Binding("DebugModeEnabled")
+							{
+								Source = ViewModel,
+								Converter = boolToVisibilityConverter,
+								FallbackValue = Visibility.Collapsed
+							});
+						}
+						ExtenderSettingsAutoGrid.Children.Add(ud);
+						Grid.SetRow(ud, row);
+						Grid.SetColumn(ud, 1);
+						break;
+				}
+				row++;
+			}
+		}
+
 		public void Init(MainWindowViewModel vm)
 		{
 			ViewModel = vm.Settings;
@@ -73,6 +246,8 @@ namespace DivinityModManager.Views
 				}
 			};
 			KeybindingsListView.KeyUp += KeybindingsListView_KeyUp;
+
+			CreateExtenderSettings();
 		}
 
 		private bool isSettingKeybinding = false;

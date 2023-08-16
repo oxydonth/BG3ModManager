@@ -43,7 +43,7 @@ namespace DivinityModManager.Models.Extender
         [Reactive]
         [DataMember]
         [DefaultValue(true)]
-        public bool EnableExtensions { get; set; } = true;
+        public bool EnableExtensions { get; set; }
 
         [SettingsEntry("Create Console", "Creates a console window that logs extender internals\nMainly useful for debugging")]
         [Reactive]
@@ -55,7 +55,7 @@ namespace DivinityModManager.Models.Extender
         [Reactive]
         [DataMember]
         [DefaultValue(true)]
-        public bool LogFailedCompile { get; set; } = true;
+        public bool LogFailedCompile { get; set; }
 
         [SettingsEntry("Enable Osiris Logging", "Enable logging of Osiris activity (rule evaluation, queries, etc.) to a log file")]
         [Reactive]
@@ -72,7 +72,8 @@ namespace DivinityModManager.Models.Extender
         [SettingsEntry("Log Directory", "Directory where the generated Osiris logs will be stored\nDefault is Documents\\OsirisLogs")]
         [Reactive]
         [DataMember]
-        public string LogDirectory { get; set; } = "";
+		[DefaultValue("")]
+		public string LogDirectory { get; set; }
 
         [SettingsEntry("Log Runtime", "Log extender console and script output to a log file")]
         [Reactive]
@@ -84,19 +85,19 @@ namespace DivinityModManager.Models.Extender
         [Reactive]
         [DataMember]
         [DefaultValue(true)]
-        public bool DisableModValidation { get; set; } = true;
+        public bool DisableModValidation { get; set; }
 
         [SettingsEntry("Enable Achievements", "Re-enable achievements for modded games")]
         [Reactive]
         [DataMember]
         [DefaultValue(true)]
-        public bool EnableAchievements { get; set; } = true;
+        public bool EnableAchievements { get; set; }
 
         [SettingsEntry("Send Crash Reports", "Upload minidumps to the crash report collection server after a game crash")]
         [Reactive]
         [DataMember]
         [DefaultValue(true)]
-        public bool SendCrashReports { get; set; } = true;
+        public bool SendCrashReports { get; set; }
 
         [SettingsEntry("Enable Osiris Debugger", "Enables the Osiris debugger interface (vscode extension)", true)]
         [Reactive]
@@ -108,7 +109,7 @@ namespace DivinityModManager.Models.Extender
         [Reactive]
         [DataMember]
         [DefaultValue(9999)]
-        public int DebuggerPort { get; set; } = 9999;
+        public int DebuggerPort { get; set; }
 
         [SettingsEntry("Dump Network Strings", "Dumps the NetworkFixedString table to LogDirectory\nMainly useful for debugging desync issues", true)]
         [Reactive]
@@ -138,7 +139,7 @@ namespace DivinityModManager.Models.Extender
         [Reactive]
         [DataMember]
         [DefaultValue("")]
-        public string LuaBuiltinResourceDirectory { get; set; } = "";
+        public string LuaBuiltinResourceDirectory { get; set; }
 
 		[SettingsEntry("Default to Client Side", "Defaults the extender console to the client-side\nThis is setting is intended for developers", true)]
 		[Reactive]
@@ -153,6 +154,17 @@ namespace DivinityModManager.Models.Extender
 		public bool ShowPerfWarnings { get; set; }
 
 		public static ScriptExtenderSettings DefaultSettings = new ScriptExtenderSettings();
+
+        public ScriptExtenderSettings()
+        {
+            DisableModValidation = true;
+            EnableAchievements = true;
+            SendCrashReports = true;
+            LogFailedCompile = true;
+            EnableExtensions = true;
+            DebuggerPort = 9999;
+            DebuggerFlags = 0;
+		}
 
         public void SetToDefault()
         {
