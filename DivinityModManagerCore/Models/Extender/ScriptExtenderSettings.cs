@@ -134,7 +134,7 @@ namespace DivinityModManager.Models.Extender
         [DefaultValue(false)]
         public bool EnableLuaDebugger { get; set; }
 
-        [SettingsEntry("Lua Builtin Directory", "An additional directory where the Script Extender will check for builtin scripts\nThis setting is meant for ositools developers, to make it easier to test builtin script changes", true)]
+        [SettingsEntry("Lua Builtin Directory", "An additional directory where the Script Extender will check for builtin scripts\nThis setting is meant for developers, to make it easier to test builtin script changes", true)]
         [Reactive]
         [DataMember]
         [DefaultValue("")]

@@ -42,9 +42,11 @@ namespace DivinityModManager
 
 		public const string EXTENDER_REPO_URL = "Norbyte/bg3se";
 		public const string EXTENDER_LATEST_URL = "https://github.com/Norbyte/bg3se/releases/latest";
-		public const string EXTENDER_APPDATA_DLL = "BG3ScriptExtender/OsiExtenderEoCApp";
-		public const string EXTENDER_MOD_CONFIG = "Config.json";
+		public const string EXTENDER_APPDATA_DIRECTORY = "BG3ScriptExtender";
+		public const string EXTENDER_APPDATA_DLL = "BG3ScriptExtender.dll";
+		public const string EXTENDER_MOD_CONFIG = "ScriptExtender/Config.json";
 		public const string EXTENDER_UPDATER_FILE = "DWrite.dll";
+		public const int EXTENDER_DEFAULT_VERSION = 1;
 
 		public const LSLib.LS.Enums.Game GAME = LSLib.LS.Enums.Game.BaldursGate3;
 		public const LSLib.LS.Story.Compiler.TargetGame GAME_COMPILER = LSLib.LS.Story.Compiler.TargetGame.BG3;
