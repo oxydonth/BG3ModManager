@@ -33,9 +33,10 @@ namespace DivinityModManager
 		public const string XML_MODULE_SHORT_DESC = @"<node id=""ModuleShortDesc""><attribute id=""Folder"" value=""{0}"" type=""LSString""/><attribute id=""MD5"" value=""{1}"" type=""LSString""/><attribute id=""Name"" value=""{2}"" type=""LSString""/><attribute id=""UUID"" value=""{3}"" type=""FixedString"" /><attribute id=""Version64"" value=""{4}"" type=""int64""/></node>";
 		public const string XML_MOD_SETTINGS_TEMPLATE = @"<?xml version=""1.0"" encoding=""UTF-8""?><save><version major=""4"" minor=""0"" revision=""9"" build=""331""/><region id=""ModuleSettings""><node id=""root""><children><node id=""ModOrder""><children>{0}</children></node><node id=""Mods""><children>{1}</children></node></children></node></region></save>";
 
-		public const string PATH_APP_FEATURES = @"Resources/AppFeatures.json";
-		public const string PATH_DEFAULT_PATHWAYS = @"Resources/DefaultPathways.json";
-		public const string PATH_IGNORED_MODS = @"Resources/IgnoredMods.json";
+		public const string PATH_RESOURCES = "Resources";
+		public const string PATH_APP_FEATURES = "AppFeatures.json";
+		public const string PATH_DEFAULT_PATHWAYS = "DefaultPathways.json";
+		public const string PATH_IGNORED_MODS = "IgnoredMods.json";
 
 		public const string MAIN_CAMPAIGN_UUID = "28ac9ce2-2aba-8cda-b3b5-6e922f71b6b8";
 		public const string GAMEMASTER_UUID = "NotYetAvailableInBG3";
@@ -116,6 +117,19 @@ namespace DivinityModManager
 			//	return true;
 			//}
 			//return false;
+		}
+
+		public static string GetAppDirectory()
+		{
+			string strExeFilePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+			return Path.GetDirectoryName(strExeFilePath);
+		}
+
+		public static string GetAppDirectory(params string[] joinPath)
+		{
+			string strExeFilePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+			joinPath.Prepend(Path.GetDirectoryName(strExeFilePath));
+			return Path.Combine(joinPath);
 		}
 	}
 }

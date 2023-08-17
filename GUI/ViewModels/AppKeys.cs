@@ -156,10 +156,10 @@ namespace DivinityModManager.ViewModels
 
 		public void SaveDefaultKeybindings()
 		{
-			string filePath = @"Data\keybindings-default.json";
+			string filePath = DivinityApp.GetAppDirectory("Data", "keybindings-default.json");
 			try
 			{
-				Directory.CreateDirectory("Data");
+				Directory.CreateDirectory(Path.GetDirectoryName(filePath));
 				var keyMapDict = new Dictionary<string, Hotkey>();
 				foreach (var key in All)
 				{
@@ -174,11 +174,12 @@ namespace DivinityModManager.ViewModels
 			}
 		}
 
-		public bool SaveKeybindings(MainWindowViewModel vm, string filePath = @"Data\keybindings.json")
+		public bool SaveKeybindings(MainWindowViewModel vm)
 		{
+			var filePath = DivinityApp.GetAppDirectory("Data", "keybindings.json");
 			try
 			{
-				Directory.CreateDirectory("Data");
+				Directory.CreateDirectory(Path.GetDirectoryName(filePath));
 				var keyMapDict = new Dictionary<string, Hotkey>();
 				foreach (var key in All)
 				{
@@ -202,8 +203,9 @@ namespace DivinityModManager.ViewModels
 			return false;
 		}
 
-		public bool LoadKeybindings(MainWindowViewModel vm, string filePath = @"Data\keybindings.json")
+		public bool LoadKeybindings(MainWindowViewModel vm)
 		{
+			var filePath = DivinityApp.GetAppDirectory("Data", "keybindings.json");
 			try
 			{
 				if (File.Exists(filePath))

@@ -835,7 +835,7 @@ Directory the zip will be extracted to:
 			Settings?.Dispose();
 
 			bool loaded = false;
-			string settingsFile = @"Data\settings.json";
+			string settingsFile = DivinityApp.GetAppDirectory("Data", "settings.json");
 			try
 			{
 				if (File.Exists(settingsFile))
@@ -1056,7 +1056,7 @@ Directory the zip will be extracted to:
 
 			Settings.OpenSettingsFolderCommand = ReactiveCommand.Create(() =>
 			{
-				Process.Start(DivinityApp.DIR_DATA);
+				Process.Start(DivinityApp.GetAppDirectory(DivinityApp.DIR_DATA));
 			}).DisposeWith(Settings.Disposables);
 
 			Settings.ExportExtenderSettingsCommand = ReactiveCommand.Create(() =>
@@ -1107,7 +1107,8 @@ Directory the zip will be extracted to:
 
 			Settings.ClearWorkshopCacheCommand = ReactiveCommand.Create(() =>
 			{
-				if (File.Exists("Data\\workshopdata.json"))
+				var filePath = DivinityApp.GetAppDirectory("Data", "workshopdata.json");
+				if (File.Exists(filePath))
 				{
 					MessageBoxResult result = Xceed.Wpf.Toolkit.MessageBox.Show(View.SettingsWindow, $"Delete local workshop cache?\nThis cannot be undone.\nRefresh to download tag data once more.", "Confirm Delete Cache",
 					MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No, View.MainWindowMessageBox_OK.Style);
@@ -1115,9 +1116,8 @@ Directory the zip will be extracted to:
 					{
 						try
 						{
-							var fullFilePath = Path.GetFullPath("Data\\workshopdata.json");
-							RecycleBinHelper.DeleteFile(fullFilePath, false, true);
-							View.AlertBar.SetSuccessAlert($"Deleted local workshop cache at '{fullFilePath}'.", 20);
+							RecycleBinHelper.DeleteFile(filePath, false, true);
+							View.AlertBar.SetSuccessAlert($"Deleted local workshop cache at '{filePath}'.", 20);
 						}
 						catch (Exception ex)
 						{
@@ -1226,11 +1226,11 @@ Directory the zip will be extracted to:
 
 		public bool SaveSettings()
 		{
-			string settingsFile = @"Data\settings.json";
+			string settingsFile = DivinityApp.GetAppDirectory("Data", "settings.json");
 
 			try
 			{
-				Directory.CreateDirectory("Data");
+				Directory.CreateDirectory(Path.GetDirectoryName(settingsFile));
 				string contents = JsonConvert.SerializeObject(Settings, Newtonsoft.Json.Formatting.Indented);
 				File.WriteAllText(settingsFile, contents);
 				Settings.CanSaveSettings = false;
@@ -2245,9 +2245,11 @@ Directory the zip will be extracted to:
 					return Unit.Default;
 				}, RxApp.MainThreadScheduler);
 
-				if (File.Exists("Data\\workshopdata.json"))
+				var filePath = DivinityApp.GetAppDirectory("Data", "workshopdata.json");
+
+				if (File.Exists(filePath))
 				{
-					DivinityModManagerCachedWorkshopData cachedData = DivinityJsonUtils.SafeDeserializeFromPath<DivinityModManagerCachedWorkshopData>("Data\\workshopdata.json");
+					DivinityModManagerCachedWorkshopData cachedData = DivinityJsonUtils.SafeDeserializeFromPath<DivinityModManagerCachedWorkshopData>(filePath);
 					if (cachedData != null)
 					{
 						CachedWorkshopData = cachedData;
@@ -2307,7 +2309,7 @@ Directory the zip will be extracted to:
 
 					if (CachedWorkshopData.CacheUpdated)
 					{
-						await DivinityFileUtils.WriteFileAsync("Data\\workshopdata.json", CachedWorkshopData.Serialize());
+						await DivinityFileUtils.WriteFileAsync(filePath, CachedWorkshopData.Serialize());
 						CachedWorkshopData.CacheUpdated = false;
 					}
 				}
@@ -2522,9 +2524,7 @@ Directory the zip will be extracted to:
 				string loadOrderDirectory = Settings.LoadOrderPath;
 				if (String.IsNullOrWhiteSpace(loadOrderDirectory))
 				{
-					//Settings.LoadOrderPath = Path.Combine(Path.GetFullPath(System.AppDomain.CurrentDomain.BaseDirectory), @"Data\ModOrder");
-					//Settings.LoadOrderPath = Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, @"Data\ModOrder");
-					loadOrderDirectory = System.AppDomain.CurrentDomain.BaseDirectory;
+					loadOrderDirectory = DivinityApp.GetAppDirectory("Orders");
 				}
 				else if (Uri.IsWellFormedUriString(loadOrderDirectory, UriKind.Relative))
 				{
@@ -4469,9 +4469,14 @@ Directory the zip will be extracted to:
 		{
 			AppSettingsLoaded = false;
 
-			if (File.Exists(DivinityApp.PATH_APP_FEATURES))
+			var resourcesFolder = DivinityApp.GetAppDirectory(DivinityApp.PATH_RESOURCES);
+			var appFeaturesPath = Path.Combine(resourcesFolder, DivinityApp.PATH_APP_FEATURES);
+			var defaultPathwaysPath = Path.Combine(resourcesFolder, DivinityApp.PATH_DEFAULT_PATHWAYS);
+			var ignoredModsPath = Path.Combine(resourcesFolder, DivinityApp.PATH_IGNORED_MODS);
+
+			if (File.Exists(appFeaturesPath))
 			{
-				var appFeaturesDict = DivinityJsonUtils.SafeDeserializeFromPath<Dictionary<string, bool>>(DivinityApp.PATH_APP_FEATURES);
+				var appFeaturesDict = DivinityJsonUtils.SafeDeserializeFromPath<Dictionary<string, bool>>(appFeaturesPath);
 				if (appFeaturesDict != null)
 				{
 					foreach (var kvp in appFeaturesDict)
@@ -4492,14 +4497,14 @@ Directory the zip will be extracted to:
 				}
 			}
 
-			if (File.Exists(DivinityApp.PATH_DEFAULT_PATHWAYS))
+			if (File.Exists(defaultPathwaysPath))
 			{
-				AppSettings.DefaultPathways = DivinityJsonUtils.SafeDeserializeFromPath<DefaultPathwayData>(DivinityApp.PATH_DEFAULT_PATHWAYS);
+				AppSettings.DefaultPathways = DivinityJsonUtils.SafeDeserializeFromPath<DefaultPathwayData>(defaultPathwaysPath);
 			}
 
-			if (File.Exists(DivinityApp.PATH_IGNORED_MODS))
+			if (File.Exists(ignoredModsPath))
 			{
-				ignoredModsData = DivinityJsonUtils.SafeDeserializeFromPath<IgnoredModsData>(DivinityApp.PATH_IGNORED_MODS);
+				ignoredModsData = DivinityJsonUtils.SafeDeserializeFromPath<IgnoredModsData>(ignoredModsPath);
 				if (ignoredModsData != null)
 				{
 					if(ignoredModsData.IgnoreBuiltinPath != null)
