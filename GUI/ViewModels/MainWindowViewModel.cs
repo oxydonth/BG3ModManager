@@ -450,17 +450,15 @@ namespace DivinityModManager.ViewModels
 			{
 				if (debugLogListener == null)
 				{
-					string exePath = Path.GetFullPath(System.AppDomain.CurrentDomain.BaseDirectory);
-
+					var logsDir = DivinityApp.GetAppDirectory("_Logs");
 					string sysFormat = CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern.Replace("/", "-");
-					string logsDirectory = exePath + "/_Logs/";
-					if (!Alphaleonis.Win32.Filesystem.Directory.Exists(logsDirectory))
+					if (!Directory.Exists(logsDir))
 					{
-						Alphaleonis.Win32.Filesystem.Directory.CreateDirectory(logsDirectory);
-						DivinityApp.Log($"Creating logs directory: {logsDirectory} | exe dir: {exePath}");
+						Directory.CreateDirectory(logsDir);
+						DivinityApp.Log($"Creating logs directory: {logsDir}");
 					}
 
-					string logFileName = Path.Combine(logsDirectory, "debug_" + DateTime.Now.ToString(sysFormat + "_HH-mm-ss") + ".log");
+					string logFileName = Path.Combine(logsDir, "debug_" + DateTime.Now.ToString(sysFormat + "_HH-mm-ss") + ".log");
 					debugLogListener = new TextWriterTraceListener(logFileName, "DebugLogListener");
 					Trace.Listeners.Add(debugLogListener);
 					Trace.AutoFlush = true;
@@ -4473,6 +4471,8 @@ Directory the zip will be extracted to:
 			var appFeaturesPath = Path.Combine(resourcesFolder, DivinityApp.PATH_APP_FEATURES);
 			var defaultPathwaysPath = Path.Combine(resourcesFolder, DivinityApp.PATH_DEFAULT_PATHWAYS);
 			var ignoredModsPath = Path.Combine(resourcesFolder, DivinityApp.PATH_IGNORED_MODS);
+
+			DivinityApp.Log($"Loading resources from '{resourcesFolder}'");
 
 			if (File.Exists(appFeaturesPath))
 			{

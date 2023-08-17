@@ -26,6 +26,7 @@ namespace DivinityModManager
 	{
 		public App()
 		{
+			Directory.SetCurrentDirectory(DivinityApp.GetAppDirectory());
 			// Fix for loading C++ dlls from _Lib
 			AppDomain.CurrentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve;
 			//AssemblyResolver.Hook("_Lib");
