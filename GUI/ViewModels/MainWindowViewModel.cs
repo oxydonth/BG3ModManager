@@ -3914,6 +3914,8 @@ Directory the zip will be extracted to:
 				}
 			}
 
+			Settings.Loaded = loaded;
+
 			ModUpdatesViewVisible = ModUpdatesAvailable = false;
 			MainProgressTitle = "Loading...";
 			MainProgressValue = 0d;

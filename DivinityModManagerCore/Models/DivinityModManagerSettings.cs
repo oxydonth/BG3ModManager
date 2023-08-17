@@ -201,6 +201,8 @@ namespace DivinityModManager.Models
 		public ICommand AddLaunchParamCommand { get; set; }
 		public ICommand ClearLaunchParamsCommand { get; set; }
 
+		public bool Loaded { get; set; }
+
 		public CompositeDisposable Disposables { get; internal set; }
 
 		private bool canSaveSettings = false;
@@ -222,7 +224,7 @@ namespace DivinityModManager.Models
 		public DivinityModManagerSettings()
 		{
 			Disposables = new CompositeDisposable();
-
+			Loaded = false;
 			//Defaults
 			ExtenderSettings = new ScriptExtenderSettings();
 			Window = new WindowSettings();
