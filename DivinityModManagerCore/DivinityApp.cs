@@ -122,14 +122,14 @@ namespace DivinityModManager
 		public static string GetAppDirectory()
 		{
 			string strExeFilePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
-			return Path.GetDirectoryName(strExeFilePath);
+			return Path.GetFullPath(Path.GetDirectoryName(strExeFilePath));
 		}
 
 		public static string GetAppDirectory(params string[] joinPath)
 		{
-			string strExeFilePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
-			joinPath.Prepend(Path.GetDirectoryName(strExeFilePath));
-			return Path.Combine(joinPath);
+			string exePath = Path.GetFullPath(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location));
+			var paths = joinPath.Prepend(exePath).ToArray();
+			return Path.Combine(paths);
 		}
 	}
 }
