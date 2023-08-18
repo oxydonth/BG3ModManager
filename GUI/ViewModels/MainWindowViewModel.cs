@@ -2097,53 +2097,57 @@ Directory the zip will be extracted to:
 			}
 		}
 
+		private void CheckModForExtenderData(DivinityModData mod)
+		{
+			if (mod.ScriptExtenderData != null && mod.ScriptExtenderData.HasAnySettings)
+			{
+				// Assume an Lua-only mod actually requires the extender, otherwise functionality is limited.
+				bool onlyUsesLua = mod.ScriptExtenderData.FeatureFlags.Contains("Lua") && !mod.ScriptExtenderData.FeatureFlags.Contains("Osiris");
+
+				if (!mod.ScriptExtenderData.FeatureFlags.Contains("Preprocessor") || onlyUsesLua)
+				{
+					if (!Settings.ExtenderSettings.EnableExtensions)
+					{
+						mod.ExtenderModStatus = DivinityExtenderModStatus.REQUIRED_DISABLED;
+					}
+					else
+					{
+						if (Settings.ExtenderSettings != null && Settings.ExtenderSettings.ExtenderVersion > -1 && Settings.ExtenderSettings.ExtenderUpdaterIsAvailable)
+						{
+							if (mod.ScriptExtenderData.RequiredExtensionVersion > -1 && Settings.ExtenderSettings.ExtenderVersion < mod.ScriptExtenderData.RequiredExtensionVersion)
+							{
+								mod.ExtenderModStatus = DivinityExtenderModStatus.REQUIRED_OLD;
+							}
+							else
+							{
+								mod.ExtenderModStatus = DivinityExtenderModStatus.REQUIRED;
+							}
+						}
+						else
+						{
+							mod.ExtenderModStatus = DivinityExtenderModStatus.REQUIRED_MISSING;
+						}
+					}
+				}
+				else
+				{
+					mod.ExtenderModStatus = DivinityExtenderModStatus.SUPPORTS;
+				}
+			}
+			else
+			{
+				mod.ExtenderModStatus = DivinityExtenderModStatus.NONE;
+			}
+		}
+
 		private void CheckExtenderData()
 		{
 			if (Settings != null && Mods.Count > 0)
 			{
 				DivinityModData.CurrentExtenderVersion = Settings.ExtenderSettings.ExtenderVersion;
-
-				foreach (var mod in Mods)
+				foreach(var mod in Mods)
 				{
-					if (mod.ScriptExtenderData != null && mod.ScriptExtenderData.HasAnySettings)
-					{
-						// Assume an Lua-only mod actually requires the extender, otherwise functionality is limited.
-						bool onlyUsesLua = mod.ScriptExtenderData.FeatureFlags.Contains("Lua") && !mod.ScriptExtenderData.FeatureFlags.Contains("Osiris");
-
-						if (!mod.ScriptExtenderData.FeatureFlags.Contains("Preprocessor") || onlyUsesLua)
-						{
-							if (!Settings.ExtenderSettings.EnableExtensions)
-							{
-								mod.ExtenderModStatus = DivinityExtenderModStatus.REQUIRED_DISABLED;
-							}
-							else
-							{
-								if (Settings.ExtenderSettings != null && Settings.ExtenderSettings.ExtenderVersion > -1 && Settings.ExtenderSettings.ExtenderUpdaterIsAvailable)
-								{
-									if (mod.ScriptExtenderData.RequiredExtensionVersion > -1 && Settings.ExtenderSettings.ExtenderVersion < mod.ScriptExtenderData.RequiredExtensionVersion)
-									{
-										mod.ExtenderModStatus = DivinityExtenderModStatus.REQUIRED_OLD;
-									}
-									else
-									{
-										mod.ExtenderModStatus = DivinityExtenderModStatus.REQUIRED;
-									}
-								}
-								else
-								{
-									mod.ExtenderModStatus = DivinityExtenderModStatus.REQUIRED_MISSING;
-								}
-							}
-						}
-						else
-						{
-							mod.ExtenderModStatus = DivinityExtenderModStatus.SUPPORTS;
-						}
-					}
-					else
-					{
-						mod.ExtenderModStatus = DivinityExtenderModStatus.NONE;
-					}
+					CheckModForExtenderData(mod);
 				}
 			}
 		}
@@ -3046,6 +3050,7 @@ Directory the zip will be extracted to:
 				InactiveMods.Add(mod);
 			}
 			mods.AddOrUpdate(mod);
+			CheckModForExtenderData(mod);
 			DivinityApp.Log($"Imported Mod: {mod}");
 		}
 
