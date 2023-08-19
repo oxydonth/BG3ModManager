@@ -3301,7 +3301,7 @@ Directory the zip will be extracted to:
 			{
 				string sysFormat = CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern.Replace("/", "-");
 				string gameDataFolder = Path.GetFullPath(Settings.GameDataPath);
-				string appDir = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+				string appDir = DivinityApp.GetAppDirectory();
 				string tempDir = Path.Combine(appDir, "_Temp_" + DateTime.Now.ToString(sysFormat + "_HH-mm-ss"));
 				Directory.CreateDirectory(tempDir);
 
@@ -3312,12 +3312,11 @@ Directory the zip will be extracted to:
 					{
 						baseOrderName = $"{SelectedProfile.Name}_{SelectedModOrder.Name}";
 					}
-					outputPath = $"Export/{baseOrderName}-{DateTime.Now.ToString(sysFormat + "_HH-mm-ss")}.zip";
-
-					var exportDirectory = Path.Combine(appDir, "Export");
-					if (!Directory.Exists(exportDirectory))
+					var outputDir = Path.Combine(appDir, "Export");
+					outputPath = Path.Combine(outputDir, $"{baseOrderName}-{DateTime.Now.ToString(sysFormat + "_HH-mm-ss")}.zip");
+					if (!Directory.Exists(outputDir))
 					{
-						Directory.CreateDirectory(exportDirectory);
+						Directory.CreateDirectory(outputDir);
 					}
 				}
 
@@ -3331,7 +3330,7 @@ Directory the zip will be extracted to:
 					using (var zipWriter = WriterFactory.Open(zip, ArchiveType.Zip, CompressionType.Deflate))
 					{
 						string orderFileName = DivinityModDataLoader.MakeSafeFilename(Path.Combine(SelectedModOrder.Name + ".json"), '_');
-						string contents = JsonConvert.SerializeObject(SelectedModOrder.Name, Newtonsoft.Json.Formatting.Indented);
+						string contents = JsonConvert.SerializeObject(SelectedModOrder, Newtonsoft.Json.Formatting.Indented);
 						using (var ms = new System.IO.MemoryStream())
 						{
 							using (var swriter = new System.IO.StreamWriter(ms))
@@ -3384,9 +3383,12 @@ Directory the zip will be extracted to:
 
 					RxApp.MainThreadScheduler.Schedule(() =>
 					{
-						var dir = Path.GetDirectoryName(outputPath);
-						Process.Start(dir);
 						this.View.AlertBar.SetSuccessAlert($"Exported load order to '{outputPath}'.", 15);
+						var dir = Path.GetDirectoryName(outputPath);
+						if(Directory.Exists(dir))
+						{
+							Process.Start(dir);
+						}
 					});
 
 					success = true;
