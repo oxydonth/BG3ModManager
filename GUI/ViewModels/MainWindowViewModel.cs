@@ -2990,7 +2990,7 @@ Directory the zip will be extracted to:
 		}
 
 		private static readonly ArchiveEncoding _archiveEncoding = new ArchiveEncoding(Encoding.UTF8, Encoding.UTF8);
-		private static readonly ReaderOptions _importerReaderOptions = new ReaderOptions { ArchiveEncoding = _archiveEncoding };
+		private static readonly ReaderOptions _importReaderOptions = new ReaderOptions { ArchiveEncoding = _archiveEncoding };
 		private static readonly WriterOptions _exportWriterOptions = new WriterOptions(CompressionType.Deflate) { ArchiveEncoding = _archiveEncoding };
 
 		//TODO: Extract zip mods to the Mods folder, possibly import a load order if a json exists.
@@ -3079,7 +3079,7 @@ Directory the zip will be extracted to:
 			int total = 0;
 			stream.Position = 0;
 			var builtinMods = DivinityApp.IgnoredMods.ToDictionary(x => x.Folder, x => x);
-			using (var archiveStream = SevenZipArchive.Open(stream, _importerReaderOptions))
+			using (var archiveStream = SevenZipArchive.Open(stream, _importReaderOptions))
 			{
 				foreach (var entry in archiveStream.Entries)
 				{
@@ -3155,7 +3155,7 @@ Directory the zip will be extracted to:
 			int total = 0;
 			stream.Position = 0;
 			var builtinMods = DivinityApp.IgnoredMods.ToDictionary(x => x.Folder, x => x);
-			using (var reader = ReaderFactory.Open(stream, _importerReaderOptions))
+			using (var reader = ReaderFactory.Open(stream, _importReaderOptions))
 			{
 				while (reader.MoveToNextEntry())
 				{
@@ -4154,7 +4154,7 @@ Directory the zip will be extracted to:
 				var workshopMods = WorkshopMods.Where(wm => targetUUIDs.Contains(wm.UUID) && File.Exists(wm.FilePath)).Select(x => ModFileDeletionData.FromMod(x, true));
 				this.View.DeleteFilesView.ViewModel.Files.AddRange(workshopMods);
 
-				this.View.DeleteFilesView.ViewModel.IsActive = true;
+				this.View.DeleteFilesView.ViewModel.IsVisible = true;
 			}
 		}
 
@@ -5150,7 +5150,7 @@ Directory the zip will be extracted to:
 			});
 			#endregion
 
-			_isDeletingFiles = this.WhenAnyValue(x => x.View.DeleteFilesView.ViewModel.IsActive).ToProperty(this, nameof(IsDeletingFiles), true, RxApp.MainThreadScheduler);
+			_isDeletingFiles = this.WhenAnyValue(x => x.View.DeleteFilesView.ViewModel.IsVisible).ToProperty(this, nameof(IsDeletingFiles), true, RxApp.MainThreadScheduler);
 
 			_hideModList = this.WhenAnyValue(x => x.MainProgressIsActive, x => x.IsDeletingFiles, (a, b) => a || b).StartWith(true).ToProperty(this, nameof(HideModList), false, RxApp.MainThreadScheduler);
 

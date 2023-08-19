@@ -33,8 +33,11 @@ namespace DivinityModManager.ViewModels
 		}
 	}
 
-	public class DeleteFilesViewData : ReactiveObject
+	public class DeleteFilesViewData : BaseProgressViewModel
 	{
+		[Reactive] public bool PermanentlyDelete { get; set; }
+		[Reactive] public bool RemoveFromLoadOrder { get; set; }
+
 		public ObservableCollectionExtended<ModFileDeletionData> Files { get; set; } = new ObservableCollectionExtended<ModFileDeletionData>();
 
 		private readonly ObservableAsPropertyHelper<bool> _anySelected;
@@ -43,49 +46,14 @@ namespace DivinityModManager.ViewModels
 		private readonly ObservableAsPropertyHelper<bool> _allSelected;
 		public bool AllSelected => _allSelected.Value;
 
-		private readonly ObservableAsPropertyHelper<bool> _isRunning;
-		public bool IsRunning => _isRunning.Value;
-
 		private readonly ObservableAsPropertyHelper<string> _selectAllTooltip;
 		public string SelectAllTooltip => _selectAllTooltip.Value;
 
 		public ReactiveCommand<Unit, Unit> SelectAllCommand { get; private set; }
-		public ReactiveCommand<Unit, bool> RunCommand { get; private set; }
-		public ReactiveCommand<Unit, Unit> StopRunningCommand { get; private set; }
-		public ReactiveCommand<Unit, Unit> CancelCommand { get; private set; }
-
-		[Reactive] public bool PermanentlyDelete { get; set; }
-		[Reactive] public bool RemoveFromLoadOrder { get; set; }
-
-		[Reactive] public bool IsActive{ get; set; }
-		[Reactive] public bool IsProgressActive { get; set; }
-		[Reactive] public string ProgressTitle { get; set; }
-		[Reactive] public string ProgressWorkText { get; set; }
-		[Reactive] public double ProgressValue { get; set; }
 
 		public event EventHandler<FileDeletionCompleteEventArgs> FileDeletionComplete;
 
-		private async Task<Unit> UpdateProgress(string title = "", string workText = "", double value = -1)
-		{
-			await Observable.Start(() =>
-			{
-				if(!String.IsNullOrEmpty(title))
-				{
-					ProgressTitle = title;
-				}
-				if(!String.IsNullOrEmpty(workText))
-				{
-					ProgressWorkText = workText;
-				}
-				if(value > -1)
-				{
-					ProgressValue = value;
-				}
-			}, RxApp.MainThreadScheduler);
-			return Unit.Default;
-		}
-
-		public async Task<bool> Run(CancellationToken cts)
+		public override async Task<bool> Run(CancellationToken cts)
 		{
 			var targetFiles = Files.Where(x => x.IsSelected).ToList();
 
@@ -140,10 +108,9 @@ namespace DivinityModManager.ViewModels
 			return true;
 		}
 
-		public void Close()
+		public override void Close()
 		{
-			IsProgressActive = false;
-			IsActive = false;
+			base.Close();
 			Files.Clear();
 		}
 
@@ -156,24 +123,17 @@ namespace DivinityModManager.ViewModels
 			}
 		}
 
-		public DeleteFilesViewData()
+		public DeleteFilesViewData() : base()
 		{
 			RemoveFromLoadOrder = true;
-			IsActive = false;
 			PermanentlyDelete = false;
+
+			this.WhenAnyValue(x => x.AnySelected).BindTo(this, x => x.CanRun);
+
 			var filesChanged = this.Files.ToObservableChangeSet().AutoRefresh(x => x.IsSelected).ToCollection().Throttle(TimeSpan.FromMilliseconds(50)).ObserveOn(RxApp.MainThreadScheduler);
-			var anySelected = filesChanged.Select(x => x.Any(y => y.IsSelected));
-			_anySelected = anySelected.ToProperty(this, nameof(AnySelected));
-
-			RunCommand = ReactiveCommand.CreateFromObservable(() => Observable.StartAsync(cts => Run(cts)).TakeUntil(this.StopRunningCommand), anySelected);
-			StopRunningCommand = ReactiveCommand.Create(() => { }, this.RunCommand.IsExecuting);
-
-			CancelCommand = ReactiveCommand.Create(Close, RunCommand.IsExecuting.Select(b => !b));
-
-			_isRunning = this.RunCommand.IsExecuting.ToProperty(this, nameof(IsRunning), true, RxApp.MainThreadScheduler);
+			filesChanged.Select(x => x.Any(y => y.IsSelected)).ToProperty(this, nameof(AnySelected));
 
 			_allSelected = filesChanged.Select(x => x.All(y => y.IsSelected)).ToProperty(this, nameof(AllSelected), true, RxApp.MainThreadScheduler);
-
 			_selectAllTooltip = this.WhenAnyValue(x => x.AllSelected).Select(b => $"{(b ? "Deselect" : "Select")} All").ToProperty(this, nameof(SelectAllTooltip), true, RxApp.MainThreadScheduler);
 
 			SelectAllCommand = ReactiveCommand.Create(ToggleSelectAll, this.RunCommand.IsExecuting.Select(b => !b), RxApp.MainThreadScheduler);
