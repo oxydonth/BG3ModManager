@@ -24,7 +24,7 @@ namespace DivinityModManager.ViewModels
 	public class AppKeys : ReactiveObject
 	{
 		[MenuSettings("File", "Import Mod...", true)]
-		public Hotkey ImportMod { get; private set; } = new Hotkey(Key.M, ModifierKeys.Control);
+		public Hotkey ImportMod { get; private set; } = new Hotkey(Key.O, ModifierKeys.Control);
 
 		[MenuSettings("File", "Add New Order", true)]
 		public Hotkey NewOrder { get; private set; } = new Hotkey(Key.N, ModifierKeys.Control);
@@ -54,7 +54,7 @@ namespace DivinityModManager.ViewModels
 		public Hotkey ExportOrderToGame { get; private set; } = new Hotkey(Key.E, ModifierKeys.Control);
 
 		[MenuSettings("File", "Export Order to Text File...")]
-		public Hotkey ExportOrderToList { get; private set; } = new Hotkey(Key.L, ModifierKeys.Control);
+		public Hotkey ExportOrderToList { get; private set; } = new Hotkey(Key.E, ModifierKeys.Control | ModifierKeys.Shift);
 
 		[MenuSettings("File", "Export Order to Archive (.zip)")]
 		public Hotkey ExportOrderToZip { get; private set; } = new Hotkey(Key.R, ModifierKeys.Control);
@@ -123,10 +123,10 @@ namespace DivinityModManager.ViewModels
 		public Hotkey LaunchGame { get; private set; } = new Hotkey(Key.G, ModifierKeys.Control | ModifierKeys.Shift);
 
 		[MenuSettings("Tools", "Extract Selected Mods To...")]
-		public Hotkey ExtractSelectedMods { get; private set; } = new Hotkey(Key.M, ModifierKeys.Control);
+		public Hotkey ExtractSelectedMods { get; private set; } = new Hotkey(Key.OemPeriod, ModifierKeys.Control);
 
 		[MenuSettings("Tools", "Extract Active Adventure Mod To...")]
-		public Hotkey ExtractSelectedAdventure { get; private set; } = new Hotkey(Key.M, ModifierKeys.Control | ModifierKeys.Shift);
+		public Hotkey ExtractSelectedAdventure { get; private set; } = new Hotkey(Key.None);
 
 		[MenuSettings("Tools", "Toggle Version Generator Window", Tooltip = "A tool for mod authors to generate version numbers for a mod's meta.lsx")]
 		public Hotkey ToggleVersionGeneratorWindow { get; private set; } = new Hotkey(Key.G, ModifierKeys.Control);
