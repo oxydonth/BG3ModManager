@@ -550,7 +550,7 @@ namespace DivinityModManager.ViewModels
 				{
 					if (successes >= 3)
 					{
-						this.ShowAlert($"Successfully installed the Extender updater {DivinityApp.EXTENDER_UPDATER_FILE} to '{exeDir}'.", AlertType.Success, 20);
+						ShowAlert($"Successfully installed the Extender updater {DivinityApp.EXTENDER_UPDATER_FILE} to '{exeDir}'.", AlertType.Success, 20);
 						HighlightExtenderDownload = false;
 						Settings.ExtenderSettings.ExtenderUpdaterIsAvailable = true;
 						Settings.ExtenderSettings.ExtenderVersion = 56;
@@ -590,7 +590,7 @@ namespace DivinityModManager.ViewModels
 					}
 					else
 					{
-						this.ShowAlert($"Error occurred when installing the Extender updater {DivinityApp.EXTENDER_UPDATER_FILE}. Check the log.", AlertType.Danger, 30);
+						ShowAlert($"Error occurred when installing the Extender updater {DivinityApp.EXTENDER_UPDATER_FILE}. Check the log.", AlertType.Danger, 30);
 					}
 				});
 
@@ -2321,7 +2321,7 @@ Directory the zip will be extracted to:
 						StatusBarRightText = "";
 						StatusBarBusyIndicatorVisibility = Visibility.Collapsed;
 						string updateMessage = !CachedWorkshopData.CacheUpdated ? "cached " : "";
-						this.ShowAlert($"Loaded {updateMessage}workshop data ({CachedWorkshopData.Mods.Count} mods).", AlertType.Success, 60);
+						ShowAlert($"Loaded {updateMessage}workshop data ({CachedWorkshopData.Mods.Count} mods).", AlertType.Success, 60);
 					});
 
 					if (CachedWorkshopData.CacheUpdated)
@@ -2989,6 +2989,10 @@ Directory the zip will be extracted to:
 			});
 		}
 
+		private static readonly ArchiveEncoding _archiveEncoding = new ArchiveEncoding(Encoding.UTF8, Encoding.UTF8);
+		private static readonly ReaderOptions _importerReaderOptions = new ReaderOptions { ArchiveEncoding = _archiveEncoding };
+		private static readonly WriterOptions _exportWriterOptions = new WriterOptions(CompressionType.Deflate) { ArchiveEncoding = _archiveEncoding };
+
 		//TODO: Extract zip mods to the Mods folder, possibly import a load order if a json exists.
 		private void ImportOrderFromArchive()
 		{
@@ -3075,7 +3079,7 @@ Directory the zip will be extracted to:
 			int total = 0;
 			stream.Position = 0;
 			var builtinMods = DivinityApp.IgnoredMods.ToDictionary(x => x.Folder, x => x);
-			using (var archiveStream = SevenZipArchive.Open(stream))
+			using (var archiveStream = SevenZipArchive.Open(stream, _importerReaderOptions))
 			{
 				foreach (var entry in archiveStream.Entries)
 				{
@@ -3126,7 +3130,7 @@ Directory the zip will be extracted to:
 									int length = (int)entry.CompressedSize;
 									var result = new byte[length];
 									await entryStream.ReadAsync(result, 0, length);
-									string text = System.Text.Encoding.UTF8.GetString(result);
+									string text = Encoding.UTF8.GetString(result);
 									if (!String.IsNullOrWhiteSpace(text))
 									{
 										jsonFiles.Add(Path.GetFileNameWithoutExtension(entry.Key), text);
@@ -3151,7 +3155,7 @@ Directory the zip will be extracted to:
 			int total = 0;
 			stream.Position = 0;
 			var builtinMods = DivinityApp.IgnoredMods.ToDictionary(x => x.Folder, x => x);
-			using (var reader = SharpCompress.Readers.ReaderFactory.Open(stream))
+			using (var reader = ReaderFactory.Open(stream, _importerReaderOptions))
 			{
 				while (reader.MoveToNextEntry())
 				{
@@ -3204,7 +3208,7 @@ Directory the zip will be extracted to:
 									int length = (int)reader.Entry.CompressedSize;
 									var result = new byte[length];
 									await entryStream.ReadAsync(result, 0, length);
-									string text = System.Text.Encoding.UTF8.GetString(result);
+									string text = Encoding.UTF8.GetString(result);
 									if (!String.IsNullOrWhiteSpace(text))
 									{
 										jsonFiles.Add(Path.GetFileNameWithoutExtension(reader.Entry.Key), text);
@@ -3311,18 +3315,18 @@ Directory the zip will be extracted to:
 
 		private async Task<bool> ExportLoadOrderToArchiveAsync(string outputPath, CancellationToken t)
 		{
-			bool success = false;
+			var success = false;
 			if (SelectedProfile != null && SelectedModOrder != null)
 			{
-				string sysFormat = CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern.Replace("/", "-");
-				string gameDataFolder = Path.GetFullPath(Settings.GameDataPath);
-				string appDir = DivinityApp.GetAppDirectory();
-				string tempDir = Path.Combine(appDir, "_Temp_" + DateTime.Now.ToString(sysFormat + "_HH-mm-ss"));
+				var sysFormat = CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern.Replace("/", "-");
+				var gameDataFolder = Path.GetFullPath(Settings.GameDataPath);
+				var appDir = DivinityApp.GetAppDirectory();
+				var tempDir = Path.Combine(appDir, "_Temp_" + DateTime.Now.ToString(sysFormat + "_HH-mm-ss"));
 				Directory.CreateDirectory(tempDir);
 
 				if (String.IsNullOrEmpty(outputPath))
 				{
-					string baseOrderName = SelectedModOrder.Name;
+					var baseOrderName = SelectedModOrder.Name;
 					if (SelectedModOrder.IsModSettings)
 					{
 						baseOrderName = $"{SelectedProfile.Name}_{SelectedModOrder.Name}";
@@ -3337,15 +3341,15 @@ Directory the zip will be extracted to:
 
 				var modPaks = new List<DivinityModData>(Mods.Where(x => SelectedModOrder.Order.Any(o => o.UUID == x.UUID)));
 
-				double incrementProgress = 1d / modPaks.Count;
+				var incrementProgress = 1d / modPaks.Count;
 
 				try
 				{
-					using (var zip = File.OpenWrite(outputPath))
-					using (var zipWriter = WriterFactory.Open(zip, ArchiveType.Zip, CompressionType.Deflate))
+					using (var stream = File.OpenWrite(outputPath))
+					using (var zipWriter = WriterFactory.Open(stream, ArchiveType.Zip, _exportWriterOptions))
 					{
-						string orderFileName = DivinityModDataLoader.MakeSafeFilename(Path.Combine(SelectedModOrder.Name + ".json"), '_');
-						string contents = JsonConvert.SerializeObject(SelectedModOrder, Newtonsoft.Json.Formatting.Indented);
+						var orderFileName = DivinityModDataLoader.MakeSafeFilename(Path.Combine(SelectedModOrder.Name + ".json"), '_');
+						var contents = JsonConvert.SerializeObject(SelectedModOrder, Newtonsoft.Json.Formatting.Indented);
 						using (var ms = new System.IO.MemoryStream())
 						{
 							using (var swriter = new System.IO.StreamWriter(ms))
@@ -3362,12 +3366,12 @@ Directory the zip will be extracted to:
 							if (t.IsCancellationRequested) return false;
 							if (!mod.IsEditorMod)
 							{
-								string fileName = Path.GetFileName(mod.FilePath);
+								var fileName = Path.GetFileName(mod.FilePath);
 								await WriteZipAsync(zipWriter, fileName, mod.FilePath, t);
 							}
 							else
 							{
-								string outputPackage = Path.ChangeExtension(Path.Combine(tempDir, mod.Folder), "pak");
+								var outputPackage = Path.ChangeExtension(Path.Combine(tempDir, mod.Folder), "pak");
 								//Imported Classic Projects
 								if (!mod.Folder.Contains(mod.UUID))
 								{
@@ -3376,8 +3380,8 @@ Directory the zip will be extracted to:
 
 								var sourceFolders = new List<string>();
 
-								string modsFolder = Path.Combine(gameDataFolder, $"Mods/{mod.Folder}");
-								string publicFolder = Path.Combine(gameDataFolder, $"Public/{mod.Folder}");
+								var modsFolder = Path.Combine(gameDataFolder, $"Mods/{mod.Folder}");
+								var publicFolder = Path.Combine(gameDataFolder, $"Public/{mod.Folder}");
 
 								if (Directory.Exists(modsFolder)) sourceFolders.Add(modsFolder);
 								if (Directory.Exists(publicFolder)) sourceFolders.Add(publicFolder);
@@ -3386,7 +3390,7 @@ Directory the zip will be extracted to:
 
 								if (await DivinityFileUtils.CreatePackageAsync(gameDataFolder, sourceFolders, outputPackage, DivinityFileUtils.IgnoredPackageFiles, t))
 								{
-									string fileName = Path.GetFileName(outputPackage);
+									var fileName = Path.GetFileName(outputPackage);
 									await WriteZipAsync(zipWriter, fileName, outputPackage, t);
 									File.Delete(outputPackage);
 								}
@@ -3398,7 +3402,7 @@ Directory the zip will be extracted to:
 
 					RxApp.MainThreadScheduler.Schedule(() =>
 					{
-						this.ShowAlert($"Exported load order to '{outputPath}'.", AlertType.Success, 15);
+						ShowAlert($"Exported load order to '{outputPath}'.", AlertType.Success, 15);
 						var dir = Path.GetFullPath(Path.GetDirectoryName(outputPath));
 						if(Directory.Exists(dir))
 						{
@@ -3414,7 +3418,7 @@ Directory the zip will be extracted to:
 					{
 						string msg = $"Error writing load order archive '{outputPath}': {ex}";
 						DivinityApp.Log(msg);
-						this.ShowAlert(msg, AlertType.Danger);
+						ShowAlert(msg, AlertType.Danger);
 					});
 				}
 
@@ -3424,7 +3428,7 @@ Directory the zip will be extracted to:
 			{
 				RxApp.MainThreadScheduler.Schedule(() =>
 				{
-					this.ShowAlert("SelectedProfile or SelectedModOrder is null! Failed to export mod order.", AlertType.Danger);
+					ShowAlert("SelectedProfile or SelectedModOrder is null! Failed to export mod order.", AlertType.Danger);
 				});
 			}
 
@@ -3478,13 +3482,13 @@ Directory the zip will be extracted to:
 					InitialDirectory = startDirectory
 				};
 
-				string sysFormat = CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern.Replace("/", "-");
-				string baseOrderName = SelectedModOrder.Name;
+				var sysFormat = CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern.Replace("/", "-");
+				var baseOrderName = SelectedModOrder.Name;
 				if (SelectedModOrder.IsModSettings)
 				{
 					baseOrderName = $"{SelectedProfile.Name}_{SelectedModOrder.Name}";
 				}
-				string outputName = $"{baseOrderName}-{DateTime.Now.ToString(sysFormat + "_HH-mm-ss")}.zip";
+				var outputName = $"{baseOrderName}-{DateTime.Now.ToString(sysFormat + "_HH-mm-ss")}.zip";
 
 				//dialog.RestoreDirectory = true;
 				dialog.FileName = DivinityModDataLoader.MakeSafeFilename(outputName, '_');
@@ -4870,12 +4874,12 @@ Directory the zip will be extracted to:
 					}
 					else
 					{
-						this.ShowAlert("Current order is empty.", AlertType.Warning, 10);
+						ShowAlert("Current order is empty.", AlertType.Warning, 10);
 					}
 				}
 				catch (Exception ex)
 				{
-					this.ShowAlert($"Error copying order to clipboard: {ex}", AlertType.Danger, 15);
+					ShowAlert($"Error copying order to clipboard: {ex}", AlertType.Danger, 15);
 				}
 			});
 
