@@ -344,6 +344,21 @@ namespace DivinityModManager.ViewModels
 		public ICommand OpenGameMasterCampaignInFileExplorerCommand { get; private set; }
 		public ICommand CopyGameMasterCampaignPathToClipboardCommand { get; private set; }
 
+		private void TryOpenPath(string path)
+		{
+			try
+			{
+				if (!String.IsNullOrEmpty(path))
+				{
+					Process.Start(path);
+				}
+			}
+			catch (Exception ex)
+			{
+				DivinityApp.Log($"Error opening path:\n{ex}");
+			}
+		}
+
 		private void SetLoadedGMCampaigns(IEnumerable<DivinityGameMasterCampaign> data)
 		{
 			string lastSelectedCampaignUUID = "";
@@ -535,7 +550,7 @@ namespace DivinityModManager.ViewModels
 				{
 					if (successes >= 3)
 					{
-						this.View.AlertBar.SetSuccessAlert($"Successfully installed the Extender updater {DivinityApp.EXTENDER_UPDATER_FILE} to '{exeDir}'.", 20);
+						this.ShowAlert($"Successfully installed the Extender updater {DivinityApp.EXTENDER_UPDATER_FILE} to '{exeDir}'.", AlertType.Success, 20);
 						HighlightExtenderDownload = false;
 						Settings.ExtenderSettings.ExtenderUpdaterIsAvailable = true;
 						Settings.ExtenderSettings.ExtenderVersion = 56;
@@ -575,7 +590,7 @@ namespace DivinityModManager.ViewModels
 					}
 					else
 					{
-						this.View.AlertBar.SetDangerAlert($"Error occurred when installing the Extender updater {DivinityApp.EXTENDER_UPDATER_FILE}. Check the log.", 30);
+						this.ShowAlert($"Error occurred when installing the Extender updater {DivinityApp.EXTENDER_UPDATER_FILE}. Check the log.", AlertType.Danger, 30);
 					}
 				});
 
@@ -621,7 +636,7 @@ Directory the zip will be extracted to:
 			else
 			{
 				DivinityApp.Log($"Getting a release download link failed for some reason. Opening repo url: {DivinityApp.EXTENDER_LATEST_URL}");
-				Process.Start(DivinityApp.EXTENDER_LATEST_URL);
+				TryOpenPath(DivinityApp.EXTENDER_LATEST_URL);
 			}
 		}
 
@@ -832,8 +847,8 @@ Directory the zip will be extracted to:
 		{
 			Settings?.Dispose();
 
-			bool loaded = false;
-			string settingsFile = DivinityApp.GetAppDirectory("Data", "settings.json");
+			var loaded = false;
+			var settingsFile = DivinityApp.GetAppDirectory("Data", "settings.json");
 			try
 			{
 				if (File.Exists(settingsFile))
@@ -848,7 +863,7 @@ Directory the zip will be extracted to:
 			}
 			catch (Exception ex)
 			{
-				View.AlertBar.SetDangerAlert($"Error loading settings at '{settingsFile}': {ex}");
+				ShowAlert($"Error loading settings at '{settingsFile}': {ex}", AlertType.Danger);
 				Settings = null;
 			}
 
@@ -912,7 +927,7 @@ Directory the zip will be extracted to:
 			var canOpenModsFolder = this.WhenAnyValue(x => x.PathwayData.DocumentsModsPath, (p) => !String.IsNullOrEmpty(p) && Directory.Exists(p));
 			Keys.OpenModsFolder.AddAction(() =>
 			{
-				Process.Start(PathwayData.DocumentsModsPath);
+				TryOpenPath(PathwayData.DocumentsModsPath);
 			}, canOpenModsFolder);
 
 			var canOpenGameFolder = this.WhenAnyValue(x => x.Settings.GameExecutablePath, (p) => !String.IsNullOrEmpty(p) && File.Exists(p));
@@ -921,13 +936,13 @@ Directory the zip will be extracted to:
 				var folder = Path.GetDirectoryName(Settings.GameExecutablePath);
 				if (Directory.Exists(folder))
 				{
-					Process.Start(folder);
+					TryOpenPath(folder);
 				}
 			}, canOpenGameFolder);
 
 			Keys.OpenLogsFolder.AddAction(() =>
 			{
-				Process.Start(Settings.ExtenderLogDirectory);
+				TryOpenPath(Settings.ExtenderLogDirectory);
 			}, canOpenLogDirectory);
 
 			Keys.OpenWorkshopFolder.AddAction(() =>
@@ -935,7 +950,7 @@ Directory the zip will be extracted to:
 				//DivinityApp.Log($"WorkshopSupportEnabled:{WorkshopSupportEnabled} canOpenWorkshopFolder CanExecute:{OpenWorkshopFolderCommand.CanExecute(null)}");
 				if (!String.IsNullOrEmpty(Settings.WorkshopPath) && Directory.Exists(Settings.WorkshopPath))
 				{
-					Process.Start(Settings.WorkshopPath);
+					TryOpenPath(Settings.WorkshopPath);
 				}
 			}, canOpenWorkshopFolder);
 
@@ -1048,13 +1063,13 @@ Directory the zip will be extracted to:
 				catch (Exception) { }
 				if (SaveSettings())
 				{
-					View.AlertBar.SetSuccessAlert($"Saved settings to '{settingsFile}'.", 10);
+					ShowAlert($"Saved settings to '{settingsFile}'.", AlertType.Success, 10);
 				}
 			}).DisposeWith(Settings.Disposables);
 
 			Settings.OpenSettingsFolderCommand = ReactiveCommand.Create(() =>
 			{
-				Process.Start(DivinityApp.GetAppDirectory(DivinityApp.DIR_DATA));
+				TryOpenPath(DivinityApp.GetAppDirectory(DivinityApp.DIR_DATA));
 			}).DisposeWith(Settings.Disposables);
 
 			Settings.ExportExtenderSettingsCommand = ReactiveCommand.Create(() =>
@@ -1073,11 +1088,11 @@ Directory the zip will be extracted to:
 					}
 					string contents = JsonConvert.SerializeObject(Settings.ExtenderSettings, jsonSettings);
 					File.WriteAllText(outputFile, contents);
-					View.AlertBar.SetSuccessAlert($"Saved Script Extender settings to '{outputFile}'.", 20);
+					ShowAlert($"Saved Script Extender settings to '{outputFile}'.", AlertType.Success, 20);
 				}
 				catch (Exception ex)
 				{
-					View.AlertBar.SetDangerAlert($"Error saving Script Extender settings to '{outputFile}':\n{ex}");
+					ShowAlert($"Error saving Script Extender settings to '{outputFile}':\n{ex}", AlertType.Danger);
 				}
 			}).DisposeWith(Settings.Disposables);
 
@@ -1115,11 +1130,11 @@ Directory the zip will be extracted to:
 						try
 						{
 							RecycleBinHelper.DeleteFile(filePath, false, true);
-							View.AlertBar.SetSuccessAlert($"Deleted local workshop cache at '{filePath}'.", 20);
+							ShowAlert($"Deleted local workshop cache at '{filePath}'.", AlertType.Success, 20);
 						}
 						catch (Exception ex)
 						{
-							View.AlertBar.SetDangerAlert($"Error deleting workshop cache:\n{ex}");
+							ShowAlert($"Error deleting workshop cache:\n{ex}", AlertType.Danger);
 						}
 					}
 				}
@@ -1192,7 +1207,7 @@ Directory the zip will be extracted to:
 				if (!IsLocked)
 				{
 					SetGamePathways(Settings.GameDataPath, x);
-					View.AlertBar.SetWarningAlert($"Larian folder changed to '{PathwayData.LarianDocumentsFolder}'. Make sure to refresh.", 60);
+					ShowAlert($"Larian folder changed to '{PathwayData.LarianDocumentsFolder}'. Make sure to refresh.", AlertType.Warning, 60);
 				}
 			}).DisposeWith(Settings.Disposables);
 
@@ -1237,7 +1252,7 @@ Directory the zip will be extracted to:
 			}
 			catch (Exception ex)
 			{
-				View.AlertBar.SetDangerAlert($"Error saving settings at '{settingsFile}': {ex}");
+				ShowAlert($"Error saving settings at '{settingsFile}': {ex}", AlertType.Danger);
 			}
 			return false;
 		}
@@ -1912,15 +1927,15 @@ Directory the zip will be extracted to:
 						{
 							if (total > 1)
 							{
-								View.AlertBar.SetSuccessAlert($"Successfully imported {total} mods.", 20);
+								ShowAlert($"Successfully imported {total} mods.", AlertType.Success, 20);
 							}
 							else if (total == 1)
 							{
-								View.AlertBar.SetSuccessAlert($"Successfully imported '{dialog.FileName}'.", 20);
+								ShowAlert($"Successfully imported '{dialog.FileName}'.", AlertType.Success, 20);
 							}
 							else
 							{
-								View.AlertBar.SetSuccessAlert("Skipped importing mod.", 20);
+								ShowAlert("Skipped importing mod.", AlertType.Success, 20);
 							}
 						}
 						else
@@ -2306,7 +2321,7 @@ Directory the zip will be extracted to:
 						StatusBarRightText = "";
 						StatusBarBusyIndicatorVisibility = Visibility.Collapsed;
 						string updateMessage = !CachedWorkshopData.CacheUpdated ? "cached " : "";
-						this.View.AlertBar.SetSuccessAlert($"Loaded {updateMessage}workshop data ({CachedWorkshopData.Mods.Count} mods).", 60);
+						this.ShowAlert($"Loaded {updateMessage}workshop data ({CachedWorkshopData.Mods.Count} mods).", AlertType.Success, 60);
 					});
 
 					if (CachedWorkshopData.CacheUpdated)
@@ -2589,13 +2604,13 @@ Directory the zip will be extracted to:
 				}
 				catch (Exception ex)
 				{
-					View.AlertBar.SetDangerAlert($"Failed to save mod load order to '{outputPath}': {ex.Message}");
+					ShowAlert($"Failed to save mod load order to '{outputPath}': {ex.Message}", AlertType.Danger);
 					result = false;
 				}
 
 				if (result && !skipSaveConfirmation)
 				{
-					View.AlertBar.SetSuccessAlert($"Saved mod load order to '{outputPath}'", 10);
+					ShowAlert($"Saved mod load order to '{outputPath}'", AlertType.Success, 10);
 				}
 			}
 
@@ -2653,7 +2668,7 @@ Directory the zip will be extracted to:
 
 				if (result)
 				{
-					View.AlertBar.SetSuccessAlert($"Saved mod load order to '{dialog.FileName}'", 10);
+					ShowAlert($"Saved mod load order to '{dialog.FileName}'", AlertType.Success, 10);
 					foreach (var order in this.ModOrderList)
 					{
 						if (order.FilePath == dialog.FileName)
@@ -2665,7 +2680,7 @@ Directory the zip will be extracted to:
 				}
 				else
 				{
-					View.AlertBar.SetDangerAlert($"Failed to save mod load order to '{dialog.FileName}'");
+					ShowAlert($"Failed to save mod load order to '{dialog.FileName}'", AlertType.Danger);
 				}
 			}
 		}
@@ -3015,7 +3030,7 @@ Directory the zip will be extracted to:
 						OnMainProgressComplete();
 						if (success)
 						{
-							View.AlertBar.SetSuccessAlert($"Successfully extracted archive.", 20);
+							ShowAlert($"Successfully extracted archive.", AlertType.Success, 20);
 						}
 					});
 					return Disposable.Empty;
@@ -3241,7 +3256,7 @@ Directory the zip will be extracted to:
 				DivinityApp.Log($"Error extracting package: {ex}");
 				RxApp.MainThreadScheduler.Schedule(_ =>
 				{
-					this.View.AlertBar.SetDangerAlert($"Error extracting archive (check the log): {ex.Message}", 0);
+					ShowAlert($"Error extracting archive (check the log): {ex.Message}", AlertType.Danger, 0);
 				});
 			}
 			finally
@@ -3383,11 +3398,11 @@ Directory the zip will be extracted to:
 
 					RxApp.MainThreadScheduler.Schedule(() =>
 					{
-						this.View.AlertBar.SetSuccessAlert($"Exported load order to '{outputPath}'.", 15);
-						var dir = Path.GetDirectoryName(outputPath);
+						this.ShowAlert($"Exported load order to '{outputPath}'.", AlertType.Success, 15);
+						var dir = Path.GetFullPath(Path.GetDirectoryName(outputPath));
 						if(Directory.Exists(dir))
 						{
-							Process.Start(dir);
+							TryOpenPath(dir);
 						}
 					});
 
@@ -3399,7 +3414,7 @@ Directory the zip will be extracted to:
 					{
 						string msg = $"Error writing load order archive '{outputPath}': {ex}";
 						DivinityApp.Log(msg);
-						this.View.AlertBar.SetDangerAlert(msg);
+						this.ShowAlert(msg, AlertType.Danger);
 					});
 				}
 
@@ -3409,7 +3424,7 @@ Directory the zip will be extracted to:
 			{
 				RxApp.MainThreadScheduler.Schedule(() =>
 				{
-					this.View.AlertBar.SetDangerAlert("SelectedProfile or SelectedModOrder is null! Failed to export mod order.");
+					this.ShowAlert("SelectedProfile or SelectedModOrder is null! Failed to export mod order.", AlertType.Danger);
 				});
 			}
 
@@ -3497,7 +3512,7 @@ Directory the zip will be extracted to:
 			}
 			else
 			{
-				View.AlertBar.SetDangerAlert("SelectedProfile or SelectedModOrder is null! Failed to export mod order.");
+				ShowAlert("SelectedProfile or SelectedModOrder is null! Failed to export mod order.", AlertType.Danger);
 			}
 
 		}
@@ -3563,18 +3578,18 @@ Directory the zip will be extracted to:
 					try
 					{
 						File.WriteAllText(dialog.FileName, outputText);
-						View.AlertBar.SetSuccessAlert($"Exported order to '{dialog.FileName}'", 20);
+						ShowAlert($"Exported order to '{dialog.FileName}'", AlertType.Success, 20);
 					}
 					catch (Exception ex)
 					{
-						View.AlertBar.SetDangerAlert($"Error exporting mod order to '{dialog.FileName}':\n{ex}");
+						ShowAlert($"Error exporting mod order to '{dialog.FileName}':\n{ex}", AlertType.Danger);
 					}
 				}
 			}
 			else
 			{
 				DivinityApp.Log($"SelectedProfile({SelectedProfile}) SelectedModOrder({SelectedModOrder})");
-				View.AlertBar.SetDangerAlert("SelectedProfile or SelectedModOrder is null! Failed to export mod order.");
+				ShowAlert("SelectedProfile or SelectedModOrder is null! Failed to export mod order.", AlertType.Danger);
 			}
 		}
 
@@ -3827,7 +3842,7 @@ Directory the zip will be extracted to:
 								}
 							}
 
-							View.AlertBar.SetSuccessAlert($"Successfully renamed '{dialog.FileName}' to '{renameDialog.FileName}'.", 15);
+							ShowAlert($"Successfully renamed '{dialog.FileName}' to '{renameDialog.FileName}'.", AlertType.Success, 15);
 						}
 						catch (Exception ex)
 						{
@@ -4117,7 +4132,7 @@ Directory the zip will be extracted to:
 				if (!String.IsNullOrEmpty(order.FilePath) && File.Exists(order.FilePath))
 				{
 					RecycleBinHelper.DeleteFile(order.FilePath, false, false);
-					View.AlertBar.SetWarningAlert($"Sent load order '{order.FilePath}' to the recycle bin.", 25);
+					ShowAlert($"Sent load order '{order.FilePath}' to the recycle bin.", AlertType.Warning, 25);
 				}
 			}
 			return Unit.Default;
@@ -4247,12 +4262,12 @@ Directory the zip will be extracted to:
 					{
 						if (successes >= totalWork)
 						{
-							View.AlertBar.SetSuccessAlert($"Successfully extracted all selected mods to '{dialog.SelectedPath}'.", 20);
-							Process.Start(openOutputPath);
+							ShowAlert($"Successfully extracted all selected mods to '{dialog.SelectedPath}'.", AlertType.Success, 20);
+							TryOpenPath(openOutputPath);
 						}
 						else
 						{
-							View.AlertBar.SetDangerAlert($"Error occurred when extracting selected mods to '{dialog.SelectedPath}'.", 30);
+							ShowAlert($"Error occurred when extracting selected mods to '{dialog.SelectedPath}'.", AlertType.Danger, 30);
 						}
 					});
 
@@ -4285,7 +4300,7 @@ Directory the zip will be extracted to:
 			if (SelectedAdventureMod == null || SelectedAdventureMod.IsEditorMod || SelectedAdventureMod.IsLarianMod || !File.Exists(SelectedAdventureMod.FilePath))
 			{
 				var displayName = SelectedAdventureMod != null ? SelectedAdventureMod.DisplayName : "";
-				View.AlertBar.SetWarningAlert($"Current adventure mod '{displayName}' is not extractable.", 30);
+				ShowAlert($"Current adventure mod '{displayName}' is not extractable.", AlertType.Warning, 30);
 				return;
 			}
 
@@ -4355,12 +4370,12 @@ Directory the zip will be extracted to:
 					{
 						if (success)
 						{
-							View.AlertBar.SetSuccessAlert($"Successfully extracted adventure mod to '{dialog.SelectedPath}'.", 20);
-							Process.Start(openOutputPath);
+							ShowAlert($"Successfully extracted adventure mod to '{dialog.SelectedPath}'.", AlertType.Success, 20);
+							TryOpenPath(openOutputPath);
 						}
 						else
 						{
-							View.AlertBar.SetDangerAlert($"Error occurred when extracting adventure mod to '{dialog.SelectedPath}'.", 30);
+							ShowAlert($"Error occurred when extracting adventure mod to '{dialog.SelectedPath}'.", AlertType.Danger, 30);
 						}
 					});
 
@@ -4720,12 +4735,12 @@ Directory the zip will be extracted to:
 
 			Keys.OpenDonationLink.AddAction(() =>
 			{
-				Process.Start(DivinityApp.URL_DONATION);
+				TryOpenPath(DivinityApp.URL_DONATION);
 			});
 
 			Keys.OpenRepositoryPage.AddAction(() =>
 			{
-				Process.Start(DivinityApp.URL_REPO);
+				TryOpenPath(DivinityApp.URL_REPO);
 			});
 
 			Keys.ToggleViewTheme.AddAction(() =>
@@ -4851,16 +4866,16 @@ Directory the zip will be extracted to:
 							if (i < ActiveMods.Count - 1) text += Environment.NewLine;
 						}
 						Clipboard.SetText(text);
-						this.View.AlertBar.SetInformationAlert("Copied mod order to clipboard.", 10);
+						ShowAlert("Copied mod order to clipboard.", AlertType.Info, 10);
 					}
 					else
 					{
-						this.View.AlertBar.SetWarningAlert("Current order is empty.", 10);
+						this.ShowAlert("Current order is empty.", AlertType.Warning, 10);
 					}
 				}
 				catch (Exception ex)
 				{
-					this.View.AlertBar.SetDangerAlert($"Error copying order to clipboard: {ex}", 15);
+					this.ShowAlert($"Error copying order to clipboard: {ex}", AlertType.Danger, 15);
 				}
 			});
 
