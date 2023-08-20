@@ -128,15 +128,15 @@ namespace DivinityModManager.ViewModels
 			RemoveFromLoadOrder = true;
 			PermanentlyDelete = false;
 
-			this.WhenAnyValue(x => x.AnySelected).BindTo(this, x => x.CanRun);
-
 			var filesChanged = this.Files.ToObservableChangeSet().AutoRefresh(x => x.IsSelected).ToCollection().Throttle(TimeSpan.FromMilliseconds(50)).ObserveOn(RxApp.MainThreadScheduler);
-			filesChanged.Select(x => x.Any(y => y.IsSelected)).ToProperty(this, nameof(AnySelected));
+			_anySelected = filesChanged.Select(x => x.Any(y => y.IsSelected)).ToProperty(this, nameof(AnySelected));
 
 			_allSelected = filesChanged.Select(x => x.All(y => y.IsSelected)).ToProperty(this, nameof(AllSelected), true, RxApp.MainThreadScheduler);
 			_selectAllTooltip = this.WhenAnyValue(x => x.AllSelected).Select(b => $"{(b ? "Deselect" : "Select")} All").ToProperty(this, nameof(SelectAllTooltip), true, RxApp.MainThreadScheduler);
 
 			SelectAllCommand = ReactiveCommand.Create(ToggleSelectAll, this.RunCommand.IsExecuting.Select(b => !b), RxApp.MainThreadScheduler);
+			
+			this.WhenAnyValue(x => x.AnySelected).BindTo(this, x => x.CanRun);
 		}
 	}
 }
