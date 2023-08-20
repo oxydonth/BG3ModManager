@@ -308,7 +308,6 @@
 								<MenuItem Header="-dynamicStory 1" Visibility="{Binding DebugModeEnabled, Converter={StaticResource BoolToVisibilityConverter}}" />
 								<MenuItem Header="-externalcrashhandler" Visibility="{Binding DebugModeEnabled, Converter={StaticResource BoolToVisibilityConverter}}" />
 								<MenuItem Header="-nametag &quot;&quot;" Visibility="{Binding DebugModeEnabled, Converter={StaticResource BoolToVisibilityConverter}}" />
-								<MenuItem Header="--cpuLimit &quot;&quot;" Visibility="{Binding DebugModeEnabled, Converter={StaticResource BoolToVisibilityConverter}}" />
 								<MenuItem Header="-module &quot;&quot;" Visibility="{Binding DebugModeEnabled, Converter={StaticResource BoolToVisibilityConverter}}" />
 								<MenuItem Header="+connect_lobby &quot;&quot;" Visibility="{Binding DebugModeEnabled, Converter={StaticResource BoolToVisibilityConverter}}" />
 								<MenuItem Header="-locaupdater 1" Visibility="{Binding DebugModeEnabled, Converter={StaticResource BoolToVisibilityConverter}}" />
