@@ -10,7 +10,8 @@
 	"9dff4c3b-fda7-43de-a763-ce1383039999"
   ],
   "IgnoreBuiltinPath": [
-	"Game/GUI/Assets/Tooltips"
+	"Game/GUI/Assets/Tooltips",
+	"Game/GUI/Assets/ControllerUIIcons/items_png"
   ],
   "Mods": [
 	{
