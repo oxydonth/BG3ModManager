@@ -2748,63 +2748,60 @@ Directory the zip will be extracted to:
 				displayExtenderModWarning = true;
 			}
 
-			if (AppSettings.FeatureEnabled("ScriptExtender"))
+			if (Settings?.DisableMissingModWarnings != true && displayExtenderModWarning && AppSettings.FeatureEnabled("ScriptExtender"))
 			{
-				if (displayExtenderModWarning)
+				//DivinityApp.LogMessage($"Mod Order: {String.Join("\n", order.Order.Select(x => x.Name))}");
+				DivinityApp.Log("Checking mods for extender requirements.");
+				List<DivinityMissingModData> extenderRequiredMods = new List<DivinityMissingModData>();
+				for (int i = 0; i < order.Order.Count; i++)
 				{
-					//DivinityApp.LogMessage($"Mod Order: {String.Join("\n", order.Order.Select(x => x.Name))}");
-					DivinityApp.Log("Checking mods for extender requirements.");
-					List<DivinityMissingModData> extenderRequiredMods = new List<DivinityMissingModData>();
-					for (int i = 0; i < order.Order.Count; i++)
+					var entry = order.Order[i];
+					var mod = ActiveMods.FirstOrDefault(m => m.UUID == entry.UUID);
+					if (mod != null)
 					{
-						var entry = order.Order[i];
-						var mod = ActiveMods.FirstOrDefault(m => m.UUID == entry.UUID);
-						if (mod != null)
+						if (mod.ExtenderModStatus == DivinityExtenderModStatus.REQUIRED_DISABLED || mod.ExtenderModStatus == DivinityExtenderModStatus.REQUIRED_MISSING)
 						{
-							if (mod.ExtenderModStatus == DivinityExtenderModStatus.REQUIRED_DISABLED || mod.ExtenderModStatus == DivinityExtenderModStatus.REQUIRED_MISSING)
+							DivinityApp.Log($"{mod.Name} | ExtenderModStatus: {mod.ExtenderModStatus}");
+							extenderRequiredMods.Add(new DivinityMissingModData
 							{
-								DivinityApp.Log($"{mod.Name} | ExtenderModStatus: {mod.ExtenderModStatus}");
-								extenderRequiredMods.Add(new DivinityMissingModData
-								{
-									Index = mod.Index,
-									Name = mod.DisplayName,
-									UUID = mod.UUID,
-									Dependency = false
-								});
+								Index = mod.Index,
+								Name = mod.DisplayName,
+								UUID = mod.UUID,
+								Dependency = false
+							});
 
-								if (mod.Dependencies.Count > 0)
+							if (mod.Dependencies.Count > 0)
+							{
+								foreach (var dependency in mod.Dependencies.Items)
 								{
-									foreach (var dependency in mod.Dependencies.Items)
+									if (TryGetMod(dependency.UUID, out var dependencyMod))
 									{
-										if (TryGetMod(dependency.UUID, out var dependencyMod))
+										// Dependencies not in the order that require the extender
+										if (dependencyMod.ExtenderModStatus == DivinityExtenderModStatus.REQUIRED_DISABLED || dependencyMod.ExtenderModStatus == DivinityExtenderModStatus.REQUIRED_MISSING)
 										{
-											// Dependencies not in the order that require the extender
-											if (dependencyMod.ExtenderModStatus == DivinityExtenderModStatus.REQUIRED_DISABLED || dependencyMod.ExtenderModStatus == DivinityExtenderModStatus.REQUIRED_MISSING)
+											DivinityApp.Log($"{mod.Name} | ExtenderModStatus: {mod.ExtenderModStatus}");
+											extenderRequiredMods.Add(new DivinityMissingModData
 											{
-												DivinityApp.Log($"{mod.Name} | ExtenderModStatus: {mod.ExtenderModStatus}");
-												extenderRequiredMods.Add(new DivinityMissingModData
-												{
-													Index = mod.Index - 1,
-													Name = dependencyMod.DisplayName,
-													UUID = dependencyMod.UUID,
-													Dependency = true
-												});
-											}
+												Index = mod.Index - 1,
+												Name = dependencyMod.DisplayName,
+												UUID = dependencyMod.UUID,
+												Dependency = true
+											});
 										}
 									}
 								}
 							}
 						}
 					}
+				}
 
-					if (extenderRequiredMods.Count > 0)
-					{
-						DivinityApp.Log("Displaying mods that require the extender.");
-						View.MainWindowMessageBox_OK.WindowBackground = new SolidColorBrush(Color.FromRgb(219, 40, 40));
-						View.MainWindowMessageBox_OK.Closed += MainWindowMessageBox_Closed_ResetColor;
-						View.MainWindowMessageBox_OK.ShowMessageBox(String.Join("\n", extenderRequiredMods.OrderBy(x => x.Index)),
-							"Mods Require the Script Extender - Install it with the Tools menu!", MessageBoxButton.OK, MessageBoxImage.Error, MessageBoxResult.OK);
-					}
+				if (extenderRequiredMods.Count > 0)
+				{
+					DivinityApp.Log("Displaying mods that require the extender.");
+					View.MainWindowMessageBox_OK.WindowBackground = new SolidColorBrush(Color.FromRgb(219, 40, 40));
+					View.MainWindowMessageBox_OK.Closed += MainWindowMessageBox_Closed_ResetColor;
+					View.MainWindowMessageBox_OK.ShowMessageBox(String.Join("\n", extenderRequiredMods.OrderBy(x => x.Index)),
+						"Mods Require the Script Extender - Install it with the Tools menu!", MessageBoxButton.OK, MessageBoxImage.Error, MessageBoxResult.OK);
 				}
 			}
 		}
