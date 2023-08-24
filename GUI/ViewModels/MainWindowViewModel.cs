@@ -1837,7 +1837,7 @@ Directory the zip will be extracted to:
 			bool success = false;
 			if (Path.GetExtension(filePath).Equals(".pak", StringComparison.OrdinalIgnoreCase))
 			{
-				var builtinMods = DivinityApp.IgnoredMods.ToDictionary(x => x.Folder, x => x);
+				var builtinMods = DivinityApp.IgnoredMods.SafeToDictionary(x => x.Folder, x => x);
 				var outputFilePath = Path.Combine(PathwayData.DocumentsModsPath, Path.GetFileName(filePath));
 				try
 				{
@@ -2761,10 +2761,9 @@ Directory the zip will be extracted to:
 						var mod = ActiveMods.FirstOrDefault(m => m.UUID == entry.UUID);
 						if (mod != null)
 						{
-							DivinityApp.Log($"{mod.Name} | ExtenderModStatus: {mod.ExtenderModStatus}");
-
 							if (mod.ExtenderModStatus == DivinityExtenderModStatus.REQUIRED_DISABLED || mod.ExtenderModStatus == DivinityExtenderModStatus.REQUIRED_MISSING)
 							{
+								DivinityApp.Log($"{mod.Name} | ExtenderModStatus: {mod.ExtenderModStatus}");
 								extenderRequiredMods.Add(new DivinityMissingModData
 								{
 									Index = mod.Index,
@@ -2782,6 +2781,7 @@ Directory the zip will be extracted to:
 											// Dependencies not in the order that require the extender
 											if (dependencyMod.ExtenderModStatus == DivinityExtenderModStatus.REQUIRED_DISABLED || dependencyMod.ExtenderModStatus == DivinityExtenderModStatus.REQUIRED_MISSING)
 											{
+												DivinityApp.Log($"{mod.Name} | ExtenderModStatus: {mod.ExtenderModStatus}");
 												extenderRequiredMods.Add(new DivinityMissingModData
 												{
 													Index = mod.Index - 1,
@@ -3078,7 +3078,7 @@ Directory the zip will be extracted to:
 			int successes = 0;
 			int total = 0;
 			stream.Position = 0;
-			var builtinMods = DivinityApp.IgnoredMods.ToDictionary(x => x.Folder, x => x);
+			var builtinMods = DivinityApp.IgnoredMods.SafeToDictionary(x => x.Folder, x => x);
 			using (var archiveStream = SevenZipArchive.Open(stream, _importReaderOptions))
 			{
 				foreach (var entry in archiveStream.Entries)
@@ -3154,7 +3154,7 @@ Directory the zip will be extracted to:
 			int successes = 0;
 			int total = 0;
 			stream.Position = 0;
-			var builtinMods = DivinityApp.IgnoredMods.ToDictionary(x => x.Folder, x => x);
+			var builtinMods = DivinityApp.IgnoredMods.SafeToDictionary(x => x.Folder, x => x);
 			using (var reader = ReaderFactory.Open(stream, _importReaderOptions))
 			{
 				while (reader.MoveToNextEntry())
@@ -4606,7 +4606,17 @@ Directory the zip will be extracted to:
 									mod.AddTags(tagsText.Split(';'));
 								}
 							}
-							DivinityApp.IgnoredMods.Add(mod);
+							var existingIgnoredMod = DivinityApp.IgnoredMods.FirstOrDefault(x => x.UUID == mod.UUID);
+							if(existingIgnoredMod == null)
+							{
+								DivinityApp.IgnoredMods.Add(mod);
+							}
+							else if (existingIgnoredMod.Version < mod.Version)
+							{
+								DivinityApp.IgnoredMods.Remove(existingIgnoredMod);
+								DivinityApp.IgnoredMods.Add(mod);
+							}
+							
 							DivinityApp.Log($"Ignored mod added: Name({mod.Name}) UUID({mod.UUID})");
 						}
 					}

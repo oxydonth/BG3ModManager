@@ -169,8 +169,6 @@ namespace DivinityModManager.Util
 					path += Path.DirectorySeparatorChar;
 				}
 
-				//var files = Directory.EnumerateFiles(path, "*.*", System.IO.SearchOption.AllDirectories).ToDictionary(k => k.Replace(dataRootPath, String.Empty), v => v);
-
 				var files = Directory.EnumerateFiles(path, DirectoryEnumerationOptions.Recursive | DirectoryEnumerationOptions.LargeCache, new DirectoryEnumerationFilters()
 				{
 					InclusionFilter = (f) =>

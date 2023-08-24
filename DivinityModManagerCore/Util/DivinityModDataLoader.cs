@@ -631,7 +631,7 @@ namespace DivinityModManager.Util
 
 		public static async Task<List<DivinityModData>> LoadModPackageDataAsync(string modsFolderPath, CancellationToken cts)
 		{
-			var builtinMods = DivinityApp.IgnoredMods.ToDictionary(x => x.Folder, x => x);
+			var builtinMods = DivinityApp.IgnoredMods.SafeToDictionary(x => x.Folder, x => x);
 
 			var modPaks = new List<string>();
 			try

@@ -19,6 +19,7 @@ using System.Reactive.Concurrency;
 using System.Windows;
 using System.ComponentModel;
 using System.Collections.Specialized;
+using DivinityModManager.Extensions;
 
 namespace DivinityModManager.Controls
 {
@@ -215,7 +216,7 @@ namespace DivinityModManager.Controls
 					case Key.Right:
 					case Key.Left:
 						var selectedItems = list.Where(x => x.IsSelected).ToList();
-						var lastIndexes = selectedItems.ToDictionary(m => m.UUID, m => list.IndexOf(m));
+						var lastIndexes = selectedItems.SafeToDictionary(m => m.UUID, m => list.IndexOf(m));
 						int nextIndex = -1;
 						int targetScrollIndex = -1;
 
