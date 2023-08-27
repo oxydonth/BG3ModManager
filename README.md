@@ -12,7 +12,7 @@ A mod manager for [Baldur's Gate 3](https://store.steampowered.com/app/1086940/B
 5. Upon opening the program, pathways to the game data and exe should be automatically detected.  
 *If this fails, manually set the pathways in Settings -> Preferences, click 'Save', then click the 'Refresh' button so the campaign mod data is loaded.*  
 ![Preferences Window](/Screenshots/PreferencesWindow_GameDataPath.png?raw=true "Making sure the Game Data Path is set.")
-6. Organize your active mods for a given profile, then click the first export button (Export Load Order to Game), or click File -> Export Order to Game, to export your active load order to the game. This updates the `modsettings.lsx` file that the game reads.
+6. Organize your active mods for the profile `Public`, then click the first export button (Export Load Order to Game), or click File -> Export Order to Game, to export your active load order to the game. This updates the `modsettings.lsx` file that the game reads.
  [![Exporting Load Orders](https://i.imgur.com/m9IBQrj.png)](https://i.imgur.com/m9IBQrjQ.png)
 
 # Important Tips  
