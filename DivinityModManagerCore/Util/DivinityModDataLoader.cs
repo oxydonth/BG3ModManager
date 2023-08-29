@@ -472,15 +472,18 @@ namespace DivinityModManager.Util
 							if (modFolderMatch.Success)
 							{
 								var modFolder = Path.GetFileName(modFolderMatch.Groups[2].Value.TrimEnd(Path.DirectorySeparatorChar));
-								if (!builtinModOverrides.ContainsKey(modFolder) && builtinMods.TryGetValue(modFolder, out var builtinMod))
+								if (builtinMods.TryGetValue(modFolder, out var builtinMod))
 								{
 									hasBuiltinDirectory = true;
-									builtinModOverrides[builtinMod.Folder] = builtinMod;
-									if(!IgnoreBuiltinPath.Any(x => f.Name.Contains(x)))
+									if(!builtinModOverrides.ContainsKey(modFolder))
 									{
-										isOverridingBuiltinDirectory = true;
+										builtinModOverrides[builtinMod.Folder] = builtinMod;
+										if (!IgnoreBuiltinPath.Any(x => f.Name.Contains(x)))
+										{
+											isOverridingBuiltinDirectory = true;
+										}
+										DivinityApp.Log($"Found a mod with a builtin directory. Pak({pakName}) Folder({modFolder}) File({f.Name}");
 									}
-									DivinityApp.Log($"Found a mod with a builtin directory. Pak({pakName}) Folder({modFolder}) File({f.Name}");
 								}
 								else
 								{
