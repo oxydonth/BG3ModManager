@@ -84,7 +84,7 @@ namespace DivinityModManager.Views
 			return row;
 		}
 
-		private void CreateExtenderSettings()
+		private void CreateExtenderSettings(BoolToVisibilityConverter boolToVisibilityConverter)
 		{
 			var props = from p in typeof(ScriptExtenderSettings).GetProperties()
 						let attr = p.GetCustomAttributes(typeof(SettingsEntryAttribute), true)
@@ -98,8 +98,6 @@ namespace DivinityModManager.Views
 
 			ExtenderSettingsAutoGrid.RowCount = count;
 			ExtenderSettingsAutoGrid.Rows = String.Join(",", Enumerable.Repeat("auto", count));
-
-			BoolToVisibilityConverter boolToVisibilityConverter = (BoolToVisibilityConverter)FindResource("BoolToVisibilityConverter");
 
 			//Add ExportDefaultExtenderSettings manually here, since it's not technically an extender setting
 			row = AddExportDefaultsEntry(row, boolToVisibilityConverter);
@@ -247,7 +245,11 @@ namespace DivinityModManager.Views
 			};
 			KeybindingsListView.KeyUp += KeybindingsListView_KeyUp;
 
-			CreateExtenderSettings();
+			var boolToVisibilityConverter = (BoolToVisibilityConverter)FindResource("BoolToVisibilityConverter");
+
+			CreateExtenderSettings(boolToVisibilityConverter);
+
+			this.OneWayBind(ViewModel, m => m.ExtenderSettings.ExtenderUpdaterIsAvailable, view => view.ScriptExtenderTab.Visibility, boolToVisibilityConverter);
 		}
 
 		private bool isSettingKeybinding = false;

@@ -553,7 +553,7 @@ namespace DivinityModManager.ViewModels
 						ShowAlert($"Successfully installed the Extender updater {DivinityApp.EXTENDER_UPDATER_FILE} to '{exeDir}'.", AlertType.Success, 20);
 						HighlightExtenderDownload = false;
 						Settings.ExtenderSettings.ExtenderUpdaterIsAvailable = true;
-						Settings.ExtenderSettings.ExtenderVersion = 56;
+						Settings.ExtenderSettings.ExtenderVersion = 1;
 						if (Settings.ExtenderSettings.ExtenderVersion <= -1)
 						{
 							if (!String.IsNullOrWhiteSpace(PathwayData.ScriptExtenderLatestReleaseVersion))
