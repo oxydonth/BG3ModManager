@@ -3337,6 +3337,7 @@ Directory the zip will be extracted to:
 				}
 
 				var modPaks = new List<DivinityModData>(Mods.Where(x => SelectedModOrder.Order.Any(o => o.UUID == x.UUID)));
+				modPaks.AddRange(ForceLoadedMods.Where(x => !x.IsForceLoadedMergedMod));
 
 				var incrementProgress = 1d / modPaks.Count;
 
@@ -3549,11 +3550,14 @@ Directory the zip will be extracted to:
 
 				if (dialog.ShowDialog(View) == true)
 				{
+					var exportMods = new List<DivinityModData>(ActiveMods);
+					//exportMods.AddRange(ForceLoadedMods.Where(x => !x.IsForceLoadedMergedMod));
+
 					var fileType = Path.GetExtension(dialog.FileName);
 					string outputText = "";
 					if (fileType.Equals(".json", StringComparison.OrdinalIgnoreCase))
 					{
-						outputText = JsonConvert.SerializeObject(ActiveMods.Select(x => DivinitySerializedModData.FromMod(x)).ToList(), Formatting.Indented, new JsonSerializerSettings
+						outputText = JsonConvert.SerializeObject(exportMods.Select(x => DivinitySerializedModData.FromMod(x)).ToList(), Formatting.Indented, new JsonSerializerSettings
 						{
 							NullValueHandling = NullValueHandling.Ignore
 						});
@@ -3563,18 +3567,18 @@ Directory the zip will be extracted to:
 						if (WorkshopSupportEnabled)
 						{
 							outputText = "Index\tName\tAuthor\tFileName\tTags\tDependencies\tURL\n";
-							outputText += String.Join("\n", ActiveMods.Select(x => $"{x.Index}\t{x.Name}\t{x.Author}\t{x.OutputPakName}\t{String.Join(", ", x.Tags)}\t{String.Join(", ", x.Dependencies.Items.Select(y => y.Name))}\t{x.GetURL()}"));
+							outputText += String.Join("\n", exportMods.Select(x => $"{x.Index}\t{x.Name}\t{x.Author}\t{x.OutputPakName}\t{String.Join(", ", x.Tags)}\t{String.Join(", ", x.Dependencies.Items.Select(y => y.Name))}\t{x.GetURL()}"));
 						}
 						else
 						{
 							outputText = "Index\tName\tAuthor\tFileName\tTags\tDependencies\n";
-							outputText += String.Join("\n", ActiveMods.Select(x => $"{x.Index}\t{x.Name}\t{x.Author}\t{x.OutputPakName}\t{String.Join(", ", x.Tags)}\t{String.Join(", ", x.Dependencies.Items.Select(y => y.Name))}"));
+							outputText += String.Join("\n", exportMods.Select(x => $"{x.Index}\t{x.Name}\t{x.Author}\t{x.OutputPakName}\t{String.Join(", ", x.Tags)}\t{String.Join(", ", x.Dependencies.Items.Select(y => y.Name))}"));
 						}
 					}
 					else
 					{
 						//Text file format
-						outputText = String.Join("\n", ActiveMods.Select(x => $"{x.Index}. {x.Name} ({x.OutputPakName}) {x.GetURL()}"));
+						outputText = String.Join("\n", exportMods.Select(x => $"{x.Index}. {x.Name} ({x.OutputPakName}) {x.GetURL()}"));
 					}
 					try
 					{
