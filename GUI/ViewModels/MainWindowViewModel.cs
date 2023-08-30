@@ -344,7 +344,7 @@ namespace DivinityModManager.ViewModels
 		public ICommand OpenGameMasterCampaignInFileExplorerCommand { get; private set; }
 		public ICommand CopyGameMasterCampaignPathToClipboardCommand { get; private set; }
 
-		private void TryOpenPath(string path)
+		public void TryOpenPath(string path)
 		{
 			try
 			{

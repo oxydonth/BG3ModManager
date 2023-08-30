@@ -76,8 +76,49 @@ namespace DivinityModManager.Views
 
 		private readonly System.Windows.Interop.WindowInteropHelper _hwnd;
 
+		private void OnUIException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+		{
+			e.Handled = true;
+			ViewModel?.ToggleLogging(true);
+			DivinityApp.Log($"An exception in the UI occurred:\n{e.Exception}");
+
+			var result = Xceed.Wpf.Toolkit.MessageBox.Show(this,
+				$"An exception in the UI occurred. The program will close.\n{e.Exception}", 
+				"Open the logs folder?",
+				System.Windows.MessageBoxButton.YesNo,
+				System.Windows.MessageBoxImage.Error,
+				System.Windows.MessageBoxResult.No, MainWindowMessageBox_OK.Style);
+			if (result == System.Windows.MessageBoxResult.Yes)
+			{
+				ViewModel?.TryOpenPath(DivinityApp.GetAppDirectory("_Logs"));
+			}
+
+			App.Current.Shutdown(1);
+		}
+
+		private void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
+		{
+			ViewModel?.ToggleLogging(true);
+			DivinityApp.Log($"An unhandled exception occurred. The program will close.\n{e.ExceptionObject}");
+			var result = Xceed.Wpf.Toolkit.MessageBox.Show(this,
+				$"An unhandled exception occurred:\n{e.ExceptionObject}",
+				"Open the logs folder?",
+				System.Windows.MessageBoxButton.YesNo,
+				System.Windows.MessageBoxImage.Error,
+				System.Windows.MessageBoxResult.No, MainWindowMessageBox_OK.Style);
+			if (result == System.Windows.MessageBoxResult.Yes)
+			{
+				ViewModel?.TryOpenPath(DivinityApp.GetAppDirectory("_Logs"));
+			}
+
+			App.Current.Shutdown(1);
+		}
+
 		public MainWindow()
 		{
+			Application.Current.DispatcherUnhandledException += OnUIException;
+			AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
+
 			InitializeComponent();
 
 			self = this;
