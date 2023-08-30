@@ -80,7 +80,7 @@ namespace DivinityModManager.ViewModels
 		private readonly AppKeys _keys;
 		public AppKeys Keys => _keys;
 
-		private bool IsInitialized { get; set; }
+		public bool IsInitialized { get; private set; }
 
 		protected readonly SourceCache<DivinityModData, string> mods = new SourceCache<DivinityModData, string>(mod => mod.UUID);
 

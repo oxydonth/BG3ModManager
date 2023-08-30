@@ -112,9 +112,12 @@ namespace DivinityModManager.Views
 		{
 			e.Handled = true;
 			ToggleLogging(true);
-			DivinityApp.Log($"An exception in the UI occurred:\n{e.Exception}");
+			var doShutdown = ViewModel?.IsInitialized != true;
+			var shutdownText = doShutdown ? " The program will close." : "";
+			DivinityApp.Log($"An exception in the UI occurred.{shutdownText}\n{e.Exception}");
 
-			var result = Xceed.Wpf.Toolkit.MessageBox.Show($"An exception in the UI occurred. The program will close.\n{e.Exception}", 
+
+			var result = Xceed.Wpf.Toolkit.MessageBox.Show($"An exception in the UI occurred.{shutdownText}\n{e.Exception}", 
 				"Open the logs folder?",
 				System.Windows.MessageBoxButton.YesNo,
 				System.Windows.MessageBoxImage.Error,
@@ -124,14 +127,21 @@ namespace DivinityModManager.Views
 				DivinityFileUtils.TryOpenPath(DivinityApp.GetAppDirectory("_Logs"));
 			}
 
-			App.Current.Shutdown(1);
+			//Shutdown if we had an exception when loading.
+			if (doShutdown)
+			{
+				App.Current.Shutdown(1);
+			}
 		}
 
 		private void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
 		{
 			ToggleLogging(true);
-			DivinityApp.Log($"An unhandled exception occurred. The program will close.\n{e.ExceptionObject}");
-			var result = Xceed.Wpf.Toolkit.MessageBox.Show($"An unhandled exception occurred:\n{e.ExceptionObject}",
+			var doShutdown = ViewModel?.IsInitialized != true;
+			var shutdownText = doShutdown ? " The program will close." : "";
+
+			DivinityApp.Log($"An unhandled exception occurred.{shutdownText}\n{e.ExceptionObject}");
+			var result = Xceed.Wpf.Toolkit.MessageBox.Show($"An unhandled exception occurred.{shutdownText}\n{e.ExceptionObject}",
 				"Open the logs folder?",
 				System.Windows.MessageBoxButton.YesNo,
 				System.Windows.MessageBoxImage.Error,
@@ -141,7 +151,10 @@ namespace DivinityModManager.Views
 				DivinityFileUtils.TryOpenPath(DivinityApp.GetAppDirectory("_Logs"));
 			}
 
-			App.Current.Shutdown(1);
+			if(doShutdown)
+			{
+				App.Current.Shutdown(1);
+			}
 		}
 
 		public MainWindow()
