@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Reactive.Concurrency;
@@ -76,21 +77,51 @@ namespace DivinityModManager.Views
 
 		private readonly System.Windows.Interop.WindowInteropHelper _hwnd;
 
+		private TextWriterTraceListener debugLogListener;
+
+		public void ToggleLogging(bool enabled)
+		{
+			if (enabled || ViewModel?.DebugMode == true)
+			{
+				if (debugLogListener == null)
+				{
+					var logsDir = DivinityApp.GetAppDirectory("_Logs");
+					string sysFormat = CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern.Replace("/", "-");
+					if (!Directory.Exists(logsDir))
+					{
+						Directory.CreateDirectory(logsDir);
+						DivinityApp.Log($"Creating logs directory: {logsDir}");
+					}
+
+					string logFileName = Path.Combine(logsDir, "debug_" + DateTime.Now.ToString(sysFormat + "_HH-mm-ss") + ".log");
+					debugLogListener = new TextWriterTraceListener(logFileName, "DebugLogListener");
+					Trace.Listeners.Add(debugLogListener);
+					Trace.AutoFlush = true;
+				}
+			}
+			else if (debugLogListener != null && ViewModel?.DebugMode != true)
+			{
+				Trace.Listeners.Remove(debugLogListener);
+				debugLogListener.Dispose();
+				debugLogListener = null;
+				Trace.AutoFlush = false;
+			}
+		}
+
 		private void OnUIException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
 		{
 			e.Handled = true;
-			ViewModel?.ToggleLogging(true);
+			ToggleLogging(true);
 			DivinityApp.Log($"An exception in the UI occurred:\n{e.Exception}");
 
-			var result = Xceed.Wpf.Toolkit.MessageBox.Show(this,
-				$"An exception in the UI occurred. The program will close.\n{e.Exception}", 
+			var result = Xceed.Wpf.Toolkit.MessageBox.Show($"An exception in the UI occurred. The program will close.\n{e.Exception}", 
 				"Open the logs folder?",
 				System.Windows.MessageBoxButton.YesNo,
 				System.Windows.MessageBoxImage.Error,
 				System.Windows.MessageBoxResult.No, MainWindowMessageBox_OK.Style);
 			if (result == System.Windows.MessageBoxResult.Yes)
 			{
-				ViewModel?.TryOpenPath(DivinityApp.GetAppDirectory("_Logs"));
+				DivinityFileUtils.TryOpenPath(DivinityApp.GetAppDirectory("_Logs"));
 			}
 
 			App.Current.Shutdown(1);
@@ -98,17 +129,16 @@ namespace DivinityModManager.Views
 
 		private void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
 		{
-			ViewModel?.ToggleLogging(true);
+			ToggleLogging(true);
 			DivinityApp.Log($"An unhandled exception occurred. The program will close.\n{e.ExceptionObject}");
-			var result = Xceed.Wpf.Toolkit.MessageBox.Show(this,
-				$"An unhandled exception occurred:\n{e.ExceptionObject}",
+			var result = Xceed.Wpf.Toolkit.MessageBox.Show($"An unhandled exception occurred:\n{e.ExceptionObject}",
 				"Open the logs folder?",
 				System.Windows.MessageBoxButton.YesNo,
 				System.Windows.MessageBoxImage.Error,
 				System.Windows.MessageBoxResult.No, MainWindowMessageBox_OK.Style);
 			if (result == System.Windows.MessageBoxResult.Yes)
 			{
-				ViewModel?.TryOpenPath(DivinityApp.GetAppDirectory("_Logs"));
+				DivinityFileUtils.TryOpenPath(DivinityApp.GetAppDirectory("_Logs"));
 			}
 
 			App.Current.Shutdown(1);
@@ -154,7 +184,7 @@ namespace DivinityModManager.Views
 			if (File.Exists(Alphaleonis.Win32.Filesystem.Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "debug")))
 			{
 				ViewModel.DebugMode = true;
-				ViewModel.ToggleLogging(true);
+				ToggleLogging(true);
 				DivinityApp.Log("Enable logging due to the debug file next to the exe.");
 			}
 

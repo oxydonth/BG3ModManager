@@ -381,5 +381,20 @@ namespace DivinityModManager.Util
 				return false;
 			}
 		}
+
+		public static void TryOpenPath(string path)
+		{
+			try
+			{
+				if (!String.IsNullOrEmpty(path))
+				{
+					Process.Start(path);
+				}
+			}
+			catch (Exception ex)
+			{
+				DivinityApp.Log($"Error opening path:\n{ex}");
+			}
+		}
 	}
 }

@@ -344,21 +344,6 @@ namespace DivinityModManager.ViewModels
 		public ICommand OpenGameMasterCampaignInFileExplorerCommand { get; private set; }
 		public ICommand CopyGameMasterCampaignPathToClipboardCommand { get; private set; }
 
-		public void TryOpenPath(string path)
-		{
-			try
-			{
-				if (!String.IsNullOrEmpty(path))
-				{
-					Process.Start(path);
-				}
-			}
-			catch (Exception ex)
-			{
-				DivinityApp.Log($"Error opening path:\n{ex}");
-			}
-		}
-
 		private void SetLoadedGMCampaigns(IEnumerable<DivinityGameMasterCampaign> data)
 		{
 			string lastSelectedCampaignUUID = "";
@@ -457,36 +442,6 @@ namespace DivinityModManager.ViewModels
 		#endregion
 
 		public bool DebugMode { get; set; }
-
-		private TextWriterTraceListener debugLogListener;
-		public void ToggleLogging(bool enabled)
-		{
-			if (enabled || DebugMode)
-			{
-				if (debugLogListener == null)
-				{
-					var logsDir = DivinityApp.GetAppDirectory("_Logs");
-					string sysFormat = CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern.Replace("/", "-");
-					if (!Directory.Exists(logsDir))
-					{
-						Directory.CreateDirectory(logsDir);
-						DivinityApp.Log($"Creating logs directory: {logsDir}");
-					}
-
-					string logFileName = Path.Combine(logsDir, "debug_" + DateTime.Now.ToString(sysFormat + "_HH-mm-ss") + ".log");
-					debugLogListener = new TextWriterTraceListener(logFileName, "DebugLogListener");
-					Trace.Listeners.Add(debugLogListener);
-					Trace.AutoFlush = true;
-				}
-			}
-			else if (debugLogListener != null && !DebugMode)
-			{
-				Trace.Listeners.Remove(debugLogListener);
-				debugLogListener.Dispose();
-				debugLogListener = null;
-				Trace.AutoFlush = false;
-			}
-		}
 
 		private void DownloadScriptExtender(string exeDir)
 		{
@@ -636,7 +591,7 @@ Directory the zip will be extracted to:
 			else
 			{
 				DivinityApp.Log($"Getting a release download link failed for some reason. Opening repo url: {DivinityApp.EXTENDER_LATEST_URL}");
-				TryOpenPath(DivinityApp.EXTENDER_LATEST_URL);
+				DivinityFileUtils.TryOpenPath(DivinityApp.EXTENDER_LATEST_URL);
 			}
 		}
 
@@ -927,7 +882,7 @@ Directory the zip will be extracted to:
 			var canOpenModsFolder = this.WhenAnyValue(x => x.PathwayData.DocumentsModsPath, (p) => !String.IsNullOrEmpty(p) && Directory.Exists(p));
 			Keys.OpenModsFolder.AddAction(() =>
 			{
-				TryOpenPath(PathwayData.DocumentsModsPath);
+				DivinityFileUtils.TryOpenPath(PathwayData.DocumentsModsPath);
 			}, canOpenModsFolder);
 
 			var canOpenGameFolder = this.WhenAnyValue(x => x.Settings.GameExecutablePath, (p) => !String.IsNullOrEmpty(p) && File.Exists(p));
@@ -936,13 +891,13 @@ Directory the zip will be extracted to:
 				var folder = Path.GetDirectoryName(Settings.GameExecutablePath);
 				if (Directory.Exists(folder))
 				{
-					TryOpenPath(folder);
+					DivinityFileUtils.TryOpenPath(folder);
 				}
 			}, canOpenGameFolder);
 
 			Keys.OpenLogsFolder.AddAction(() =>
 			{
-				TryOpenPath(Settings.ExtenderLogDirectory);
+				DivinityFileUtils.TryOpenPath(Settings.ExtenderLogDirectory);
 			}, canOpenLogDirectory);
 
 			Keys.OpenWorkshopFolder.AddAction(() =>
@@ -950,7 +905,7 @@ Directory the zip will be extracted to:
 				//DivinityApp.Log($"WorkshopSupportEnabled:{WorkshopSupportEnabled} canOpenWorkshopFolder CanExecute:{OpenWorkshopFolderCommand.CanExecute(null)}");
 				if (!String.IsNullOrEmpty(Settings.WorkshopPath) && Directory.Exists(Settings.WorkshopPath))
 				{
-					TryOpenPath(Settings.WorkshopPath);
+					DivinityFileUtils.TryOpenPath(Settings.WorkshopPath);
 				}
 			}, canOpenWorkshopFolder);
 
@@ -1069,7 +1024,7 @@ Directory the zip will be extracted to:
 
 			Settings.OpenSettingsFolderCommand = ReactiveCommand.Create(() =>
 			{
-				TryOpenPath(DivinityApp.GetAppDirectory(DivinityApp.DIR_DATA));
+				DivinityFileUtils.TryOpenPath(DivinityApp.GetAppDirectory(DivinityApp.DIR_DATA));
 			}).DisposeWith(Settings.Disposables);
 
 			Settings.ExportExtenderSettingsCommand = ReactiveCommand.Create(() =>
@@ -1163,7 +1118,7 @@ Directory the zip will be extracted to:
 
 			this.WhenAnyValue(x => x.Settings.LogEnabled).Subscribe((logEnabled) =>
 			{
-				ToggleLogging(logEnabled);
+				View.ToggleLogging(logEnabled);
 			}).DisposeWith(Settings.Disposables);
 
 			this.WhenAnyValue(x => x.Settings.DarkThemeEnabled).ObserveOn(RxApp.MainThreadScheduler).Subscribe((b) =>
@@ -1215,7 +1170,7 @@ Directory the zip will be extracted to:
 
 			if (Settings.LogEnabled)
 			{
-				ToggleLogging(true);
+				View.ToggleLogging(true);
 			}
 
 			SetGamePathways(Settings.GameDataPath, Settings.DocumentsFolderPathOverride);
@@ -3404,7 +3359,7 @@ Directory the zip will be extracted to:
 						var dir = Path.GetFullPath(Path.GetDirectoryName(outputPath));
 						if(Directory.Exists(dir))
 						{
-							TryOpenPath(dir);
+							DivinityFileUtils.TryOpenPath(dir);
 						}
 					});
 
@@ -4268,7 +4223,7 @@ Directory the zip will be extracted to:
 						if (successes >= totalWork)
 						{
 							ShowAlert($"Successfully extracted all selected mods to '{dialog.SelectedPath}'.", AlertType.Success, 20);
-							TryOpenPath(openOutputPath);
+							DivinityFileUtils.TryOpenPath(openOutputPath);
 						}
 						else
 						{
@@ -4376,7 +4331,7 @@ Directory the zip will be extracted to:
 						if (success)
 						{
 							ShowAlert($"Successfully extracted adventure mod to '{dialog.SelectedPath}'.", AlertType.Success, 20);
-							TryOpenPath(openOutputPath);
+							DivinityFileUtils.TryOpenPath(openOutputPath);
 						}
 						else
 						{
@@ -4750,12 +4705,12 @@ Directory the zip will be extracted to:
 
 			Keys.OpenDonationLink.AddAction(() =>
 			{
-				TryOpenPath(DivinityApp.URL_DONATION);
+				DivinityFileUtils.TryOpenPath(DivinityApp.URL_DONATION);
 			});
 
 			Keys.OpenRepositoryPage.AddAction(() =>
 			{
-				TryOpenPath(DivinityApp.URL_REPO);
+				DivinityFileUtils.TryOpenPath(DivinityApp.URL_REPO);
 			});
 
 			Keys.ToggleViewTheme.AddAction(() =>
