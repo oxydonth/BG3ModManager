@@ -393,7 +393,7 @@ namespace DivinityModManager.ViewModels
 				int index = 0;
 				foreach (var entry in campaign.Dependencies)
 				{
-					if (TryGetMod(entry.UUID, out var mod) && !mod.IsClassicMod)
+					if (TryGetMod(entry.UUID, out var mod))
 					{
 						mod.IsActive = true;
 						currentOrder.Add(mod);
@@ -1991,7 +1991,7 @@ Directory the zip will be extracted to:
 						};
 						entry.Missing = true;
 					}
-					else if (!modResult.Value.IsClassicMod)
+					else if (!modResult.Value)
 					{
 						var mod = modResult.Value;
 						if (mod.ModType != "Adventure")

@@ -162,7 +162,7 @@ namespace DivinityModManager.Models
 				{
 					return "Main";
 				}
-				return !IsClassicMod ? Name : Name + " [Classic]";
+				return Name;
 			}
 		}
 
@@ -227,6 +227,7 @@ namespace DivinityModManager.Models
 		//public DivinityModWorkshopData WorkshopData { get; private set; } = new DivinityModWorkshopData();
 		public ICommand OpenWorkshopPageCommand { get; private set; }
 		public ICommand OpenWorkshopPageInSteamCommand { get; private set; }
+		public ICommand ToggleForceAllowInLoadOrderCommand { get; private set; }
 
 		public string GetURL(bool asSteamBrowserProtocol = false)
 		{
@@ -301,41 +302,36 @@ namespace DivinityModManager.Models
 			dependencyCount = connection.Count().StartWith(0).ToProperty(this, nameof(TotalDependencies));
 			hasDependencies = this.WhenAnyValue(x => x.TotalDependencies, c => c > 0).StartWith(false).ToProperty(this, nameof(HasDependencies));
 			dependencyVisibility = this.WhenAnyValue(x => x.HasDependencies, b => b ? Visibility.Visible : Visibility.Collapsed).StartWith(Visibility.Collapsed).ToProperty(this, nameof(DependencyVisibility));
-			this.WhenAnyValue(x => x.IsActive, x => x.IsClassicMod, x => x.IsForceLoaded, x => x.IsForceLoadedMergedMod).Subscribe((b) =>
+			this.WhenAnyValue(x => x.IsActive, x => x.IsForceLoaded, x => x.IsForceLoadedMergedMod,
+				x => x.ForceAllowInLoadOrder).Subscribe((b) =>
 			{
-				if (b.Item3 && !b.Item4)
+				var isActive = b.Item1;
+				var isForceLoaded = b.Item2;
+				var isForceLoadedMergedMod = b.Item3;
+				var forceAllowInLoadOrder = b.Item4;
+
+				if(forceAllowInLoadOrder || isActive)
 				{
-					CanDrag = false;
+					CanDrag = true;
 				}
 				else
 				{
-					if (b.Item1)
-					{
-						//Allow removing a classic mod from the active list.
-						CanDrag = true;
-					}
-					else
-					{
-						CanDrag = !b.Item2;
-					}
+					CanDrag = isForceLoaded && !isForceLoadedMergedMod;
 				}
 			});
 
-			this.WhenAnyValue(x => x.IsClassicMod, x => x.IsForceLoaded, x => x.IsEditorMod).Subscribe((b) =>
+			this.WhenAnyValue(x => x.IsForceLoaded, x => x.IsEditorMod).Subscribe((b) =>
 			{
-				if (b.Item1)
-				{
-					this.SelectedColor = "#64BF0808";
-					this.ListColor = "#32FA0202";
-					HasColorOverride = true;
-				}
-				else if (b.Item2)
+				var isForceLoaded = b.Item1;
+				var isEditorMod = b.Item2;
+
+				if (isForceLoaded)
 				{
 					this.SelectedColor = "#64F38F00";
 					this.ListColor = "#32C17200";
 					HasColorOverride = true;
 				}
-				else if (b.Item3)
+				else if (isEditorMod)
 				{
 					this.SelectedColor = "#6400ED48";
 					this.ListColor = "#0C00FF4D";
@@ -360,6 +356,9 @@ namespace DivinityModManager.Models
 				var canOpenWorkshopLink = this.WhenAnyValue(x => x.WorkshopData.ID, (id) => !String.IsNullOrEmpty(id));
 				OpenWorkshopPageCommand = ReactiveCommand.Create(OpenSteamWorkshopPage, canOpenWorkshopLink);
 				OpenWorkshopPageInSteamCommand = ReactiveCommand.Create(OpenSteamWorkshopPageInSteam, canOpenWorkshopLink);
+
+				ToggleForceAllowInLoadOrderCommand = ReactiveCommand.Create(() => ForceAllowInLoadOrder = !ForceAllowInLoadOrder,
+					outputScheduler:RxApp.MainThreadScheduler);
 			}
 			else
 			{

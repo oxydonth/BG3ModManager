@@ -61,9 +61,6 @@ namespace DivinityModManager.Models
 		/// <summary>True if this mod is in DivinityApp.IgnoredMods, or the author is Larian. Larian mods are hidden from the load order.</summary>
 		[Reactive] public bool IsLarianMod { get; set; }
 
-		/// <summary>Mods with a header version from the non-DE version are considered "classic", and can't be loaded in the DE version.</summary>
-		[Reactive] public bool IsClassicMod { get; set; }
-
 		/// <summary>Whether the mod was loaded from the user's mods directory.</summary>
 		[Reactive] public bool IsUserMod { get; set; }
 
@@ -73,6 +70,11 @@ namespace DivinityModManager.Models
 		/// Whether the mod has files of its own (i.e. it overrides Gustav, but it has Public/ModFolder/Assets files etc).
 		/// </summary>
 		[Reactive] public bool IsForceLoadedMergedMod { get; set; }
+
+		/// <summary>
+		/// For situations where an override pak has a meta.lsx with no original files, but it needs to be allowed in the load order anyway.
+		/// </summary>
+		[Reactive] public bool ForceAllowInLoadOrder { get; set; }
 		[Reactive] public string BuiltinOverrideModsText { get; set; }
 
 		[Reactive] public string HelpText { get; set; }
