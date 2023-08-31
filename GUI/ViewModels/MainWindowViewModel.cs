@@ -1991,13 +1991,17 @@ Directory the zip will be extracted to:
 						};
 						entry.Missing = true;
 					}
-					else if (!modResult.Value)
+					else
 					{
 						var mod = modResult.Value;
 						if (mod.ModType != "Adventure")
 						{
 							mod.IsActive = true;
 							mod.Index = loadOrderIndex;
+							if(mod.IsForceLoaded)
+							{
+								mod.ForceAllowInLoadOrder = true;
+							}
 							loadOrderIndex += 1;
 						}
 						else
@@ -4613,6 +4617,36 @@ Directory the zip will be extracted to:
 			}
 		}
 
+		public void AddActiveMod(DivinityModData mod)
+		{
+			if(!ActiveMods.Any(x => x.UUID == mod.UUID))
+			{
+				ActiveMods.Add(mod);
+				mod.Index = ActiveMods.Count - 1;
+				SelectedModOrder.Add(mod);
+			}
+			InactiveMods.Remove(mod);
+		}
+
+		public void RemoveActiveMod(DivinityModData mod)
+		{
+			SelectedModOrder.Remove(mod);
+			ActiveMods.Remove(mod);
+			if(mod.IsForceLoadedMergedMod || !mod.IsForceLoaded)
+			{
+				if(!InactiveMods.Any(x => x.UUID == mod.UUID))
+				{
+					InactiveMods.Add(mod);
+				}
+			}
+			else
+			{
+				mod.Index = -1;
+				//Safeguard
+				InactiveMods.Remove(mod);
+			}
+		}
+
 		public MainWindowViewModel() : base()
 		{
 			MainProgressValue = 0d;
@@ -4915,7 +4949,7 @@ Directory the zip will be extracted to:
 
 			this.WhenAnyValue(vm => vm.SelectedProfileIndex, (index) => index > -1 && index < Profiles.Count).Subscribe((b) =>
 			{
-				if (!this.IsRefreshing && b)
+				if (!IsRefreshing && b)
 				{
 					if (SelectedModOrder != null)
 					{
@@ -4933,7 +4967,9 @@ Directory the zip will be extracted to:
 
 			modsConnection.Filter(x => x.IsUserMod).Bind(out _userMods).Subscribe();
 			modsConnection.Filter(x => x.CanAddToLoadOrder).Bind(out addonMods).Subscribe();
-			modsConnection.Filter(x => x.IsForceLoaded && !x.IsForceLoadedMergedMod).ObserveOn(RxApp.MainThreadScheduler).Bind(out _forceLoadedMods).Subscribe();
+			modsConnection.AutoRefresh(x => x.ForceAllowInLoadOrder)
+				.Filter(x => x.IsForceLoaded && !x.IsForceLoadedMergedMod && !x.ForceAllowInLoadOrder)
+				.ObserveOn(RxApp.MainThreadScheduler).Bind(out _forceLoadedMods).Subscribe();
 
 			//Throttle filters so they only happen when typing stops for 500ms
 
@@ -5079,8 +5115,6 @@ Directory the zip will be extracted to:
 			});
 
 			SaveSettingsSilentlyCommand = ReactiveCommand.Create(SaveSettings);
-
-
 
 			#region DungeonMaster Support
 

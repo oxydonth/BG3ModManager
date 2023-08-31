@@ -208,15 +208,58 @@
 							<Image Source="{StaticResource OpenFolderImage}" />
 						</MenuItem.Icon>
 					</MenuItem>
-					<MenuItem Command="{Binding OpenWorkshopPageCommand}" Header="Open Steam Workshop Page (Browser)...">
+					<MenuItem
+						Command="{Binding Path=OpenSteamWorkshopPageCommand, Source={x:Static dapp:DivinityApp.Commands}}"
+						CommandParameter="{Binding}"
+						Header="Open Steam Workshop Page (Browser)..."
+						IsEnabled="{Binding CanOpenWorkshopLink}"
+						Visibility="{Binding OpenWorkshopLinkVisibility}">
 						<MenuItem.Icon>
 							<Image Source="{StaticResource OpenInBrowserImage}" />
 						</MenuItem.Icon>
 					</MenuItem>
-					<MenuItem Command="{Binding OpenWorkshopPageInSteamCommand}" Header="Open Steam Workshop Page (Steam)...">
+					<MenuItem
+						Command="{Binding Path=OpenSteamWorkshopPageInSteamCommand, Source={x:Static dapp:DivinityApp.Commands}}"
+						CommandParameter="{Binding}"
+						Header="Open Steam Workshop Page (Steam)..."
+						IsEnabled="{Binding CanOpenWorkshopLink}"
+						Visibility="{Binding OpenWorkshopLinkVisibility}">
 						<MenuItem.Icon>
 							<Image Source="{StaticResource OpenSteamWorkshopFolderImage}" />
 						</MenuItem.Icon>
+					</MenuItem>
+					<MenuItem
+						Command="{Binding Path=ToggleForceAllowInLoadOrderCommand, Source={x:Static dapp:DivinityApp.Commands}}"
+						CommandParameter="{Binding}"
+						Visibility="{Binding ToggleForceAllowInLoadOrderVisibility}">
+						<MenuItem.Icon>
+							<Image>
+								<Image.Style>
+									<Style BasedOn="{StaticResource {x:Type Image}}" TargetType="Image">
+										<Setter Property="Source" Value="{StaticResource ExpandUpImage}" />
+										<Style.Triggers>
+											<DataTrigger Binding="{Binding ForceAllowInLoadOrder}" Value="true">
+												<Setter Property="Source" Value="{StaticResource ExpandDownImage}" />
+											</DataTrigger>
+										</Style.Triggers>
+									</Style>
+								</Image.Style>
+							</Image>
+						</MenuItem.Icon>
+						<MenuItem.Header>
+							<TextBlock>
+								<TextBlock.Style>
+									<Style BasedOn="{StaticResource {x:Type TextBlock}}" TargetType="TextBlock">
+										<Setter Property="Text" Value="Allow in Load Order" />
+										<Style.Triggers>
+											<DataTrigger Binding="{Binding ForceAllowInLoadOrder}" Value="true">
+												<Setter Property="Text" Value="Remove from Load Order" />
+											</DataTrigger>
+										</Style.Triggers>
+									</Style>
+								</TextBlock.Style>
+							</TextBlock>
+						</MenuItem.Header>
 					</MenuItem>
 					<MenuItem
 						Command="{Binding Path=DeleteModCommand, Source={x:Static dapp:DivinityApp.Commands}}"

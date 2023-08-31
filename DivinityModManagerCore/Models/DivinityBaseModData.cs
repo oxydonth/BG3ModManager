@@ -64,6 +64,11 @@ namespace DivinityModManager.Models
 		/// <summary>Whether the mod was loaded from the user's mods directory.</summary>
 		[Reactive] public bool IsUserMod { get; set; }
 
+		/// <summary>
+		/// True if the mod has a meta.lsx.
+		/// </summary>
+		[Reactive] public bool HasMetadata { get; set; }
+
 		/// <summary>True if the mod has a base game mod directory. This data is always loaded regardless if the mod is enabled or not.</summary>
 		[Reactive] public bool IsForceLoaded { get; set; }
 		/// <summary>

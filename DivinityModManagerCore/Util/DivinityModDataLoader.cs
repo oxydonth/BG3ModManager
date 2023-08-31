@@ -209,6 +209,7 @@ namespace DivinityModManager.Util
 					*/
 					DivinityModData modData = new DivinityModData(isBaseGameMod)
 					{
+						HasMetadata = true,
 						UUID = uuid,
 						Name = name,
 						Author = author,

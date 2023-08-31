@@ -201,12 +201,20 @@ namespace DivinityModManager.Models
 			}
 		}
 
-		private readonly ObservableAsPropertyHelper<bool> canDelete;
-		public bool CanDelete => canDelete.Value;
+		private readonly ObservableAsPropertyHelper<bool> _canDelete;
+		public bool CanDelete => _canDelete.Value;
 
-		private readonly ObservableAsPropertyHelper<bool> canAddToLoadOrder;
-		public bool CanAddToLoadOrder => canAddToLoadOrder.Value;
+		private readonly ObservableAsPropertyHelper<bool> _canAddToLoadOrder;
+		public bool CanAddToLoadOrder => _canAddToLoadOrder.Value;
 
+		private readonly ObservableAsPropertyHelper<bool> _canOpenWorkshopLink;
+		public bool CanOpenWorkshopLink => _canOpenWorkshopLink.Value;
+
+		private readonly ObservableAsPropertyHelper<Visibility> _openWorkshopLinkVisibility;
+		public Visibility OpenWorkshopLinkVisibility => _openWorkshopLinkVisibility.Value;
+
+		private readonly ObservableAsPropertyHelper<Visibility> _toggleForceAllowInLoadOrderVisibility;
+		public Visibility ToggleForceAllowInLoadOrderVisibility => _toggleForceAllowInLoadOrderVisibility.Value;
 
 		[Reactive] public bool CanDrag { get; set; }
 
@@ -227,7 +235,6 @@ namespace DivinityModManager.Models
 		//public DivinityModWorkshopData WorkshopData { get; private set; } = new DivinityModWorkshopData();
 		public ICommand OpenWorkshopPageCommand { get; private set; }
 		public ICommand OpenWorkshopPageInSteamCommand { get; private set; }
-		public ICommand ToggleForceAllowInLoadOrderCommand { get; private set; }
 
 		public string GetURL(bool asSteamBrowserProtocol = false)
 		{
@@ -243,26 +250,6 @@ namespace DivinityModManager.Models
 				}
 			}
 			return "";
-		}
-
-		public void OpenSteamWorkshopPage()
-		{
-			var url = GetURL();
-			if (!String.IsNullOrEmpty(url))
-			{
-				System.Diagnostics.Process.Start(url);
-
-			}
-		}
-
-		public void OpenSteamWorkshopPageInSteam()
-		{
-			var url = GetURL(true);
-			if (!String.IsNullOrEmpty(url))
-			{
-				System.Diagnostics.Process.Start(url);
-
-			}
 		}
 
 		public override string ToString()
@@ -291,11 +278,30 @@ namespace DivinityModManager.Models
 			};
 		}
 
+		public void AllowInLoadOrder(bool b)
+		{
+			ForceAllowInLoadOrder = b;
+			IsActive = b && IsForceLoaded;
+		}
+
 		public DivinityModData(bool isBaseGameMod = false) : base()
 		{
 			Targets = "";
 			Index = -1;
 			CanDrag = true;
+
+			_toggleForceAllowInLoadOrderVisibility = this.WhenAnyValue(x => x.IsForceLoaded, x => x.HasMetadata)
+				.Select(b => b.Item1 && b.Item2 ? Visibility.Visible : Visibility.Collapsed)
+				.StartWith(Visibility.Collapsed)
+				.ToProperty(this, nameof(ToggleForceAllowInLoadOrderVisibility), scheduler: RxApp.MainThreadScheduler);
+
+			_canOpenWorkshopLink = this.WhenAnyValue(x => x.IsHidden, x => x.IsLarianMod, x => x.WorkshopData.ID,
+	(b1, b2, id) => !b1 & !b2 & !String.IsNullOrEmpty(id)).ToProperty(this, nameof(CanOpenWorkshopLink));
+
+			_openWorkshopLinkVisibility = this.WhenAnyValue(x => x.CanOpenWorkshopLink)
+				.Select(b => b ? Visibility.Visible : Visibility.Collapsed)
+				.StartWith(Visibility.Collapsed)
+				.ToProperty(this, nameof(OpenWorkshopLinkVisibility), scheduler: RxApp.MainThreadScheduler);
 
 			var connection = this.Dependencies.Connect().ObserveOn(RxApp.MainThreadScheduler);
 			connection.Bind(out displayedDependencies).DisposeMany().Subscribe();
@@ -343,24 +349,7 @@ namespace DivinityModManager.Models
 				}
 			});
 
-			/*this.WhenAnyValue(x => x.HeaderVersion).Select(x => x != null && x.Minor == 1).Subscribe((b) =>
-			{
-				if (b)
-				{
-					IsClassicMod = true;
-				}
-			});*/
-
-			if (!isBaseGameMod)
-			{
-				var canOpenWorkshopLink = this.WhenAnyValue(x => x.WorkshopData.ID, (id) => !String.IsNullOrEmpty(id));
-				OpenWorkshopPageCommand = ReactiveCommand.Create(OpenSteamWorkshopPage, canOpenWorkshopLink);
-				OpenWorkshopPageInSteamCommand = ReactiveCommand.Create(OpenSteamWorkshopPageInSteam, canOpenWorkshopLink);
-
-				ToggleForceAllowInLoadOrderCommand = ReactiveCommand.Create(() => ForceAllowInLoadOrder = !ForceAllowInLoadOrder,
-					outputScheduler:RxApp.MainThreadScheduler);
-			}
-			else
+			if (isBaseGameMod)
 			{
 				this.IsHidden = true;
 				this.IsLarianMod = true;
@@ -371,10 +360,10 @@ namespace DivinityModManager.Models
 				Select(x => !DivinityApp.IsScreenReaderActive() && (
 				!String.IsNullOrEmpty(x.Item1) || x.Item2 || !String.IsNullOrEmpty(x.Item3))).StartWith(true).ToProperty(this, nameof(HasToolTip));
 
-			canDelete = this.WhenAnyValue(x => x.IsEditorMod, x => x.IsLarianMod, x => x.FilePath,
+			_canDelete = this.WhenAnyValue(x => x.IsEditorMod, x => x.IsLarianMod, x => x.FilePath,
 				(isEditorMod, isLarianMod, path) => !isEditorMod && !isLarianMod && File.Exists(path)).StartWith(false).ToProperty(this, nameof(CanDelete));
-			canAddToLoadOrder = this.WhenAnyValue(x => x.ModType, x => x.IsLarianMod, x => x.IsForceLoaded, x => x.IsForceLoadedMergedMod,
-				(modType, isLarianMod, isForceLoaded, isMergedMod) => modType != "Adventure" && !isLarianMod && (!isForceLoaded || isMergedMod)).StartWith(true).ToProperty(this, nameof(CanAddToLoadOrder));
+			_canAddToLoadOrder = this.WhenAnyValue(x => x.ModType, x => x.IsLarianMod, x => x.IsForceLoaded, x => x.IsForceLoadedMergedMod, x => x.ForceAllowInLoadOrder,
+				(modType, isLarianMod, isForceLoaded, forceAllowInLoadOrder, isMergedMod) => modType != "Adventure" && !isLarianMod && (!isForceLoaded || isMergedMod || forceAllowInLoadOrder)).StartWith(true).ToProperty(this, nameof(CanAddToLoadOrder));
 		}
 	}
 }

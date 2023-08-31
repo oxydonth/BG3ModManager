@@ -8,6 +8,7 @@ using ReactiveUI;
 using System;
 using System.Diagnostics;
 using System.Reactive;
+using System.Reactive.Concurrency;
 using System.Windows;
 
 namespace DivinityModManager.Util
@@ -30,6 +31,9 @@ namespace DivinityModManager.Util
 		public ReactiveCommand<DivinityModData, Unit> ToggleNameDisplayCommand { get; private set; }
 		public ReactiveCommand<string, Unit> CopyToClipboardCommand { get; private set; }
 		public ReactiveCommand<DivinityModData, Unit> DeleteModCommand { get; private set; }
+		public ReactiveCommand<DivinityModData, Unit> OpenSteamWorkshopPageCommand { get; private set; }
+		public ReactiveCommand<DivinityModData, Unit> OpenSteamWorkshopPageInSteamCommand { get; private set; }
+		public ReactiveCommand<DivinityModData, Unit> ToggleForceAllowInLoadOrderCommand { get; private set; }
 
 		public void OpenFile(string path)
 		{
@@ -83,6 +87,40 @@ namespace DivinityModManager.Util
 			}
 		}
 
+		public void OpenSteamWorkshopPage(DivinityModData mod)
+		{
+			var url = mod.GetURL();
+			if (!String.IsNullOrEmpty(url))
+			{
+				DivinityFileUtils.TryOpenPath(url);
+			}
+		}
+
+		public void OpenSteamWorkshopPageInSteam(DivinityModData mod)
+		{
+			var url = mod.GetURL(true);
+			if (!String.IsNullOrEmpty(url))
+			{
+				DivinityFileUtils.TryOpenPath(url);
+			}
+		}
+
+		public void ToggleForceAllowInLoadOrder(DivinityModData mod)
+		{
+			RxApp.MainThreadScheduler.Schedule(() =>
+			{
+				mod.ForceAllowInLoadOrder = !mod.ForceAllowInLoadOrder;
+				if (mod.ForceAllowInLoadOrder)
+				{
+					ViewModel.AddActiveMod(mod);
+				}
+				else
+				{
+					ViewModel.RemoveActiveMod(mod);
+				}
+			});
+		}
+
 		public void ClearMissingMods()
 		{
 			_viewModel.ClearMissingMods();
@@ -118,6 +156,10 @@ namespace DivinityModManager.Util
 					_viewModel.DeleteMod(mod);
 				}
 			}, canExecuteViewModelCommands);
+
+			OpenSteamWorkshopPageCommand = ReactiveCommand.Create<DivinityModData>(OpenSteamWorkshopPage, canExecuteViewModelCommands);
+			OpenSteamWorkshopPageInSteamCommand = ReactiveCommand.Create<DivinityModData>(OpenSteamWorkshopPageInSteam, canExecuteViewModelCommands);
+			ToggleForceAllowInLoadOrderCommand = ReactiveCommand.Create<DivinityModData>(ToggleForceAllowInLoadOrder, canExecuteViewModelCommands);
 		}
 	}
 }
