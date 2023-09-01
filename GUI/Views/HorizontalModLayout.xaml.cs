@@ -768,17 +768,27 @@ namespace DivinityModManager.Views
 		public void AutoSizeNameColumn_ActiveMods()
 		{
 			if (ViewModel == null || ActiveModsListView.UserResizedColumns) return;
-			if (ViewModel.ActiveMods.Count > 0 && ActiveModsListView.View is GridView gridView && gridView.Columns.Count >= 2)
+			var count = Math.Max(ViewModel.ActiveMods.Count, ViewModel.ForceLoadedMods.Count);
+			if (count > 0 && ActiveModsListView.View is GridView gridView && gridView.Columns.Count >= 2)
 			{
 				RxApp.MainThreadScheduler.Schedule(TimeSpan.FromMilliseconds(250), () =>
 				{
-					if (ViewModel.ActiveMods.Count > 0)
+					count = Math.Max(ViewModel.ActiveMods.Count, ViewModel.ForceLoadedMods.Count);
+					if (count > 0)
 					{
-						var longestName = ViewModel.ActiveMods.OrderByDescending(m => m.Name.Length).FirstOrDefault()?.Name;
-						if (!String.IsNullOrEmpty(longestName))
+						var longestName = ViewModel.ActiveMods.OrderByDescending(m => m.Name.Length).FirstOrDefault()?.Name ?? "";
+						var longestOverrideName = ViewModel.ForceLoadedMods.OrderByDescending(m => m.Name.Length).FirstOrDefault()?.Name ?? "";
+
+						var sortName = longestName;
+						if(!String.IsNullOrEmpty(longestOverrideName) && longestOverrideName.Length > longestName.Length)
+						{
+							sortName = longestOverrideName;
+						}
+
+						if (!String.IsNullOrEmpty(sortName))
 						{
 							//DivinityApp.LogMessage($"Autosizing active mods grid for name {longestName}");
-							var targetWidth = MeasureText(ActiveModsListView, longestName,
+							var targetWidth = MeasureText(ActiveModsListView, sortName,
 								ActiveModsListView.FontFamily,
 								ActiveModsListView.FontStyle,
 								ActiveModsListView.FontWeight,
