@@ -322,7 +322,7 @@ namespace DivinityModManager.Models
 				}
 				else
 				{
-					CanDrag = isForceLoaded && !isForceLoadedMergedMod;
+					CanDrag = !isForceLoaded || isForceLoadedMergedMod;
 				}
 			});
 
