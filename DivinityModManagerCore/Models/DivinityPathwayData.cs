@@ -21,22 +21,22 @@ namespace DivinityModManager.Models
 		/// <summary>
 		/// The path to %LOCALAPPDATA%\Larian Studios\Baldur's Gate 3
 		/// </summary>
-		[Reactive] public string LarianDocumentsFolder { get; set; }
+		[Reactive] public string AppDataGameFolder { get; set; }
 
 		/// <summary>
 		/// The path to %LOCALAPPDATA%\Larian Studios\Baldur's Gate 3\Mods
 		/// </summary>
-		[Reactive] public string DocumentsModsPath { get; set; }
+		[Reactive] public string AppDataModsPath { get; set; }
 
 		/// <summary>
 		/// The path to %LOCALAPPDATA%\Larian Studios\Baldur's Gate 3\PlayerProfiles
 		/// </summary>
-		[Reactive] public string DocumentsProfilesPath { get; set; }
+		[Reactive] public string AppDataProfilesPath { get; set; }
 
 		/// <summary>
 		/// The path to %LOCALAPPDATA%\Larian Studios\Baldur's Gate 3\DMCampaigns
 		/// </summary>
-		[Reactive] public string DocumentsGMCampaignsPath { get; set; }
+		[Reactive] public string AppDataCampaignsPath { get; set; }
 
 		[Reactive] public string LastSaveFilePath { get; set; }
 
@@ -46,9 +46,9 @@ namespace DivinityModManager.Models
 		public DivinityPathwayData()
 		{
 			InstallPath = "";
-			LarianDocumentsFolder = "";
-			DocumentsModsPath = "";
-			DocumentsGMCampaignsPath = "";
+			AppDataGameFolder = "";
+			AppDataModsPath = "";
+			AppDataCampaignsPath = "";
 			LastSaveFilePath = "";
 			ScriptExtenderLatestReleaseUrl = "";
 			ScriptExtenderLatestReleaseVersion = "";

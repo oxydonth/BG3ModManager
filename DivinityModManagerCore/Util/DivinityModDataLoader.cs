@@ -1551,15 +1551,11 @@ namespace DivinityModManager.Util
 			return false;
 		}
 
-		/// <summary>
-		/// Enables or disables telemetry. If mods are enabled, telemetry should be disabled.
-		/// </summary>
-		/// <param name="enabled"></param>
-		public static async Task<bool> SetTelemetryAsync(bool enabled)
+		public static async Task<bool> UpdateLauncherPreferencesAsync(string appDataLarianFolder, bool enableTelemetry, bool enableModWarnings)
 		{
 			Dictionary<string, object> settings = null;
 			//Patch 7 changes this to "Larian Studios" instead of "LarianStudios"
-			var folderDir = Path.Combine(System.Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"Larian Studios\Launcher\Settings");
+			var folderDir = Path.Combine(appDataLarianFolder, @"Launcher\Settings");
 			var settingsFilePath = Path.Combine(folderDir, "preferences.json");
 			if (File.Exists(settingsFilePath))
 			{
@@ -1567,13 +1563,14 @@ namespace DivinityModManager.Util
 			}
 			if (settings == null)
 			{
-				settings = new Dictionary<string, object>();
-				if (!Directory.Exists(folderDir))
-				{
-					Directory.CreateDirectory(folderDir);
-				}
+				DivinityApp.Log($"Failed to load launcher preferences at '{settingsFilePath}'. File may be locked / may not exist.");
+				return false;
 			}
-			settings["SendStats"] = enabled;
+			settings["SendStats"] = enableTelemetry;
+			settings["ModsWarningShown"] = !enableModWarnings;
+			settings["DataWarningShown"] = !enableModWarnings;
+			settings["DisplayFilesValidationMsg"] = enableModWarnings;
+			settings["DisplayModsDetectedMsg"] = enableModWarnings;
 			string contents = JsonConvert.SerializeObject(settings, Newtonsoft.Json.Formatting.Indented);
 
 			var buffer = Encoding.UTF8.GetBytes(contents);
@@ -1583,30 +1580,6 @@ namespace DivinityModManager.Util
 				await fs.WriteAsync(buffer, 0, buffer.Length);
 			}
 			return true;
-		}
-
-		public static void SetTelemetry(bool enabled)
-		{
-			Dictionary<string, object> settings = null;
-			var settingsFilePath = Path.Combine(System.Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"Larian Studios\Launcher\Settings\preferences.json");
-			if (File.Exists(settingsFilePath))
-			{
-				settings = DivinityJsonUtils.SafeDeserializeFromPath<Dictionary<string, object>>(settingsFilePath);
-			}
-			if (settings == null)
-			{
-				settings = new Dictionary<string, object>();
-			}
-			settings["SendStats"] = enabled;
-			string contents = JsonConvert.SerializeObject(settings, Newtonsoft.Json.Formatting.Indented);
-			try
-			{
-				File.WriteAllText(settingsFilePath, contents);
-			}
-			catch (Exception ex)
-			{
-				DivinityApp.Log($"Error saving'{settingsFilePath}':\n{ex}");
-			}
 		}
 
 		public static List<DivinityModData> GetDependencyMods(DivinityModData mod, IEnumerable<DivinityModData> allMods, HashSet<string> addedMods)

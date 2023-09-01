@@ -382,13 +382,13 @@ namespace DivinityModManager.Util
 			}
 		}
 
-		public static void TryOpenPath(string path)
+		public static void TryOpenPath(string path, string args = "")
 		{
 			try
 			{
 				if (!String.IsNullOrEmpty(path))
 				{
-					Process.Start(path);
+					Process.Start(path, args);
 				}
 			}
 			catch (Exception ex)

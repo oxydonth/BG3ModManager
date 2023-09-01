@@ -879,10 +879,10 @@ Directory the zip will be extracted to:
 			var canDownloadScriptExtender = this.WhenAnyValue(x => x.PathwayData.ScriptExtenderLatestReleaseUrl, (p) => !String.IsNullOrEmpty(p));
 			Keys.DownloadScriptExtender.AddAction(() => AskToDownloadScriptExtender(), canDownloadScriptExtender);
 
-			var canOpenModsFolder = this.WhenAnyValue(x => x.PathwayData.DocumentsModsPath, (p) => !String.IsNullOrEmpty(p) && Directory.Exists(p));
+			var canOpenModsFolder = this.WhenAnyValue(x => x.PathwayData.AppDataModsPath, (p) => !String.IsNullOrEmpty(p) && Directory.Exists(p));
 			Keys.OpenModsFolder.AddAction(() =>
 			{
-				DivinityFileUtils.TryOpenPath(PathwayData.DocumentsModsPath);
+				DivinityFileUtils.TryOpenPath(PathwayData.AppDataModsPath);
 			}, canOpenModsFolder);
 
 			var canOpenGameFolder = this.WhenAnyValue(x => x.Settings.GameExecutablePath, (p) => !String.IsNullOrEmpty(p) && File.Exists(p));
@@ -911,20 +911,23 @@ Directory the zip will be extracted to:
 
 			Keys.LaunchGame.AddAction(() =>
 			{
-				if (!File.Exists(Settings.GameExecutablePath))
+				if(!Settings.LaunchThroughSteam)
 				{
-					if (String.IsNullOrWhiteSpace(Settings.GameExecutablePath))
+					if (!File.Exists(Settings.GameExecutablePath))
 					{
-						ShowAlert("No game executable path set.", AlertType.Danger, 30);
+						if (String.IsNullOrWhiteSpace(Settings.GameExecutablePath))
+						{
+							ShowAlert("No game executable path set.", AlertType.Danger, 30);
+						}
+						else
+						{
+							ShowAlert($"Failed to find game exe at, \"{Settings.GameExecutablePath}\"", AlertType.Danger, 90);
+						}
+						return;
 					}
-					else
-					{
-						ShowAlert($"Failed to find game exe at, \"{Settings.GameExecutablePath}\"", AlertType.Danger, 90);
-					}
-					return;
 				}
-				string launchParams = Settings.GameLaunchParams;
-				if (String.IsNullOrEmpty(launchParams)) launchParams = "";
+
+				var launchParams = !String.IsNullOrEmpty(Settings.GameLaunchParams) ? Settings.GameLaunchParams : "";
 
 				if (Settings.GameStoryLogEnabled && launchParams.IndexOf("storylog") < 0)
 				{
@@ -950,24 +953,30 @@ Directory the zip will be extracted to:
 					}
 				}
 
-				var exePath = Settings.GameExecutablePath;
-				var exeDir = Path.GetDirectoryName(exePath);
-
-				if (Settings.LaunchDX11)
+				if (!Settings.LaunchThroughSteam)
 				{
-					var nextExe = Path.Combine(exeDir, "bg3_dx11.exe");
-					if(File.Exists(nextExe))
-					{
-						exePath = nextExe;
-					}
-				}
+					var exePath = Settings.GameExecutablePath;
+					var exeDir = Path.GetDirectoryName(exePath);
 
-				DivinityApp.Log($"Opening game exe at: {exePath} with args {launchParams}");
-				Process proc = new Process();
-				proc.StartInfo.FileName = exePath;
-				proc.StartInfo.Arguments = launchParams;
-				proc.StartInfo.WorkingDirectory = exeDir;
-				proc.Start();
+					if (Settings.LaunchDX11)
+					{
+						var nextExe = Path.Combine(exeDir, "bg3_dx11.exe");
+						if (File.Exists(nextExe))
+						{
+							exePath = nextExe;
+						}
+					}
+
+					DivinityApp.Log($"Opening game exe at: {exePath} with args {launchParams}");
+					DivinityFileUtils.TryOpenPath(exePath, launchParams);
+				}
+				else
+				{
+					var appid = AppSettings.DefaultPathways.Steam.AppID ?? "1086940";
+					var steamUrl = $"steam://run/{appid}//{launchParams}";
+					DivinityApp.Log($"Opening game through steam via '{steamUrl}'");
+					DivinityFileUtils.TryOpenPath(steamUrl);
+				}
 
 				if (Settings.ActionOnGameLaunch != DivinityGameLaunchWindowAction.None)
 				{
@@ -1162,7 +1171,7 @@ Directory the zip will be extracted to:
 				if (!IsLocked)
 				{
 					SetGamePathways(Settings.GameDataPath, x);
-					ShowAlert($"Larian folder changed to '{PathwayData.LarianDocumentsFolder}'. Make sure to refresh.", AlertType.Warning, 60);
+					ShowAlert($"Larian folder changed to '{PathwayData.AppDataGameFolder}'. Make sure to refresh.", AlertType.Warning, 60);
 				}
 			}).DisposeWith(Settings.Disposables);
 
@@ -1178,6 +1187,11 @@ Directory the zip will be extracted to:
 			if (loaded)
 			{
 				Settings.CanSaveSettings = false;
+
+				RxApp.TaskpoolScheduler.ScheduleAsync(async (sch, t) =>
+				{
+					await DivinityModDataLoader.UpdateLauncherPreferencesAsync(GetLarianStudiosAppDataFolder(), !Settings.DisableLauncherTelemetry, !Settings.DisableLauncherModWarnings);
+				});
 			}
 
 			return loaded;
@@ -1199,10 +1213,15 @@ Directory the zip will be extracted to:
 			try
 			{
 				Directory.CreateDirectory(Path.GetDirectoryName(settingsFile));
-				string contents = JsonConvert.SerializeObject(Settings, Newtonsoft.Json.Formatting.Indented);
+				string contents = JsonConvert.SerializeObject(Settings, Formatting.Indented);
 				File.WriteAllText(settingsFile, contents);
 				Settings.CanSaveSettings = false;
 				Keys.SaveKeybindings(this);
+
+				RxApp.TaskpoolScheduler.ScheduleAsync(async (sch, t) =>
+				{
+					await DivinityModDataLoader.UpdateLauncherPreferencesAsync(GetLarianStudiosAppDataFolder(), !Settings.DisableLauncherTelemetry, !Settings.DisableLauncherModWarnings);
+				});
 				return true;
 			}
 			catch (Exception ex)
@@ -1308,7 +1327,41 @@ Directory the zip will be extracted to:
 			IsRefreshingWorkshop = false;
 		}
 
-		private void SetGamePathways(string currentGameDataPath, string larianDocumentsFolderOverride = "")
+		private string GetLarianStudiosAppDataFolder()
+		{
+			if (Directory.Exists(PathwayData.AppDataGameFolder))
+			{
+				var parentDir = Directory.GetParent(PathwayData.AppDataGameFolder);
+				if (parentDir != null)
+				{
+					return parentDir.FullName;
+				}
+			}
+			string appDataFolder;
+			if (!String.IsNullOrEmpty(Settings.DocumentsFolderPathOverride))
+			{
+				appDataFolder = Settings.DocumentsFolderPathOverride;
+			}
+			else
+			{
+				appDataFolder = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.DoNotVerify);
+				if(String.IsNullOrEmpty(appDataFolder) || !Directory.Exists(appDataFolder))
+				{
+					var userFolder = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile, Environment.SpecialFolderOption.DoNotVerify);
+					if (Directory.Exists(userFolder))
+					{
+						appDataFolder = Path.Combine(userFolder, "AppData", "Local", "Larian Studios");
+					}
+				}
+				else
+				{
+					appDataFolder = Path.Combine(appDataFolder, "Larian Studios");
+				}
+			}
+			return appDataFolder;
+		}
+
+		private void SetGamePathways(string currentGameDataPath, string gameDataFolderOverride = "")
 		{
 			try
 			{
@@ -1318,35 +1371,40 @@ Directory the zip will be extracted to:
 					AppSettings.DefaultPathways.DocumentsGameFolder = "Larian Studios\\Baldur's Gate 3";
 				}
 
-				string larianDocumentsFolder = Path.Combine(documentsFolder, AppSettings.DefaultPathways.DocumentsGameFolder);
+				string gameDataFolder = Path.Combine(documentsFolder, AppSettings.DefaultPathways.DocumentsGameFolder);
 
-				if (!String.IsNullOrEmpty(larianDocumentsFolderOverride) && Directory.Exists(larianDocumentsFolderOverride))
+				if (!String.IsNullOrEmpty(gameDataFolderOverride) && Directory.Exists(gameDataFolderOverride))
 				{
-					larianDocumentsFolder = larianDocumentsFolderOverride;
+					gameDataFolder = gameDataFolderOverride;
+					var parentDir = Directory.GetParent(gameDataFolder);
+					if(parentDir != null)
+					{
+						documentsFolder = parentDir.FullName;
+					}
 				}
-				else if (!Directory.Exists(larianDocumentsFolder))
+				else if (!Directory.Exists(gameDataFolder))
 				{
 					var userFolder = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile, Environment.SpecialFolderOption.DoNotVerify);
 					if (Directory.Exists(userFolder))
 					{
 						documentsFolder = Path.Combine(userFolder, "AppData", "Local");
-						larianDocumentsFolder = Path.Combine(documentsFolder, AppSettings.DefaultPathways.DocumentsGameFolder);
+						gameDataFolder = Path.Combine(documentsFolder, AppSettings.DefaultPathways.DocumentsGameFolder);
 					}
 				}
 
-				string modPakFolder = Path.Combine(larianDocumentsFolder, "Mods");
-				string gmCampaignsFolder = Path.Combine(larianDocumentsFolder, "GMCampaigns");
-				string profileFolder = Path.Combine(larianDocumentsFolder, "PlayerProfiles");
+				string modPakFolder = Path.Combine(gameDataFolder, "Mods");
+				string gmCampaignsFolder = Path.Combine(gameDataFolder, "GMCampaigns");
+				string profileFolder = Path.Combine(gameDataFolder, "PlayerProfiles");
 
-				PathwayData.LarianDocumentsFolder = larianDocumentsFolder;
-				PathwayData.DocumentsModsPath = modPakFolder;
-				PathwayData.DocumentsGMCampaignsPath = gmCampaignsFolder;
-				PathwayData.DocumentsProfilesPath = profileFolder;
+				PathwayData.AppDataGameFolder = gameDataFolder;
+				PathwayData.AppDataModsPath = modPakFolder;
+				PathwayData.AppDataCampaignsPath = gmCampaignsFolder;
+				PathwayData.AppDataProfilesPath = profileFolder;
 
 				if (Directory.Exists(documentsFolder))
 				{
-					Directory.CreateDirectory(larianDocumentsFolder);
-					DivinityApp.Log($"Larian documents folder set to '{larianDocumentsFolder}'.");
+					Directory.CreateDirectory(gameDataFolder);
+					DivinityApp.Log($"Larian documents folder set to '{gameDataFolder}'.");
 
 					if (!Directory.Exists(modPakFolder))
 					{
@@ -1613,12 +1671,12 @@ Directory the zip will be extracted to:
 				}
 			}
 
-			if (Directory.Exists(PathwayData.DocumentsModsPath))
+			if (Directory.Exists(PathwayData.AppDataModsPath))
 			{
-				DivinityApp.Log($"Loading mods from '{PathwayData.DocumentsModsPath}'.");
+				DivinityApp.Log($"Loading mods from '{PathwayData.AppDataModsPath}'.");
 				await SetMainProgressTextAsync("Loading mods from documents folder...");
 				cancelTokenSource.CancelAfter(TimeSpan.FromMinutes(10));
-				modPakData = await RunTask(DivinityModDataLoader.LoadModPackageDataAsync(PathwayData.DocumentsModsPath, cancelTokenSource.Token), null);
+				modPakData = await RunTask(DivinityModDataLoader.LoadModPackageDataAsync(PathwayData.AppDataModsPath, cancelTokenSource.Token), null);
 				cancelTokenSource = GetCancellationToken(int.MaxValue);
 				await IncreaseMainProgressValueAsync(taskStepAmount);
 			}
@@ -1638,12 +1696,12 @@ Directory the zip will be extracted to:
 
 			var cancelTokenSource = GetCancellationToken(int.MaxValue);
 
-			if (!String.IsNullOrWhiteSpace(PathwayData.DocumentsGMCampaignsPath) && Directory.Exists(PathwayData.DocumentsGMCampaignsPath))
+			if (!String.IsNullOrWhiteSpace(PathwayData.AppDataCampaignsPath) && Directory.Exists(PathwayData.AppDataCampaignsPath))
 			{
-				DivinityApp.Log($"Loading gamemaster campaigns from '{PathwayData.DocumentsGMCampaignsPath}'.");
+				DivinityApp.Log($"Loading gamemaster campaigns from '{PathwayData.AppDataCampaignsPath}'.");
 				await SetMainProgressTextAsync("Loading GM Campaigns from documents folder...");
 				cancelTokenSource.CancelAfter(60000);
-				data = DivinityModDataLoader.LoadGameMasterData(PathwayData.DocumentsGMCampaignsPath, cancelTokenSource.Token);
+				data = DivinityModDataLoader.LoadGameMasterData(PathwayData.AppDataCampaignsPath, cancelTokenSource.Token);
 				cancelTokenSource = GetCancellationToken(int.MaxValue);
 				await IncreaseMainProgressValueAsync(taskStepAmount);
 			}
@@ -1666,11 +1724,11 @@ Directory the zip will be extracted to:
 
 		public async Task<List<DivinityProfileData>> LoadProfilesAsync()
 		{
-			if (Directory.Exists(PathwayData.DocumentsProfilesPath))
+			if (Directory.Exists(PathwayData.AppDataProfilesPath))
 			{
-				DivinityApp.Log($"Loading profiles from '{PathwayData.DocumentsProfilesPath}'.");
+				DivinityApp.Log($"Loading profiles from '{PathwayData.AppDataProfilesPath}'.");
 
-				var profiles = await DivinityModDataLoader.LoadProfileDataAsync(PathwayData.DocumentsProfilesPath);
+				var profiles = await DivinityModDataLoader.LoadProfileDataAsync(PathwayData.AppDataProfilesPath);
 				DivinityApp.Log($"Loaded '{profiles.Count}' profiles.");
 				if(profiles.Count > 0)
 				{
@@ -1680,7 +1738,7 @@ Directory the zip will be extracted to:
 			}
 			else
 			{
-				DivinityApp.Log($"Profile folder not found at '{PathwayData.DocumentsProfilesPath}'.");
+				DivinityApp.Log($"Profile folder not found at '{PathwayData.AppDataProfilesPath}'.");
 			}
 			return null;
 		}
@@ -1793,7 +1851,7 @@ Directory the zip will be extracted to:
 			if (Path.GetExtension(filePath).Equals(".pak", StringComparison.OrdinalIgnoreCase))
 			{
 				var builtinMods = DivinityApp.IgnoredMods.SafeToDictionary(x => x.Folder, x => x);
-				var outputFilePath = Path.Combine(PathwayData.DocumentsModsPath, Path.GetFileName(filePath));
+				var outputFilePath = Path.Combine(PathwayData.AppDataModsPath, Path.GetFileName(filePath));
 				try
 				{
 					using (System.IO.FileStream sourceStream = File.Open(filePath, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.Read, 8192, true))
@@ -2315,7 +2373,7 @@ Directory the zip will be extracted to:
 				selectedProfileUUID = SelectedProfile.UUID;
 			}
 
-			if (Directory.Exists(PathwayData.LarianDocumentsFolder))
+			if (Directory.Exists(PathwayData.AppDataGameFolder))
 			{
 				await SetMainProgressTextAsync("Loading mods...");
 				var loadedMods = await LoadModsAsync(taskStepAmount);
@@ -2328,7 +2386,7 @@ Directory the zip will be extracted to:
 				if (String.IsNullOrEmpty(selectedProfileUUID) && (loadedProfiles != null && loadedProfiles.Count > 0))
 				{
 					await SetMainProgressTextAsync("Loading current profile...");
-					selectedProfileUUID = await DivinityModDataLoader.GetSelectedProfileUUIDAsync(PathwayData.DocumentsProfilesPath);
+					selectedProfileUUID = await DivinityModDataLoader.GetSelectedProfileUUIDAsync(PathwayData.AppDataProfilesPath);
 					await IncreaseMainProgressValueAsync(taskStepAmount);
 				}
 				else
@@ -2796,13 +2854,23 @@ Directory the zip will be extracted to:
 					var finalOrder = DivinityModDataLoader.BuildOutputList(SelectedModOrder.Order, mods.Items, Settings.AutoAddDependenciesWhenExporting, SelectedAdventureMod);
 					var result = await DivinityModDataLoader.ExportModSettingsToFileAsync(SelectedProfile.Folder, finalOrder);
 
+					var dir = GetLarianStudiosAppDataFolder();
+					if(SelectedModOrder.Order.Count > 0)
+					{
+						await DivinityModDataLoader.UpdateLauncherPreferencesAsync(dir, false, false);
+					}
+					else
+					{
+						await DivinityModDataLoader.UpdateLauncherPreferencesAsync(dir, !Settings.DisableLauncherTelemetry, !Settings.DisableLauncherModWarnings);
+					}
+
 					if (result)
 					{
 						await Observable.Start(() =>
 						{
 							ShowAlert($"Exported load order to '{outputPath}'", AlertType.Success, 15);
 
-							if (DivinityModDataLoader.ExportedSelectedProfile(PathwayData.DocumentsProfilesPath, SelectedProfile.UUID))
+							if (DivinityModDataLoader.ExportedSelectedProfile(PathwayData.AppDataProfilesPath, SelectedProfile.UUID))
 							{
 								DivinityApp.Log($"Set active profile to '{SelectedProfile.Name}'.");
 							}
@@ -2870,7 +2938,7 @@ Directory the zip will be extracted to:
 							{
 								ShowAlert($"Exported load order to '{SelectedGameMasterCampaign.FilePath}'", AlertType.Success, 15);
 
-								if (DivinityModDataLoader.ExportedSelectedProfile(PathwayData.DocumentsProfilesPath, SelectedProfile.UUID))
+								if (DivinityModDataLoader.ExportedSelectedProfile(PathwayData.AppDataProfilesPath, SelectedProfile.UUID))
 								{
 									DivinityApp.Log($"Set active profile to '{SelectedProfile.Name}'.");
 								}
@@ -3186,7 +3254,7 @@ Directory the zip will be extracted to:
 		private async Task<bool> ImportOrderZipFileAsync(string archivePath, bool onlyMods, CancellationToken t)
 		{
 			System.IO.FileStream fileStream = null;
-			string outputDirectory = PathwayData.DocumentsModsPath;
+			string outputDirectory = PathwayData.AppDataModsPath;
 			double taskStepAmount = 1.0 / 4;
 			bool success = false;
 			var jsonFiles = new Dictionary<string, string>();
@@ -3589,7 +3657,7 @@ Directory the zip will be extracted to:
 				}
 				else
 				{
-					dialog.InitialDirectory = Path.GetFullPath(PathwayData.LarianDocumentsFolder);
+					dialog.InitialDirectory = Path.GetFullPath(PathwayData.AppDataGameFolder);
 				}
 			}
 
@@ -3747,7 +3815,7 @@ Directory the zip will be extracted to:
 				}
 				else
 				{
-					dialog.InitialDirectory = Path.GetFullPath(PathwayData.LarianDocumentsFolder);
+					dialog.InitialDirectory = Path.GetFullPath(PathwayData.AppDataGameFolder);
 				}
 			}
 

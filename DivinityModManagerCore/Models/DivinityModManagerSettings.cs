@@ -18,6 +18,7 @@ using System.Reactive;
 using ReactiveUI.Fody.Helpers;
 using System.ComponentModel;
 using DivinityModManager.Models.Extender;
+using System.Reactive.Concurrency;
 
 namespace DivinityModManager.Models
 {
@@ -36,14 +37,20 @@ namespace DivinityModManager.Models
 		[SettingsEntry("Enable Story Log", "When launching the game, enable the Osiris story log (osiris.log)")]
 		[DataMember][Reactive] public bool GameStoryLogEnabled { get; set; }
 
-		[SettingsEntry("Always Disable Telemetry", "If enabled, Larian's telemetry options for BG3 will always be disabled, regardless of active mods. Telemetry is always disabled if mods are active")]
-		[DataMember][Reactive] public bool TelemetryDisabled { get; set; }
+		[SettingsEntry("Disable Launcher Telemetry", "Disable the telemetry options in the launcher\nTelemetry is always disabled if mods are active")]
+		[DataMember][Reactive] public bool DisableLauncherTelemetry { get; set; }
+
+		[SettingsEntry("Disable Launcher Warnings", "Disable the mod/data mismatch warnings in the launcher")]
+		[DataMember][Reactive] public bool DisableLauncherModWarnings { get; set; }
 
 		[SettingsEntry("Enable DirectX 11 Mode", "If enabled, when launching the game, bg3_dx11.exe is used instead")]
 		[DataMember][Reactive] public bool LaunchDX11 { get; set; }
 
 		[SettingsEntry("Skip Launcher", "Pass the --skip-launcher args when launching the game")]
 		[DataMember][Reactive] public bool SkipLauncher { get; set; }
+
+		[SettingsEntry("Launch Through Steam", "Launch the game through steam, instead of by the exe directly")]
+		[DataMember][Reactive] public bool LaunchThroughSteam { get; set; }
 
 		[SettingsEntry("Workshop Path", "The Steam Workshop folder for Baldur's Gate 3\nUsed for detecting mod updates and new mods to be copied into the local mods folder\nExample: Steam/steamapps/workshop/content/1086940")]
 		[DataMember][Reactive] public string WorkshopPath { get; set; }
@@ -238,7 +245,8 @@ namespace DivinityModManager.Models
 			LastUpdateCheck = -1;
 			SelectedTabIndex = 0;
 			SaveWindowLocation = false;
-			TelemetryDisabled = false;
+			DisableLauncherTelemetry = false;
+			DisableLauncherModWarnings = false;
 			LaunchDX11 = false;
 			SkipLauncher = true;
 

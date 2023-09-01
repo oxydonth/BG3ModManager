@@ -101,9 +101,9 @@
 						ChildMargin="4"
 						ColumnCount="2"
 						Columns="auto,*"
-						RowCount="13"
+						RowCount="15"
 						RowHeight="*"
-						Rows="auto,auto,auto,auto,auto,auto,auto,auto,auto,auto,auto,auto,auto">
+						Rows="auto,auto,auto,auto,auto,auto,auto,auto,auto,auto,auto,auto,auto,auto,auto">
 						<autogrid:AutoGrid.Resources>
 							<Style BasedOn="{StaticResource {x:Type TextBlock}}" TargetType="TextBlock">
 								<Setter Property="DataContext" Value="{Binding}" />
@@ -134,8 +134,10 @@
 							TextAlignment="Left" />
 						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="GameStoryLogEnabled" />
 						<CheckBox VerticalAlignment="Center" IsChecked="{Binding GameStoryLogEnabled, UpdateSourceTrigger=PropertyChanged}" />
-						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="TelemetryDisabled" />
-						<CheckBox VerticalAlignment="Center" IsChecked="{Binding TelemetryDisabled, UpdateSourceTrigger=PropertyChanged}" />
+						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="DisableLauncherTelemetry" />
+						<CheckBox VerticalAlignment="Center" IsChecked="{Binding DisableLauncherTelemetry, UpdateSourceTrigger=PropertyChanged}" />
+						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="DisableLauncherModWarnings" />
+						<CheckBox VerticalAlignment="Center" IsChecked="{Binding DisableLauncherModWarnings, UpdateSourceTrigger=PropertyChanged}" />
 						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="AutoAddDependenciesWhenExporting" />
 						<CheckBox VerticalAlignment="Center" IsChecked="{Binding AutoAddDependenciesWhenExporting, UpdateSourceTrigger=PropertyChanged}" />
 						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="CheckForUpdates" />
@@ -162,6 +164,8 @@
 						<CheckBox VerticalAlignment="Center" IsChecked="{Binding LaunchDX11, UpdateSourceTrigger=PropertyChanged}" />
 						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="SkipLauncher" />
 						<CheckBox VerticalAlignment="Center" IsChecked="{Binding SkipLauncher, UpdateSourceTrigger=PropertyChanged}" />
+						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="LaunchThroughSteam" />
+						<CheckBox VerticalAlignment="Center" IsChecked="{Binding LaunchThroughSteam, UpdateSourceTrigger=PropertyChanged}" />
 					</autogrid:AutoGrid>
 				</ScrollViewer>
 			</TabItem>
