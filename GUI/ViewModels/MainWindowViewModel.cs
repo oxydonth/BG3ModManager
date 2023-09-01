@@ -5104,7 +5104,7 @@ Directory the zip will be extracted to:
 			modsConnection.Publish();
 
 			modsConnection.Filter(x => x.IsUserMod).Bind(out _userMods).Subscribe();
-			modsConnection.Filter(x => x.CanAddToLoadOrder).Bind(out addonMods).Subscribe();
+			modsConnection.AutoRefresh(x => x.CanAddToLoadOrder).Filter(x => x.CanAddToLoadOrder).Bind(out addonMods).Subscribe();
 			modsConnection.AutoRefresh(x => x.ForceAllowInLoadOrder)
 				.Filter(x => x.IsForceLoaded && !x.IsForceLoadedMergedMod && !x.ForceAllowInLoadOrder)
 				.ObserveOn(RxApp.MainThreadScheduler).Bind(out _forceLoadedMods).Subscribe();

@@ -363,7 +363,7 @@ namespace DivinityModManager.Models
 			_canDelete = this.WhenAnyValue(x => x.IsEditorMod, x => x.IsLarianMod, x => x.FilePath,
 				(isEditorMod, isLarianMod, path) => !isEditorMod && !isLarianMod && File.Exists(path)).StartWith(false).ToProperty(this, nameof(CanDelete));
 			_canAddToLoadOrder = this.WhenAnyValue(x => x.ModType, x => x.IsLarianMod, x => x.IsForceLoaded, x => x.IsForceLoadedMergedMod, x => x.ForceAllowInLoadOrder,
-				(modType, isLarianMod, isForceLoaded, forceAllowInLoadOrder, isMergedMod) => modType != "Adventure" && !isLarianMod && (!isForceLoaded || isMergedMod || forceAllowInLoadOrder)).StartWith(true).ToProperty(this, nameof(CanAddToLoadOrder));
+				(modType, isLarianMod, isForceLoaded, isMergedMod, forceAllowInLoadOrder) => modType != "Adventure" && !isLarianMod && (!isForceLoaded || isMergedMod) || forceAllowInLoadOrder).StartWith(true).ToProperty(this, nameof(CanAddToLoadOrder));
 		}
 	}
 }
