@@ -15,7 +15,7 @@ using System.Windows;
 [assembly: AssemblyProduct("Baldur's Gate 3 Mod Manager")]
 [assembly: AssemblyCopyright("Copyright © 2020")]
 [assembly: AssemblyTrademark("")]
-[assembly: NeutralResourcesLanguageAttribute("en")]
+[assembly: NeutralResourcesLanguage("en")]
 [assembly: AssemblyCulture("")]
 
 [assembly: ComVisible(false)]
