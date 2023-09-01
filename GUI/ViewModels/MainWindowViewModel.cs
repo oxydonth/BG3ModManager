@@ -3906,12 +3906,10 @@ Directory the zip will be extracted to:
 
 					if (DivinitySaveTools.RenameSave(dialog.FileName, renameDialog.FileName))
 					{
-						//DivinityApp.LogMessage($"Successfully renamed '{dialog.FileName}' to '{renameDialog.FileName}'.");
-
 						try
 						{
-							string previewImage = Path.Combine(rootFolder, rootFileName + ".png");
-							string renamedImage = Path.Combine(rootFolder, Path.GetFileNameWithoutExtension(renameDialog.FileName) + ".png");
+							string previewImage = Path.Combine(rootFolder, rootFileName + ".WebP");
+							string renamedImage = Path.Combine(rootFolder, Path.GetFileNameWithoutExtension(renameDialog.FileName) + ".WebP");
 							if (File.Exists(previewImage))
 							{
 								File.Move(previewImage, renamedImage);

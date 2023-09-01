@@ -25,7 +25,7 @@ namespace DivinityModManager.Util
 				using (var reader = new PackageReader(pathToSave))
 				{
 					Package package = reader.Read();
-					AbstractFileInfo saveScreenshotImage = package.Files.FirstOrDefault(p => p.Name.EndsWith(".png"));
+					AbstractFileInfo saveScreenshotImage = package.Files.FirstOrDefault(p => p.Name.EndsWith(".WebP"));
 					if (saveScreenshotImage != null)
 					{
 						saveScreenshotImage.Name = saveScreenshotImage.Name.Replace(Path.GetFileNameWithoutExtension(saveScreenshotImage.Name), baseNewName);
