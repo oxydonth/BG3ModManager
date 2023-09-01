@@ -1440,11 +1440,16 @@ namespace DivinityModManager.Util
 						var match = textPattern.Match(line);
 						if (match.Success)
 						{
+							var isOverride = line.Substring(0, 8) == "Override";
 							var pakName = Path.GetFileName(match.Groups[1].Value.Trim());
 							var mod = allMods.FirstOrDefault(x => x.PakEquals(pakName, SCOMP));
+							DivinityApp.Log($"isOverride({isOverride}) Sub test: [{line.Substring(0, 8)}] pakName({pakName}) mod({mod})");
 							if (mod != null)
 							{
-								order.Add(mod);
+								if (!isOverride)
+								{
+									order.Add(mod);
+								}
 							}
 							else
 							{
@@ -1469,14 +1474,19 @@ namespace DivinityModManager.Util
 						order = new DivinityLoadOrder();
 						for (var i = 1; i < tsvLines.Length; i++)
 						{
-							var lineData = tsvLines[i].Split('\t');
+							var line = tsvLines[i];
+							var lineData = line.Split('\t');
 							if (lineData.Length > fileIndex)
 							{
+								var isOverride = line.Substring(0, 8) == "Override";
 								var fileName = Path.GetFileName(lineData[fileIndex].Trim());
 								var mod = allMods.FirstOrDefault(x => x.PakEquals(fileName, SCOMP));
 								if (mod != null)
 								{
-									order.Add(mod);
+									if (!isOverride)
+									{
+										order.Add(mod);
+									}
 								}
 								else
 								{
