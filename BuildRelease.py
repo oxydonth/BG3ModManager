@@ -53,11 +53,8 @@ import time
 time.sleep(3)
 
 SilentRemove("bin/Publish/Data")
+SilentRemove("bin/Publish/Orders")
 SilentRemove("bin/Publish/_Logs")
 SilentRemove(file_name)
-SilentCopyAndRemove("bin/Publish/DivinityModManager.exe", "bin/Publish/BG3ModManager.exe")
-SilentCopyAndRemove("bin/Publish/DivinityModManager.exe.config", "bin/Publish/BG3ModManager.exe.config")
-
 zipdir("bin/Publish", file_name)
-
 shutil.copy(file_name, export_file)
