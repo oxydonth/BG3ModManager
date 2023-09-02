@@ -1459,7 +1459,7 @@ namespace DivinityModManager.Util
 			return false;
 		}
 
-		public static async Task<bool> UpdateLauncherPreferencesAsync(string appDataLarianFolder, bool enableTelemetry, bool enableModWarnings)
+		public static async Task<bool> UpdateLauncherPreferencesAsync(string appDataLarianFolder, bool enableTelemetry, bool enableModWarnings, bool force = false)
 		{
 			Dictionary<string, object> settings = null;
 			//Patch 7 changes this to "Larian Studios" instead of "LarianStudios"
@@ -1475,10 +1475,14 @@ namespace DivinityModManager.Util
 				return false;
 			}
 			settings["SendStats"] = enableTelemetry;
-			settings["ModsWarningShown"] = !enableModWarnings;
-			settings["DataWarningShown"] = !enableModWarnings;
-			settings["DisplayFilesValidationMsg"] = enableModWarnings;
-			settings["DisplayModsDetectedMsg"] = enableModWarnings;
+			if(force || !enableModWarnings)
+			{
+				settings["ModsWarningShown"] = !enableModWarnings;
+				settings["DataWarningShown"] = !enableModWarnings;
+				settings["DisplayFilesValidationMsg"] = enableModWarnings;
+				settings["DisplayModsDetectedMsg"] = enableModWarnings;
+			}
+
 			string contents = JsonConvert.SerializeObject(settings, Newtonsoft.Json.Formatting.Indented);
 
 			var buffer = Encoding.UTF8.GetBytes(contents);
