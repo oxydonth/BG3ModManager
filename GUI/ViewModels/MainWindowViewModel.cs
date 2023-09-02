@@ -1210,11 +1210,6 @@ Directory the zip will be extracted to:
 			if (loaded)
 			{
 				Settings.CanSaveSettings = false;
-
-				RxApp.TaskpoolScheduler.ScheduleAsync(async (sch, t) =>
-				{
-					await DivinityModDataLoader.UpdateLauncherPreferencesAsync(GetLarianStudiosAppDataFolder(), !Settings.DisableLauncherTelemetry, !Settings.DisableLauncherModWarnings);
-				});
 			}
 
 			return loaded;
@@ -1389,6 +1384,7 @@ Directory the zip will be extracted to:
 			try
 			{
 				string documentsFolder = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.DoNotVerify);
+				
 				if (String.IsNullOrWhiteSpace(AppSettings.DefaultPathways.DocumentsGameFolder))
 				{
 					AppSettings.DefaultPathways.DocumentsGameFolder = "Larian Studios\\Baldur's Gate 3";
@@ -1657,6 +1653,7 @@ Directory the zip will be extracted to:
 
 			if (GameDirectoryFound)
 			{
+				DivinityApp.Log($"Loading base game mods from data folder...");
 				await SetMainProgressTextAsync("Loading base game mods from data folder...");
 				DivinityApp.Log($"GameDataPath is '{Settings.GameDataPath}'.");
 				cancelTokenSource = GetCancellationToken(30000);
@@ -2416,22 +2413,29 @@ Directory the zip will be extracted to:
 
 			if (Directory.Exists(PathwayData.AppDataGameFolder))
 			{
+				DivinityApp.Log("Loading mods...");
 				await SetMainProgressTextAsync("Loading mods...");
 				var loadedMods = await LoadModsAsync(taskStepAmount);
 				await IncreaseMainProgressValueAsync(taskStepAmount);
 
+				DivinityApp.Log("Loading profiles...");
 				await SetMainProgressTextAsync("Loading profiles...");
 				var loadedProfiles = await LoadProfilesAsync();
 				await IncreaseMainProgressValueAsync(taskStepAmount);
 
 				if (String.IsNullOrEmpty(selectedProfileUUID) && (loadedProfiles != null && loadedProfiles.Count > 0))
 				{
+					DivinityApp.Log("Loading current profile...");
 					await SetMainProgressTextAsync("Loading current profile...");
 					selectedProfileUUID = await DivinityModDataLoader.GetSelectedProfileUUIDAsync(PathwayData.AppDataProfilesPath);
 					await IncreaseMainProgressValueAsync(taskStepAmount);
 				}
 				else
 				{
+					if((loadedProfiles == null || loadedProfiles.Count == 0))
+					{
+						DivinityApp.Log("No profiles found?");
+					}
 					await IncreaseMainProgressValueAsync(taskStepAmount);
 				}
 
@@ -2439,6 +2443,7 @@ Directory the zip will be extracted to:
 				//var loadedGMCampaigns = await LoadGameMasterCampaignsAsync(taskStepAmount);
 				//await IncreaseMainProgressValueAsync(taskStepAmount);
 
+				DivinityApp.Log("Loading external load orders...");
 				await SetMainProgressTextAsync("Loading external load orders...");
 				var savedModOrderList = await RunTask(LoadExternalLoadOrdersAsync(), new List<DivinityLoadOrder>());
 				await IncreaseMainProgressValueAsync(taskStepAmount);
@@ -2452,6 +2457,7 @@ Directory the zip will be extracted to:
 					DivinityApp.Log("No saved orders found.");
 				}
 
+				DivinityApp.Log("Setting up mod lists...");
 				await SetMainProgressTextAsync("Setting up mod lists...");
 
 				await Observable.Start(() =>
