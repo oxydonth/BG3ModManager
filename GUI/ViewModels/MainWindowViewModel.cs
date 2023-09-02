@@ -2497,6 +2497,8 @@ Directory the zip will be extracted to:
 						}
 					}
 
+					DivinityApp.Log($"Set profile to ({SelectedProfile?.Name})[{SelectedProfileIndex}]");
+
 					MainProgressWorkText = "Building mod order list...";
 
 					if (lastActiveOrder != null && lastActiveOrder.Count > 0)
