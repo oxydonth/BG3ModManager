@@ -1,4 +1,6 @@
-﻿using DivinityModManager.Models;
+﻿using Alphaleonis.Win32.Filesystem;
+
+using DivinityModManager.Models;
 
 using GongSolutions.Wpf.DragDrop;
 using GongSolutions.Wpf.DragDrop.Utilities;
@@ -75,12 +77,55 @@ namespace DivinityModManager.ViewModels
 
 	public class ModListDropHandler : DefaultDropHandler
 	{
+		public override void DragOver(IDropInfo dropInfo)
+		{
+			if(!_viewModel.AllowDrop)
+			{
+				dropInfo.Effects = DragDropEffects.None;
+				return;
+			}
+			base.DragOver(dropInfo);
+			if(dropInfo.Effects == DragDropEffects.None && dropInfo.Data is DataObject data && data.ContainsFileDropList())
+			{
+				var files = data.GetFileDropList();
+				foreach (var file in files)
+				{
+					var ext = Path.GetExtension(file).ToLower();
+					if (ext == ".zip" || ext == ".7z" || ext == ".7zip" || ext == ".pak")
+					{
+						dropInfo.Effects = DragDropEffects.Copy | DragDropEffects.Move;
+						dropInfo.DropTargetAdorner = DropTargetAdorners.Highlight;
+						break;
+					}
+				}
+			}
+		}
+
 		override public void Drop(IDropInfo dropInfo)
 		{
-			if (dropInfo == null || dropInfo.DragInfo == null || _viewModel.IsLoadingOrder || _viewModel.IsRefreshing)
+			if (dropInfo == null) return;
+
+			if (!_viewModel.AllowDrop)
 			{
 				return;
 			}
+
+			bool isActive = dropInfo.TargetCollection == _viewModel.ActiveMods;
+
+			if (dropInfo.Data is DataObject dropFileData)
+			{
+				if (dropFileData.ContainsFileDropList())
+				{
+					var files = dropFileData.GetFileDropList()?.Cast<string>().ToList();
+					if (files != null)
+					{
+						_viewModel.ImportMods(files, isActive);
+					}
+				}
+				return;
+			}
+
+			if (dropInfo.DragInfo == null) return;
 
 			var insertIndex = dropInfo.UnfilteredInsertIndex;
 
@@ -157,7 +202,6 @@ namespace DivinityModManager.ViewModels
 				}
 			}
 
-			bool isActive = dropInfo.TargetCollection == _viewModel.ActiveMods;
 			var selectedUUIDs = data.Select(x => x.UUID).ToHashSet();
 
 			foreach (var mod in _viewModel.ActiveMods)

@@ -80,7 +80,7 @@ namespace DivinityModManager.ViewModels
 		private readonly AppKeys _keys;
 		public AppKeys Keys => _keys;
 
-		public bool IsInitialized { get; private set; }
+		[Reactive] public bool IsInitialized { get; private set; }
 
 		protected readonly SourceCache<DivinityModData, string> mods = new SourceCache<DivinityModData, string>(mod => mod.UUID);
 
@@ -1918,7 +1918,7 @@ Directory the zip will be extracted to:
 			return result;
 		}
 
-		public void ImportMods(string[] fileNames, bool toActiveList = false)
+		public void ImportMods(IEnumerable<string> files, bool toActiveList = false)
 		{
 			if (!MainProgressIsActive)
 			{
@@ -1932,7 +1932,7 @@ Directory the zip will be extracted to:
 					MainProgressToken = new CancellationTokenSource();
 					int successes = 0;
 					int total = 0;
-					foreach (var f in fileNames)
+					foreach (var f in files)
 					{
 						total++;
 						var result = await AddModFromFile(f, MainProgressToken.Token, toActiveList);
@@ -1955,7 +1955,7 @@ Directory the zip will be extracted to:
 							}
 							else if (total == 1)
 							{
-								ShowAlert($"Successfully imported '{fileNames.First()}'.", AlertType.Success, 20);
+								ShowAlert($"Successfully imported '{files.First()}'.", AlertType.Success, 20);
 							}
 							else
 							{
@@ -3134,6 +3134,7 @@ Directory the zip will be extracted to:
 					if (toActiveList)
 					{
 						InactiveMods.Remove(existingMod);
+						mod.Index = ActiveMods.Count;
 						ActiveMods.Add(mod);
 					}
 					else
@@ -3146,6 +3147,7 @@ Directory the zip will be extracted to:
 			{
 				if (toActiveList)
 				{
+					mod.Index = ActiveMods.Count;
 					ActiveMods.Add(mod);
 				}
 				else
@@ -4866,8 +4868,8 @@ Directory the zip will be extracted to:
 				if (!disposables.Contains(this.Disposables)) disposables.Add(this.Disposables);
 			});
 
-			_isLocked = this.WhenAnyValue(x => x.IsDragging, x => x.IsRefreshing, (b1, b2) => b1 || b2).ToProperty(this, nameof(IsLocked));
-			_allowDrop = this.WhenAnyValue(x => x.IsDragging, x => x.IsRefreshing, x => x.IsInitialized, (b1, b2, b3) => !b1 && !b2 && b3).ToProperty(this, nameof(AllowDrop));
+			_isLocked = this.WhenAnyValue(x => x.IsDragging, x => x.IsRefreshing, x => x.IsLoadingOrder, (b1, b2, b3) => b1 || b2 || b3).StartWith(false).ToProperty(this, nameof(IsLocked));
+			_allowDrop = this.WhenAnyValue(x => x.IsLoadingOrder, x => x.IsRefreshing, x => x.IsInitialized, (b1, b2, b3) => !b1 && !b2 && b3).StartWith(true).ToProperty(this, nameof(AllowDrop));
 
 			_keys = new AppKeys(this);
 

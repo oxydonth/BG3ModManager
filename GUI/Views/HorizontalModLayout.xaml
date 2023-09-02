@@ -163,7 +163,10 @@
 			Width="4"
 			HorizontalAlignment="Stretch"
 			VerticalAlignment="Stretch" />
-		<Grid Grid.Column="2" HorizontalAlignment="Stretch">
+		<Grid
+			x:Name="InactiveModListGrid"
+			Grid.Column="2"
+			HorizontalAlignment="Stretch">
 			<Grid.RowDefinitions>
 				<RowDefinition Height="Auto" />
 				<RowDefinition Height="2" />

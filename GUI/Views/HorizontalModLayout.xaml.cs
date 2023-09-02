@@ -451,44 +451,6 @@ namespace DivinityModManager.Views
 			}
 		}
 
-		private void OnDrop(object sender, DragEventArgs e)
-		{
-			if (e.Data.GetDataPresent(DataFormats.FileDrop))
-			{
-				string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
-
-				DivinityApp.Log($"e.Source({e.Source})");
-				var toActiveList = false;
-				if(e.Source == ActiveModsListView)
-				{
-					toActiveList = true;
-				}
-				ViewModel.ImportMods(files, toActiveList);
-			}
-		}
-
-		private void OnDragOver(object sender, DragEventArgs e)
-		{
-			e.Effects = DragDropEffects.None;
-
-			DivinityApp.Log($"OnDragOver Data({e.Data}) Source({e.Source})");
-
-			if (e.Data.GetDataPresent(DataFormats.FileDrop))
-			{
-				string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
-
-				foreach(var file in files)
-				{
-					var ext = Path.GetExtension(file).ToLower();
-					if(ext == ".zip" || ext == ".7z" || ext == ".7zip" || ext == ".pak")
-					{
-						e.Effects = DragDropEffects.Copy | DragDropEffects.Move;
-						break;
-					}
-				}
-			}
-		}
-
 		public HorizontalModLayout()
 		{
 			InitializeComponent();
@@ -498,15 +460,10 @@ namespace DivinityModManager.Views
 
 			bool setInitialFocus = true;
 
-			Drop += OnDrop;
-			DragOver += OnDragOver;
-
 			this.WhenActivated(d =>
 			{
 				if (ViewModel != null)
 				{
-					d(this.OneWayBind(ViewModel, vm => vm.AllowDrop, view => view.AllowDrop));
-
 					d(this.Events().KeyUp.Select(e => e.Key != Key.System ? e.Key : e.SystemKey).Subscribe(ViewModel.OnKeyUp));
 					d(this.Events().KeyDown.Select(e => e.Key != Key.System ? e.Key : e.SystemKey).Subscribe(key =>
 					{

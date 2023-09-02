@@ -171,7 +171,6 @@ namespace DivinityModManager.Views
 
 			RxExceptionHandler.view = this;
 
-
 			//Wrapper = new WindowWrapper(this);
 
 			SettingsWindow = new SettingsWindow();
