@@ -81,6 +81,7 @@ namespace DivinityModManager.ViewModels
 		{
 			if(!_viewModel.AllowDrop)
 			{
+				DivinityApp.Log($"[AllowDrop] IsRefreshing({_viewModel.IsRefreshing}) IsInitialized({_viewModel.IsInitialized}) IsLoadingOrder({_viewModel.IsLoadingOrder})");
 				dropInfo.Effects = DragDropEffects.None;
 				return;
 			}

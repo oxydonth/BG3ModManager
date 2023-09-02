@@ -2400,7 +2400,7 @@ Directory the zip will be extracted to:
 			}));
 		}
 
-		private async Task<IDisposable> RefreshAsync(IScheduler ctrl, CancellationToken t)
+		private async Task<Unit> RefreshAsync(IScheduler ctrl, CancellationToken t)
 		{
 			DivinityApp.Log($"Refreshing data asynchronously...");
 
@@ -2528,8 +2528,8 @@ Directory the zip will be extracted to:
 					return Unit.Default;
 				}, RxApp.MainThreadScheduler);
 
-				await SetMainProgressTextAsync("Finishing up...");
 				await IncreaseMainProgressValueAsync(taskStepAmount);
+				await SetMainProgressTextAsync("Finishing up...");
 			}
 			else
 			{
@@ -2599,17 +2599,17 @@ Directory the zip will be extracted to:
 				}
 
 				IsRefreshing = false;
+				IsLoadingOrder = false;
+				IsInitialized = true;
+
+				if (AppSettings.FeatureEnabled("Workshop"))
+				{
+					LoadWorkshopModDataBackground();
+				}
 
 				return Unit.Default;
 			}, RxApp.MainThreadScheduler);
-
-			if (AppSettings.FeatureEnabled("Workshop"))
-			{
-				LoadWorkshopModDataBackground();
-			}
-
-			IsInitialized = true;
-			return Disposable.Empty;
+			return Unit.Default;
 		}
 
 		private async Task<List<DivinityLoadOrder>> LoadExternalLoadOrdersAsync()
