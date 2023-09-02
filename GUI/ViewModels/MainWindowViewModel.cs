@@ -932,6 +932,14 @@ Directory the zip will be extracted to:
 
 			Keys.LaunchGame.AddAction(() =>
 			{
+				if (Settings.DisableLauncherTelemetry || Settings.DisableLauncherModWarnings)
+				{
+					RxApp.TaskpoolScheduler.ScheduleAsync(async (sch, t) =>
+					{
+						await DivinityModDataLoader.UpdateLauncherPreferencesAsync(GetLarianStudiosAppDataFolder(), !Settings.DisableLauncherTelemetry, !Settings.DisableLauncherModWarnings);
+					});
+				}
+
 				if (!Settings.LaunchThroughSteam)
 				{
 					if (!File.Exists(Settings.GameExecutablePath))
@@ -1235,14 +1243,6 @@ Directory the zip will be extracted to:
 				File.WriteAllText(settingsFile, contents);
 				Settings.CanSaveSettings = false;
 				Keys.SaveKeybindings(this);
-
-				if(Settings.DisableLauncherTelemetry || Settings.DisableLauncherModWarnings)
-				{
-					RxApp.TaskpoolScheduler.ScheduleAsync(async (sch, t) =>
-					{
-						await DivinityModDataLoader.UpdateLauncherPreferencesAsync(GetLarianStudiosAppDataFolder(), !Settings.DisableLauncherTelemetry, !Settings.DisableLauncherModWarnings);
-					});
-				}
 				return true;
 			}
 			catch (Exception ex)
@@ -1386,14 +1386,14 @@ Directory the zip will be extracted to:
 		{
 			try
 			{
-				string documentsFolder = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.DoNotVerify);
+				string localAppDataFolder = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.DoNotVerify);
 				
 				if (String.IsNullOrWhiteSpace(AppSettings.DefaultPathways.DocumentsGameFolder))
 				{
 					AppSettings.DefaultPathways.DocumentsGameFolder = "Larian Studios\\Baldur's Gate 3";
 				}
 
-				string gameDataFolder = Path.Combine(documentsFolder, AppSettings.DefaultPathways.DocumentsGameFolder);
+				string gameDataFolder = Path.Combine(localAppDataFolder, AppSettings.DefaultPathways.DocumentsGameFolder);
 
 				if (!String.IsNullOrEmpty(gameDataFolderOverride) && Directory.Exists(gameDataFolderOverride))
 				{
@@ -1401,7 +1401,7 @@ Directory the zip will be extracted to:
 					var parentDir = Directory.GetParent(gameDataFolder);
 					if (parentDir != null)
 					{
-						documentsFolder = parentDir.FullName;
+						localAppDataFolder = parentDir.FullName;
 					}
 				}
 				else if (!Directory.Exists(gameDataFolder))
@@ -1409,8 +1409,8 @@ Directory the zip will be extracted to:
 					var userFolder = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile, Environment.SpecialFolderOption.DoNotVerify);
 					if (Directory.Exists(userFolder))
 					{
-						documentsFolder = Path.Combine(userFolder, "AppData", "Local");
-						gameDataFolder = Path.Combine(documentsFolder, AppSettings.DefaultPathways.DocumentsGameFolder);
+						localAppDataFolder = Path.Combine(userFolder, "AppData", "Local");
+						gameDataFolder = Path.Combine(localAppDataFolder, AppSettings.DefaultPathways.DocumentsGameFolder);
 					}
 				}
 
@@ -1423,7 +1423,7 @@ Directory the zip will be extracted to:
 				PathwayData.AppDataCampaignsPath = gmCampaignsFolder;
 				PathwayData.AppDataProfilesPath = profileFolder;
 
-				if (Directory.Exists(documentsFolder))
+				if (Directory.Exists(localAppDataFolder))
 				{
 					Directory.CreateDirectory(gameDataFolder);
 					DivinityApp.Log($"Larian documents folder set to '{gameDataFolder}'.");
@@ -1448,7 +1448,7 @@ Directory the zip will be extracted to:
 				}
 				else
 				{
-					ShowAlert("Failed to find %USERPROFILE%\\Documents folder. This is weird.", AlertType.Danger);
+					ShowAlert("Failed to find %LOCALAPPDATA% folder. This is weird.", AlertType.Danger);
 					DivinityApp.Log($"Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments, Environment.SpecialFolderOption.DoNotVerify) return a non-existent path?\nResult({Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments, Environment.SpecialFolderOption.DoNotVerify)})");
 				}
 
@@ -1523,7 +1523,7 @@ Directory the zip will be extracted to:
 						Multiselect = false,
 						Description = "Set the path to the Baldur's Gate 3 root installation folder",
 						UseDescriptionForTitle = true,
-						SelectedPath = DivinityApp.GetAppDirectory()
+						SelectedPath = GetInitialStartingDirectory()
 					};
 
 					if (dialog.ShowDialog(View.Main) == true)
@@ -1972,6 +1972,23 @@ Directory the zip will be extracted to:
 			}
 		}
 
+		private string GetInitialStartingDirectory(string fallback = "")
+		{
+			var directory = fallback;
+
+			if (!String.IsNullOrEmpty(PathwayData.LastSaveFilePath) && DivinityFileUtils.TryGetDirectoryOrParent(PathwayData.LastSaveFilePath, out var lastDir))
+			{
+				directory = lastDir;
+			}
+
+			if(String.IsNullOrEmpty(directory) || !Directory.Exists(directory))
+			{
+				directory = DivinityApp.GetAppDirectory();
+			}
+
+			return directory;
+		}
+
 		private void OpenModImportDialog()
 		{
 			var dialog = new OpenFileDialog
@@ -1983,21 +2000,13 @@ Directory the zip will be extracted to:
 				Title = "Import Mods from Archive...",
 				ValidateNames = true,
 				ReadOnlyChecked = true,
-				Multiselect = true
+				Multiselect = true,
+				InitialDirectory = GetInitialStartingDirectory()
 			};
-
-			if (!String.IsNullOrEmpty(PathwayData.LastSaveFilePath) && Directory.Exists(PathwayData.LastSaveFilePath))
-			{
-				dialog.InitialDirectory = PathwayData.LastSaveFilePath;
-			}
-
-			if (!Directory.Exists(dialog.InitialDirectory))
-			{
-				dialog.InitialDirectory = DivinityApp.GetAppDirectory();
-			}
 
 			if (dialog.ShowDialog(View) == true)
 			{
+				PathwayData.LastSaveFilePath = Path.GetDirectoryName(dialog.FileName);
 				ImportMods(dialog.FileNames);
 			}
 		}
@@ -2688,7 +2697,7 @@ Directory the zip will be extracted to:
 
 		private void SaveLoadOrderAs()
 		{
-			var startDirectory = Path.GetFullPath(!String.IsNullOrEmpty(Settings.LoadOrderPath) ? Settings.LoadOrderPath : Directory.GetCurrentDirectory());
+			var startDirectory = Path.GetFullPath(!String.IsNullOrEmpty(Settings.LoadOrderPath) ? Settings.LoadOrderPath : GetInitialStartingDirectory(Directory.GetCurrentDirectory()));
 
 			if (!Directory.Exists(startDirectory))
 			{
@@ -2715,11 +2724,6 @@ Directory the zip will be extracted to:
 			dialog.CheckPathExists = false;
 			dialog.OverwritePrompt = true;
 			dialog.Title = "Save Load Order As...";
-
-			if (!Directory.Exists(dialog.InitialDirectory))
-			{
-				dialog.InitialDirectory = DivinityApp.GetAppDirectory();
-			}
 
 			if (dialog.ShowDialog(View) == true)
 			{
@@ -2914,7 +2918,7 @@ Directory the zip will be extracted to:
 					var dir = GetLarianStudiosAppDataFolder();
 					if (SelectedModOrder.Order.Count > 0)
 					{
-						await DivinityModDataLoader.UpdateLauncherPreferencesAsync(dir, false, false);
+						await DivinityModDataLoader.UpdateLauncherPreferencesAsync(dir, false, false, true);
 					}
 					else
 					{
@@ -3055,22 +3059,29 @@ Directory the zip will be extracted to:
 		private void OnMainProgressComplete(double delay = 0)
 		{
 			DivinityApp.Log($"Main progress is complete.");
-			TimeSpan delaySpan = TimeSpan.Zero;
-			if (delay > 0) delaySpan = TimeSpan.FromMilliseconds(delay);
 
-			MainProgressWorkText = "Finished.";
 			MainProgressValue = 1d;
+			MainProgressWorkText = "Finished.";
+
 			if (MainProgressToken != null)
 			{
 				MainProgressToken.Dispose();
 				MainProgressToken = null;
 			}
 
-			RxApp.MainThreadScheduler.Schedule(delaySpan, _ =>
+			if(delay > 0)
+			{
+				RxApp.MainThreadScheduler.Schedule(TimeSpan.FromMilliseconds(delay), _ =>
+				{
+					MainProgressIsActive = false;
+					CanCancelProgress = true;
+				});
+			}
+			else
 			{
 				MainProgressIsActive = false;
 				CanCancelProgress = true;
-			});
+			}
 		}
 
 		private static readonly ArchiveEncoding _archiveEncoding = new ArchiveEncoding(Encoding.UTF8, Encoding.UTF8);
@@ -3089,13 +3100,9 @@ Directory the zip will be extracted to:
 				Title = "Import Mods from Archive...",
 				ValidateNames = true,
 				ReadOnlyChecked = true,
-				Multiselect = false
+				Multiselect = false,
+				InitialDirectory = GetInitialStartingDirectory()
 			};
-
-			if (!String.IsNullOrEmpty(PathwayData.LastSaveFilePath) && Directory.Exists(PathwayData.LastSaveFilePath))
-			{
-				dialog.InitialDirectory = PathwayData.LastSaveFilePath;
-			}
 
 			if (dialog.ShowDialog(View) == true)
 			{
@@ -3576,14 +3583,12 @@ Directory the zip will be extracted to:
 		{
 			if (SelectedProfile != null && SelectedModOrder != null)
 			{
-				var startDirectory = Path.GetFullPath(Directory.GetCurrentDirectory());
-
 				var dialog = new SaveFileDialog
 				{
 					AddExtension = true,
 					DefaultExt = ".zip",
 					Filter = "Archive file (*.zip)|*.zip",
-					InitialDirectory = startDirectory
+					InitialDirectory = GetInitialStartingDirectory()
 				};
 
 				var sysFormat = CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern.Replace("/", "-");
@@ -3600,11 +3605,6 @@ Directory the zip will be extracted to:
 				dialog.CheckPathExists = false;
 				dialog.OverwritePrompt = true;
 				dialog.Title = "Export Load Order As...";
-
-				if (!Directory.Exists(dialog.InitialDirectory))
-				{
-					dialog.InitialDirectory = DivinityApp.GetAppDirectory();
-				}
 
 				if (dialog.ShowDialog(View) == true)
 				{
@@ -3662,14 +3662,12 @@ Directory the zip will be extracted to:
 		{
 			if (SelectedProfile != null && SelectedModOrder != null)
 			{
-				var startDirectory = Path.GetFullPath(Directory.GetCurrentDirectory());
-
 				var dialog = new SaveFileDialog
 				{
 					AddExtension = true,
 					DefaultExt = ".tsv",
 					Filter = "Spreadsheet file (*.tsv)|*.tsv|Plain text file (*.txt)|*.txt|JSON file (*.json)|*.json",
-					InitialDirectory = startDirectory
+					InitialDirectory = GetInitialStartingDirectory()
 				};
 
 				string sysFormat = CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern.Replace("/", "-");
@@ -3686,11 +3684,6 @@ Directory the zip will be extracted to:
 				dialog.CheckPathExists = false;
 				dialog.OverwritePrompt = true;
 				dialog.Title = "Export Load Order As Text File...";
-
-				if (!Directory.Exists(dialog.InitialDirectory))
-				{
-					dialog.InitialDirectory = DivinityApp.GetAppDirectory();
-				}
 
 				if (dialog.ShowDialog(View) == true)
 				{
@@ -3753,34 +3746,22 @@ Directory the zip will be extracted to:
 				Title = "Load Mod Order From Save..."
 			};
 
-			if (!String.IsNullOrEmpty(PathwayData.LastSaveFilePath) && Directory.Exists(PathwayData.LastSaveFilePath))
+			if (SelectedProfile != null)
 			{
-				dialog.InitialDirectory = PathwayData.LastSaveFilePath;
-			}
-			else
-			{
-				if (SelectedProfile != null)
+				string profilePath = Path.GetFullPath(Path.Combine(SelectedProfile.Folder, "Savegames"));
+				string storyPath = Path.Combine(profilePath, "Story");
+				if (Directory.Exists(storyPath))
 				{
-					string profilePath = Path.GetFullPath(Path.Combine(SelectedProfile.Folder, "Savegames"));
-					string storyPath = Path.Combine(profilePath, "Story");
-					if (Directory.Exists(storyPath))
-					{
-						dialog.InitialDirectory = storyPath;
-					}
-					else
-					{
-						dialog.InitialDirectory = profilePath;
-					}
+					dialog.InitialDirectory = storyPath;
 				}
 				else
 				{
-					dialog.InitialDirectory = Path.GetFullPath(PathwayData.AppDataGameFolder);
+					dialog.InitialDirectory = profilePath;
 				}
 			}
-
-			if (!Directory.Exists(dialog.InitialDirectory))
+			else
 			{
-				dialog.InitialDirectory = DivinityApp.GetAppDirectory();
+				dialog.InitialDirectory = GetInitialStartingDirectory();
 			}
 
 			if (dialog.ShowDialog(View) == true)
@@ -3864,7 +3845,7 @@ Directory the zip will be extracted to:
 
 			if (!Directory.Exists(dialog.InitialDirectory))
 			{
-				dialog.InitialDirectory = DivinityApp.GetAppDirectory();
+				dialog.InitialDirectory = GetInitialStartingDirectory();
 			}
 
 			if (dialog.ShowDialog(View) == true)
@@ -3923,25 +3904,22 @@ Directory the zip will be extracted to:
 				Title = "Pick Save to Rename..."
 			};
 
-			if (!String.IsNullOrEmpty(PathwayData.LastSaveFilePath) && Directory.Exists(PathwayData.LastSaveFilePath))
+			if (SelectedProfile != null)
 			{
-				dialog.InitialDirectory = PathwayData.LastSaveFilePath;
-			}
-			else
-			{
-				if (SelectedProfile != null)
+				string profilePath = Path.GetFullPath(Path.Combine(SelectedProfile.Folder, "Savegames"));
+				string storyPath = Path.Combine(profilePath, "Story");
+				if (Directory.Exists(storyPath))
 				{
-					dialog.InitialDirectory = profileSavesDirectory;
+					dialog.InitialDirectory = storyPath;
 				}
 				else
 				{
-					dialog.InitialDirectory = Path.GetFullPath(PathwayData.AppDataGameFolder);
+					dialog.InitialDirectory = profilePath;
 				}
 			}
-
-			if (!Directory.Exists(dialog.InitialDirectory))
+			else
 			{
-				dialog.InitialDirectory = DivinityApp.GetAppDirectory();
+				dialog.InitialDirectory = GetInitialStartingDirectory();
 			}
 
 			if (dialog.ShowDialog(View) == true)
@@ -3963,7 +3941,7 @@ Directory the zip will be extracted to:
 
 				if (!Directory.Exists(dialog.InitialDirectory))
 				{
-					dialog.InitialDirectory = DivinityApp.GetAppDirectory();
+					dialog.InitialDirectory = GetInitialStartingDirectory();
 				}
 
 				if (renameDialog.ShowDialog(View) == true)
@@ -4353,18 +4331,9 @@ Directory the zip will be extracted to:
 			{
 				dialog.SelectedPath = Settings.LastExtractOutputPath + "\\";
 			}
-			else if (PathwayData.LastSaveFilePath.IsExistingDirectory())
-			{
-				dialog.SelectedPath = PathwayData.LastSaveFilePath + "\\";
-			}
 			else
 			{
-				dialog.RootFolder = Environment.SpecialFolder.Desktop;
-			}
-
-			if (!Directory.Exists(dialog.SelectedPath))
-			{
-				dialog.SelectedPath = DivinityApp.GetAppDirectory();
+				dialog.SelectedPath = GetInitialStartingDirectory();
 			}
 
 			if (dialog.ShowDialog(View) == true)
@@ -4480,18 +4449,9 @@ Directory the zip will be extracted to:
 			{
 				dialog.SelectedPath = Settings.LastExtractOutputPath + "\\";
 			}
-			else if (PathwayData.LastSaveFilePath.IsExistingDirectory())
-			{
-				dialog.SelectedPath = PathwayData.LastSaveFilePath + "\\";
-			}
 			else
 			{
-				dialog.RootFolder = Environment.SpecialFolder.Desktop;
-			}
-
-			if (!Directory.Exists(dialog.SelectedPath))
-			{
-				dialog.SelectedPath = DivinityApp.GetAppDirectory();
+				dialog.SelectedPath = GetInitialStartingDirectory();
 			}
 
 			if (dialog.ShowDialog(View) == true)

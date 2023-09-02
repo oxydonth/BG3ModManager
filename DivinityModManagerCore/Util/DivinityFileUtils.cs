@@ -396,5 +396,26 @@ namespace DivinityModManager.Util
 				DivinityApp.Log($"Error opening path:\n{ex}");
 			}
 		}
+
+		public static bool TryGetDirectoryOrParent(string path, out string parentDir)
+		{
+			parentDir = "";
+			try
+			{
+				if (Directory.Exists(path))
+				{
+					parentDir = path;
+					return true;
+				}
+				var dir = Directory.GetParent(path);
+				if (dir != null)
+				{
+					parentDir = dir.FullName;
+					return true;
+				}
+			}
+			catch (Exception ex) { }
+			return false;
+		}
 	}
 }
