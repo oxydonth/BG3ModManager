@@ -23,7 +23,6 @@ namespace DivinityModManager
 			Directory.SetCurrentDirectory(DivinityApp.GetAppDirectory());
 			// Fix for loading C++ dlls from _Lib
 			AppDomain.CurrentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve;
-			//AssemblyResolver.Hook("_Lib");
 			// POCO type warning suppression
 			Splat.Locator.CurrentMutable.Register(() => new DivinityModManager.Util.CustomPropertyResolver(), typeof(ICreatesObservableForProperty));
 			WebHelper.SetupClient();
