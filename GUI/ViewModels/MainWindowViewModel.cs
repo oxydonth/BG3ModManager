@@ -233,6 +233,9 @@ namespace DivinityModManager.ViewModels
 		/// <summary>Used to locked certain functionality when data is loading or the user is dragging an item.</summary>
 		public bool IsLocked => _isLocked.Value;
 
+		private readonly ObservableAsPropertyHelper<bool> _allowDrop;
+		public bool AllowDrop => _allowDrop.Value;
+
 		[Reactive] public string StatusText { get; set; }
 		[Reactive] public string StatusBarRightText { get; set; }
 		[Reactive] public bool ModUpdatesAvailable { get; set; }
@@ -1846,9 +1849,9 @@ Directory the zip will be extracted to:
 			}
 		}
 
-		private async Task<bool> AddModFromFile(string filePath, CancellationToken t)
+		private async Task<ImportOperationResults> AddModFromFile(string filePath, CancellationToken t, bool toActiveList = false)
 		{
-			bool success = false;
+			var result = new ImportOperationResults();
 			if (Path.GetExtension(filePath).Equals(".pak", StringComparison.OrdinalIgnoreCase))
 			{
 				var builtinMods = DivinityApp.IgnoredMods.SafeToDictionary(x => x.Folder, x => x);
@@ -1860,18 +1863,19 @@ Directory the zip will be extracted to:
 						using (System.IO.FileStream destinationStream = File.Create(outputFilePath))
 						{
 							await sourceStream.CopyToAsync(destinationStream, 8192, t);
-							success = true;
+							result.Success = true;
 						}
 					}
 
-					if (success)
+					if (result.Success)
 					{
 						var mod = await DivinityModDataLoader.LoadModDataFromPakAsync(outputFilePath, builtinMods, t);
 						if (mod != null)
 						{
+							result.Mods.Add(mod);
 							await Observable.Start(() =>
 							{
-								AddImportedMod(mod);
+								AddImportedMod(mod, toActiveList);
 								return Unit.Default;
 							}, RxApp.MainThreadScheduler);
 						}
@@ -1889,9 +1893,63 @@ Directory the zip will be extracted to:
 			}
 			else
 			{
-				success = await ImportOrderZipFileAsync(filePath, true, t);
+				result.Success = await ImportOrderZipFileAsync(filePath, true, t, toActiveList);
 			}
-			return success;
+			return result;
+		}
+
+		public void ImportMods(string[] fileNames, bool toActiveList = false)
+		{
+			if(!MainProgressIsActive)
+			{
+				MainProgressTitle = "Importing mods.";
+				MainProgressWorkText = "";
+				MainProgressValue = 0d;
+				MainProgressIsActive = true;
+				IsRefreshing = true;
+				RxApp.TaskpoolScheduler.ScheduleAsync(async (ctrl, t) =>
+				{
+					MainProgressToken = new CancellationTokenSource();
+					int successes = 0;
+					int total = 0;
+					foreach (var f in fileNames)
+					{
+						total++;
+						var result = await AddModFromFile(f, MainProgressToken.Token, toActiveList);
+						if (result.Success)
+						{
+							successes++;
+						}
+					}
+
+					await ctrl.Yield();
+					RxApp.MainThreadScheduler.Schedule(_ =>
+					{
+						IsRefreshing = false;
+						OnMainProgressComplete();
+						if (successes == total)
+						{
+							if (total > 1)
+							{
+								ShowAlert($"Successfully imported {total} mods.", AlertType.Success, 20);
+							}
+							else if (total == 1)
+							{
+								ShowAlert($"Successfully imported '{fileNames.First()}'.", AlertType.Success, 20);
+							}
+							else
+							{
+								ShowAlert("Skipped importing mod.", AlertType.Success, 20);
+							}
+						}
+						else
+						{
+							//view.AlertBar.SetDangerAlert($"Only imported {successes}/{total} mods. Check the log.", 20);
+						}
+					});
+					return Disposable.Empty;
+				});
+			}
 		}
 
 		private void OpenModImportDialog()
@@ -1920,50 +1978,7 @@ Directory the zip will be extracted to:
 
 			if (dialog.ShowDialog(View) == true)
 			{
-				MainProgressTitle = "Importing mods.";
-				MainProgressWorkText = "";
-				MainProgressValue = 0d;
-				MainProgressIsActive = true;
-				RxApp.TaskpoolScheduler.ScheduleAsync(async (ctrl, t) =>
-				{
-					MainProgressToken = new CancellationTokenSource();
-					int successes = 0;
-					int total = 0;
-					foreach (var f in dialog.FileNames)
-					{
-						total++;
-						if (await AddModFromFile(f, MainProgressToken.Token))
-						{
-							successes++;
-						}
-					}
-
-					await ctrl.Yield();
-					RxApp.MainThreadScheduler.Schedule(_ =>
-					{
-						OnMainProgressComplete();
-						if (successes == total)
-						{
-							if (total > 1)
-							{
-								ShowAlert($"Successfully imported {total} mods.", AlertType.Success, 20);
-							}
-							else if (total == 1)
-							{
-								ShowAlert($"Successfully imported '{dialog.FileName}'.", AlertType.Success, 20);
-							}
-							else
-							{
-								ShowAlert("Skipped importing mod.", AlertType.Success, 20);
-							}
-						}
-						else
-						{
-							//view.AlertBar.SetDangerAlert($"Only imported {successes}/{total} mods. Check the log.", 20);
-						}
-					});
-					return Disposable.Empty;
-				});
+				ImportMods(dialog.FileNames);
 			}
 		}
 
@@ -3077,7 +3092,7 @@ Directory the zip will be extracted to:
 			}
 		}
 
-		private void AddImportedMod(DivinityModData mod)
+		private void AddImportedMod(DivinityModData mod, bool toActiveList = false)
 		{
 			if(mod.IsForceLoaded && !mod.IsForceLoadedMergedMod)
 			{
@@ -3096,19 +3111,35 @@ Directory the zip will be extracted to:
 				}
 				else
 				{
-					InactiveMods.ReplaceOrAdd(existingMod, mod);
+					if (toActiveList)
+					{
+						InactiveMods.Remove(existingMod);
+						ActiveMods.Add(mod);
+					}
+					else
+					{
+						InactiveMods.ReplaceOrAdd(existingMod, mod);
+					}
 				}
 			}
 			else
 			{
-				InactiveMods.Add(mod);
+				if(toActiveList)
+				{
+					ActiveMods.Add(mod);
+				}
+				else
+				{
+					InactiveMods.Add(mod);
+				}
 			}
 			mods.AddOrUpdate(mod);
 			CheckModForExtenderData(mod);
 			DivinityApp.Log($"Imported Mod: {mod}");
 		}
 
-		private async Task<bool> ImportSevenZipArchiveAsync(string outputDirectory, System.IO.Stream stream, Dictionary<string, string> jsonFiles, CancellationToken t)
+		private async Task<bool> ImportSevenZipArchiveAsync(string outputDirectory, System.IO.Stream stream,
+			Dictionary<string, string> jsonFiles, CancellationToken t, bool toActiveList = false)
 		{
 			int successes = 0;
 			int total = 0;
@@ -3149,7 +3180,7 @@ Directory the zip will be extracted to:
 									successes += 1;
 									await Observable.Start(() =>
 									{
-										AddImportedMod(mod);
+										AddImportedMod(mod, toActiveList);
 										return Unit.Default;
 									}, RxApp.MainThreadScheduler);
 								}
@@ -3184,7 +3215,8 @@ Directory the zip will be extracted to:
 			return successes >= total;
 		}
 
-		private async Task<bool> ImportGenericArchiveAsync(string outputDirectory, System.IO.Stream stream, Dictionary<string, string> jsonFiles, CancellationToken t)
+		private async Task<bool> ImportGenericArchiveAsync(string outputDirectory, System.IO.Stream stream,
+			Dictionary<string, string> jsonFiles, CancellationToken t, bool toActiveList = false)
 		{
 			int successes = 0;
 			int total = 0;
@@ -3227,7 +3259,7 @@ Directory the zip will be extracted to:
 									successes += 1;
 									await Observable.Start(() =>
 									{
-										AddImportedMod(mod);
+										AddImportedMod(mod, toActiveList);
 										return Unit.Default;
 									}, RxApp.MainThreadScheduler);
 								}
@@ -3262,7 +3294,7 @@ Directory the zip will be extracted to:
 			return successes >= total;
 		}
 
-		private async Task<bool> ImportOrderZipFileAsync(string archivePath, bool onlyMods, CancellationToken t)
+		private async Task<bool> ImportOrderZipFileAsync(string archivePath, bool onlyMods, CancellationToken t, bool toActiveList = false)
 		{
 			System.IO.FileStream fileStream = null;
 			string outputDirectory = PathwayData.AppDataModsPath;
@@ -3280,11 +3312,11 @@ Directory the zip will be extracted to:
 					var extension = Path.GetExtension(archivePath);
 					if (extension.Equals(".7z", StringComparison.OrdinalIgnoreCase) || extension.Equals(".7zip", StringComparison.OrdinalIgnoreCase))
 					{
-						success = await ImportSevenZipArchiveAsync(outputDirectory, fileStream, jsonFiles, t);
+						success = await ImportSevenZipArchiveAsync(outputDirectory, fileStream, jsonFiles, t, toActiveList);
 					}
 					else
 					{
-						success = await ImportGenericArchiveAsync(outputDirectory, fileStream, jsonFiles, t);
+						success = await ImportGenericArchiveAsync(outputDirectory, fileStream, jsonFiles, t, toActiveList);
 					}
 
 					IncreaseMainProgressValue(taskStepAmount);
@@ -4815,6 +4847,7 @@ Directory the zip will be extracted to:
 			});
 
 			_isLocked = this.WhenAnyValue(x => x.IsDragging, x => x.IsRefreshing, (b1, b2) => b1 || b2).ToProperty(this, nameof(IsLocked));
+			_allowDrop = this.WhenAnyValue(x => x.IsDragging, x => x.IsRefreshing, x => x.IsInitialized, (b1, b2, b3) => !b1 && !b2 && b3).ToProperty(this, nameof(AllowDrop));
 
 			_keys = new AppKeys(this);
 

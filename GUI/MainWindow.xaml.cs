@@ -159,19 +159,18 @@ namespace DivinityModManager.Views
 
 		public MainWindow()
 		{
+			InitializeComponent();
+			self = this;
+
 			Application.Current.DispatcherUnhandledException += OnUIException;
 			AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
-
-			InitializeComponent();
-
-			self = this;
+			App.Current.Exit += OnAppClosing;
 
 			DivinityApp.DateTimeColumnFormat = CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern;
 			DivinityApp.DateTimeTooltipFormat = CultureInfo.CurrentCulture.DateTimeFormat.LongDatePattern;
 
 			RxExceptionHandler.view = this;
 
-			App.Current.Exit += OnAppClosing;
 
 			//Wrapper = new WindowWrapper(this);
 
