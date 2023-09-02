@@ -894,122 +894,6 @@ namespace DivinityModManager.Util
 			return null;
 		}
 
-		public static List<DivinityProfileData> LoadProfileData(string profilePath)
-		{
-			List<DivinityProfileData> profiles = new List<DivinityProfileData>();
-			if (Directory.Exists(profilePath))
-			{
-				var profileDirectories = Directory.EnumerateDirectories(profilePath);
-				foreach (var folder in profileDirectories)
-				{
-					string displayName = Path.GetFileName(folder);
-					string storedDisplayedName = displayName;
-					string profileUUID = "";
-
-					//Console.WriteLine($"Folder: {Path.GetFileName(folder)} Blacklisted: {IgnoredMods.Any(m => Path.GetFileName(folder).Equals(m.Folder, SCOMP))}");
-					var profileFile = GetProfileFile(folder);
-					if (profileFile != null)
-					{
-						try
-						{
-							var profileRes = ResourceUtils.LoadResource(profileFile.FullName, LSLib.LS.Enums.ResourceFormat.LSB);
-							if (profileRes != null && profileRes.Regions.TryGetValue("PlayerProfile", out var region))
-							{
-								if (region.Attributes.TryGetValue("PlayerProfileDisplayName", out var profileDisplayNameAtt))
-								{
-									string storedName = (string)profileDisplayNameAtt.Value;
-									if (!String.IsNullOrEmpty(storedName))
-									{
-										storedDisplayedName = storedName;
-									}
-								}
-								if (region.Attributes.TryGetValue("PlayerProfileID", out var profileIdAtt))
-								{
-									profileUUID = (string)profileIdAtt.Value;
-								}
-							}
-						}
-						catch (Exception ex)
-						{
-							DivinityApp.Log($"Error parsing profile data: \n{ex}");
-						}
-					}
-
-					var profileData = new DivinityProfileData()
-					{
-						Name = displayName,
-						ProfileName = storedDisplayedName,
-						UUID = profileUUID,
-						Folder = Path.GetFullPath(folder)
-					};
-
-					var modSettingsFile = Path.Combine(folder, "modsettings.lsx");
-					if (File.Exists(modSettingsFile))
-					{
-						Resource modSettingsRes = null;
-						try
-						{
-							modSettingsRes = ResourceUtils.LoadResource(modSettingsFile, LSLib.LS.Enums.ResourceFormat.LSX);
-						}
-						catch (Exception ex)
-						{
-							DivinityApp.Log($"Error reading '{modSettingsFile}': '{ex}'");
-						}
-
-						if (modSettingsRes != null && modSettingsRes.Regions.TryGetValue("ModuleSettings", out var region))
-						{
-							if (region.Children.TryGetValue("ModOrder", out var modOrderRootNode))
-							{
-								var modOrderChildrenRoot = modOrderRootNode.FirstOrDefault();
-								if (modOrderChildrenRoot != null)
-								{
-									var modOrder = modOrderChildrenRoot.Children.Values.FirstOrDefault();
-									if (modOrder != null)
-									{
-										foreach (var c in modOrder)
-										{
-											if (c.Attributes.TryGetValue("UUID", out var attribute))
-											{
-												var uuid = (string)attribute.Value;
-												if (!String.IsNullOrEmpty(uuid))
-												{
-													profileData.ModOrder.Add(uuid);
-												}
-											}
-										}
-									}
-								}
-							}
-
-							if (region.Children.TryGetValue("Mods", out var modListRootNode))
-							{
-								var modListChildrenRoot = modListRootNode.FirstOrDefault();
-								if (modListChildrenRoot != null)
-								{
-									var modList = modListChildrenRoot.Children.Values.FirstOrDefault();
-									if (modList != null)
-									{
-										foreach (var c in modList)
-										{
-											var activeModData = new DivinityProfileActiveModData();
-											activeModData.LoadFromAttributes(c.Attributes);
-											if (!DivinityModDataLoader.IgnoreMod(activeModData.UUID))
-											{
-												profileData.ActiveMods.Add(activeModData);
-											}
-										}
-									}
-								}
-							}
-						}
-					}
-
-					profiles.Add(profileData);
-				}
-			}
-			return profiles;
-		}
-
 		public static async Task<List<DivinityProfileData>> LoadProfileDataAsync(string profilePath)
 		{
 			List<DivinityProfileData> profiles = new List<DivinityProfileData>();
@@ -1018,20 +902,24 @@ namespace DivinityModManager.Util
 				var profileDirectories = Directory.EnumerateDirectories(profilePath);
 				foreach (var folder in profileDirectories)
 				{
-					string displayName = Path.GetFileName(folder);
-					string storedDisplayedName = displayName;
-					string profileUUID = "";
+					var folderName = Path.GetFileName(folder);
+					var name = folderName;
+					var displayedName = folderName;
+					var profileUUID = "";
 
-					//Console.WriteLine($"Folder: {Path.GetFileName(folder)} Blacklisted: {IgnoredMods.Any(m => Path.GetFileName(folder).Equals(m.Folder, SCOMP))}");
 					var profileFile = GetProfileFile(folder);
 					if (profileFile != null)
 					{
 						var profileRes = await LoadResourceAsync(profileFile.FullName);
 						if (profileRes != null && profileRes.Regions.TryGetValue("PlayerProfile", out var region))
 						{
+							if (region.Attributes.TryGetValue("PlayerProfileName", out var profileNameAtt))
+							{
+								name = (string)profileNameAtt.Value;
+							}
 							if (region.Attributes.TryGetValue("PlayerProfileDisplayName", out var profileDisplayNameAtt))
 							{
-								storedDisplayedName = (string)profileDisplayNameAtt.Value;
+								displayedName = (string)profileDisplayNameAtt.Value;
 							}
 							if (region.Attributes.TryGetValue("PlayerProfileID", out var profileIdAtt))
 							{
@@ -1039,11 +927,21 @@ namespace DivinityModManager.Util
 							}
 						}
 					}
+					
+					if(String.IsNullOrEmpty(name))
+					{
+						name = folderName;
+					}
+
+					if(String.IsNullOrEmpty(displayedName))
+					{
+						displayedName = name;
+					}
 
 					var profileData = new DivinityProfileData()
 					{
-						Name = displayName,
-						ProfileName = storedDisplayedName,
+						Name = name,
+						ProfileName = displayedName,
 						UUID = profileUUID,
 						Folder = Path.GetFullPath(folder)
 					};
@@ -1588,6 +1486,7 @@ namespace DivinityModManager.Util
 				System.IO.FileAccess.Write, System.IO.FileShare.None, buffer.Length, true))
 			{
 				await fs.WriteAsync(buffer, 0, buffer.Length);
+				DivinityApp.Log($"Updated {settingsFilePath}");
 			}
 			return true;
 		}
