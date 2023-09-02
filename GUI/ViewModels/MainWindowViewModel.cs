@@ -4862,6 +4862,7 @@ Directory the zip will be extracted to:
 			var productName = ((AssemblyProductAttribute)Attribute.GetCustomAttribute(assembly, typeof(AssemblyProductAttribute), false)).Product;
 			Version = assembly.GetName().Version.ToString();
 			Title = $"{productName} {this.Version}";
+			DivinityApp.Log($"{Title} initializing...");
 			AutoUpdater.AppTitle = productName;
 
 			this.DropHandler = new ModListDropHandler(this);
