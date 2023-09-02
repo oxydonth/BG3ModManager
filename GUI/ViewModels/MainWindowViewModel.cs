@@ -535,7 +535,7 @@ namespace DivinityModManager.ViewModels
 								{
 									if (int.TryParse(m.Groups[1].Value, out int version))
 									{
-										if(version > Settings.ExtenderSettings.ExtenderVersion)
+										if (version > Settings.ExtenderSettings.ExtenderVersion)
 										{
 											Settings.ExtenderSettings.ExtenderVersion = version;
 											DivinityApp.Log($"Set extender version to v{version},");
@@ -801,6 +801,24 @@ Directory the zip will be extracted to:
 			return (x) => FilterDependencies(x, b);
 		}
 
+		private void TryStartGameExe(string exePath, string launchParams = "")
+		{
+			try
+			{
+				Process proc = new Process();
+				proc.StartInfo.FileName = exePath;
+				proc.StartInfo.Arguments = launchParams;
+				proc.StartInfo.WorkingDirectory = Directory.GetParent(exePath).FullName;
+				proc.Start();
+			}
+			catch (Exception ex)
+			{
+				View.ToggleLogging(true);
+				DivinityApp.Log($"Error starting game exe:\n{ex}");
+				ShowAlert("Error occurred when trying to start the game. Check the log.", AlertType.Danger);
+			}
+		}
+
 		private bool LoadSettings()
 		{
 			Settings?.Dispose();
@@ -914,7 +932,7 @@ Directory the zip will be extracted to:
 
 			Keys.LaunchGame.AddAction(() =>
 			{
-				if(!Settings.LaunchThroughSteam)
+				if (!Settings.LaunchThroughSteam)
 				{
 					if (!File.Exists(Settings.GameExecutablePath))
 					{
@@ -971,7 +989,7 @@ Directory the zip will be extracted to:
 					}
 
 					DivinityApp.Log($"Opening game exe at: {exePath} with args {launchParams}");
-					DivinityFileUtils.TryOpenPath(exePath, launchParams);
+					TryStartGameExe(exePath, launchParams);
 				}
 				else
 				{
@@ -1044,10 +1062,12 @@ Directory the zip will be extracted to:
 				string outputFile = Path.Combine(Path.GetDirectoryName(Settings.GameExecutablePath), "ScriptExtenderSettings.json");
 				try
 				{
-					var jsonSettings = new JsonSerializerSettings { 
+					var jsonSettings = new JsonSerializerSettings
+					{
 						DefaultValueHandling = DefaultValueHandling.Ignore,
 						NullValueHandling = NullValueHandling.Ignore,
-						Formatting = Formatting.Indented };
+						Formatting = Formatting.Indented
+					};
 
 					if (Settings.ExportDefaultExtenderSettings)
 					{
@@ -1348,7 +1368,7 @@ Directory the zip will be extracted to:
 			else
 			{
 				appDataFolder = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.DoNotVerify);
-				if(String.IsNullOrEmpty(appDataFolder) || !Directory.Exists(appDataFolder))
+				if (String.IsNullOrEmpty(appDataFolder) || !Directory.Exists(appDataFolder))
 				{
 					var userFolder = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile, Environment.SpecialFolderOption.DoNotVerify);
 					if (Directory.Exists(userFolder))
@@ -1380,7 +1400,7 @@ Directory the zip will be extracted to:
 				{
 					gameDataFolder = gameDataFolderOverride;
 					var parentDir = Directory.GetParent(gameDataFolder);
-					if(parentDir != null)
+					if (parentDir != null)
 					{
 						documentsFolder = parentDir.FullName;
 					}
@@ -1523,7 +1543,7 @@ Directory the zip will be extracted to:
 						{
 							ShowAlert("Failed to find Data folder with given installation directory.", AlertType.Danger);
 						}
-						if(File.Exists(exePath))
+						if (File.Exists(exePath))
 						{
 							Settings.GameExecutablePath = exePath;
 						}
@@ -1655,14 +1675,14 @@ Directory the zip will be extracted to:
 					await IncreaseMainProgressValueAsync(taskStepAmount);
 				}
 			}
-			if(baseMods == null)
+			if (baseMods == null)
 			{
 				baseMods = new List<DivinityModData>();
 			}
 
-			if(!GameDirectoryFound || baseMods.Count < DivinityApp.IgnoredMods.Count)
+			if (!GameDirectoryFound || baseMods.Count < DivinityApp.IgnoredMods.Count)
 			{
-				if(baseMods.Count == 0)
+				if (baseMods.Count == 0)
 				{
 					baseMods.AddRange(DivinityApp.IgnoredMods);
 				}
@@ -1734,7 +1754,7 @@ Directory the zip will be extracted to:
 
 				var profiles = await DivinityModDataLoader.LoadProfileDataAsync(PathwayData.AppDataProfilesPath);
 				DivinityApp.Log($"Loaded '{profiles.Count}' profiles.");
-				if(profiles.Count > 0)
+				if (profiles.Count > 0)
 				{
 					DivinityApp.Log(String.Join(Environment.NewLine, profiles.Select(x => $"{x.Name} | {x.UUID}")));
 				}
@@ -1900,7 +1920,7 @@ Directory the zip will be extracted to:
 
 		public void ImportMods(string[] fileNames, bool toActiveList = false)
 		{
-			if(!MainProgressIsActive)
+			if (!MainProgressIsActive)
 			{
 				MainProgressTitle = "Importing mods.";
 				MainProgressWorkText = "";
@@ -2077,7 +2097,7 @@ Directory the zip will be extracted to:
 						{
 							mod.IsActive = true;
 							mod.Index = loadOrderIndex;
-							if(mod.IsForceLoaded)
+							if (mod.IsForceLoaded)
 							{
 								mod.ForceAllowInLoadOrder = true;
 							}
@@ -2198,7 +2218,7 @@ Directory the zip will be extracted to:
 			if (Settings != null && Mods.Count > 0)
 			{
 				DivinityModData.CurrentExtenderVersion = Settings.ExtenderSettings.ExtenderVersion;
-				foreach(var mod in Mods)
+				foreach (var mod in Mods)
 				{
 					CheckModForExtenderData(mod);
 				}
@@ -2480,7 +2500,7 @@ Directory the zip will be extracted to:
 					BuildModOrderList(0, lastOrderName);
 					MainProgressValue += taskStepAmount;
 
-					if(!GameDirectoryFound)
+					if (!GameDirectoryFound)
 					{
 						ShowAlert("Game Data folder is not valid. Please set it in the preferences window and refresh.", AlertType.Danger);
 						View.OpenPreferences(false, true);
@@ -2881,7 +2901,7 @@ Directory the zip will be extracted to:
 					var result = await DivinityModDataLoader.ExportModSettingsToFileAsync(SelectedProfile.Folder, finalOrder);
 
 					var dir = GetLarianStudiosAppDataFolder();
-					if(SelectedModOrder.Order.Count > 0)
+					if (SelectedModOrder.Order.Count > 0)
 					{
 						await DivinityModDataLoader.UpdateLauncherPreferencesAsync(dir, false, false);
 					}
@@ -3094,7 +3114,7 @@ Directory the zip will be extracted to:
 
 		private void AddImportedMod(DivinityModData mod, bool toActiveList = false)
 		{
-			if(mod.IsForceLoaded && !mod.IsForceLoadedMergedMod)
+			if (mod.IsForceLoaded && !mod.IsForceLoadedMergedMod)
 			{
 				mods.AddOrUpdate(mod);
 				DivinityApp.Log($"Imported Override Mod: {mod}");
@@ -3124,7 +3144,7 @@ Directory the zip will be extracted to:
 			}
 			else
 			{
-				if(toActiveList)
+				if (toActiveList)
 				{
 					ActiveMods.Add(mod);
 				}
@@ -3472,7 +3492,7 @@ Directory the zip will be extracted to:
 					{
 						ShowAlert($"Exported load order to '{outputPath}'.", AlertType.Success, 15);
 						var dir = Path.GetFullPath(Path.GetDirectoryName(outputPath));
-						if(Directory.Exists(dir))
+						if (Directory.Exists(dir))
 						{
 							DivinityFileUtils.TryOpenPath(dir);
 						}
@@ -3597,7 +3617,7 @@ Directory the zip will be extracted to:
 		private string ModToTSVLine(DivinityModData mod)
 		{
 			var index = mod.Index.ToString();
-			if(mod.IsForceLoaded && !mod.IsForceLoadedMergedMod)
+			if (mod.IsForceLoaded && !mod.IsForceLoadedMergedMod)
 			{
 				index = "Override";
 			}
@@ -3826,7 +3846,7 @@ Directory the zip will be extracted to:
 				dialog.InitialDirectory = Settings.LoadOrderPath;
 			}
 
-			if(!Directory.Exists(dialog.InitialDirectory))
+			if (!Directory.Exists(dialog.InitialDirectory))
 			{
 				dialog.InitialDirectory = DivinityApp.GetAppDirectory();
 			}
@@ -4665,11 +4685,11 @@ Directory the zip will be extracted to:
 				ignoredModsData = DivinityJsonUtils.SafeDeserializeFromPath<IgnoredModsData>(ignoredModsPath);
 				if (ignoredModsData != null)
 				{
-					if(ignoredModsData.IgnoreBuiltinPath != null)
+					if (ignoredModsData.IgnoreBuiltinPath != null)
 					{
-						foreach(var path in ignoredModsData.IgnoreBuiltinPath)
+						foreach (var path in ignoredModsData.IgnoreBuiltinPath)
 						{
-							if(!String.IsNullOrEmpty(path))
+							if (!String.IsNullOrEmpty(path))
 							{
 								DivinityModDataLoader.IgnoreBuiltinPath.Add(path.Replace(Path.DirectorySeparator, "/"));
 							}
@@ -4737,7 +4757,7 @@ Directory the zip will be extracted to:
 								}
 							}
 							var existingIgnoredMod = DivinityApp.IgnoredMods.FirstOrDefault(x => x.UUID == mod.UUID);
-							if(existingIgnoredMod == null)
+							if (existingIgnoredMod == null)
 							{
 								DivinityApp.IgnoredMods.Add(mod);
 							}
@@ -4746,7 +4766,7 @@ Directory the zip will be extracted to:
 								DivinityApp.IgnoredMods.Remove(existingIgnoredMod);
 								DivinityApp.IgnoredMods.Add(mod);
 							}
-							
+
 							DivinityApp.Log($"Ignored mod added: Name({mod.Name}) UUID({mod.UUID})");
 						}
 					}
@@ -4789,7 +4809,7 @@ Directory the zip will be extracted to:
 
 		public void AddActiveMod(DivinityModData mod)
 		{
-			if(!ActiveMods.Any(x => x.UUID == mod.UUID))
+			if (!ActiveMods.Any(x => x.UUID == mod.UUID))
 			{
 				ActiveMods.Add(mod);
 				mod.Index = ActiveMods.Count - 1;
@@ -4802,9 +4822,9 @@ Directory the zip will be extracted to:
 		{
 			SelectedModOrder.Remove(mod);
 			ActiveMods.Remove(mod);
-			if(mod.IsForceLoadedMergedMod || !mod.IsForceLoaded)
+			if (mod.IsForceLoadedMergedMod || !mod.IsForceLoaded)
 			{
-				if(!InactiveMods.Any(x => x.UUID == mod.UUID))
+				if (!InactiveMods.Any(x => x.UUID == mod.UUID))
 				{
 					InactiveMods.Add(mod);
 				}
@@ -5070,7 +5090,7 @@ Directory the zip will be extracted to:
 					if (adventureModData != null && adventureModData.UUID == "991c9c7a-fb80-40cb-8f0d-b92d4e80e9b1")
 					{
 						var main = mods.Lookup(DivinityApp.MAIN_CAMPAIGN_UUID);
-						if(main.HasValue)
+						if (main.HasValue)
 						{
 							adventureModData = mods.Lookup(DivinityApp.MAIN_CAMPAIGN_UUID).Value;
 						}
@@ -5300,7 +5320,7 @@ Directory the zip will be extracted to:
 			_selectedGameMasterCampaign = justSelectedGameMasterCampaign.Select(x => GameMasterCampaigns.ElementAtOrDefault(x.Item1)).ToProperty(this, nameof(SelectedGameMasterCampaign));
 
 			Keys.ImportOrderFromSelectedGMCampaign.AddAction(() => LoadGameMasterCampaignModOrder(SelectedGameMasterCampaign), gmModeChanged);
-			
+
 			justSelectedGameMasterCampaign.ObserveOn(RxApp.MainThreadScheduler).Subscribe((d) =>
 			{
 				if (!this.IsRefreshing && IsInitialized && (Settings != null && Settings.AutomaticallyLoadGMCampaignMods) && d.Item1 > -1)
