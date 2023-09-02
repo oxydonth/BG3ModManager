@@ -1236,10 +1236,13 @@ Directory the zip will be extracted to:
 				Settings.CanSaveSettings = false;
 				Keys.SaveKeybindings(this);
 
-				RxApp.TaskpoolScheduler.ScheduleAsync(async (sch, t) =>
+				if(Settings.DisableLauncherTelemetry || Settings.DisableLauncherModWarnings)
 				{
-					await DivinityModDataLoader.UpdateLauncherPreferencesAsync(GetLarianStudiosAppDataFolder(), !Settings.DisableLauncherTelemetry, !Settings.DisableLauncherModWarnings);
-				});
+					RxApp.TaskpoolScheduler.ScheduleAsync(async (sch, t) =>
+					{
+						await DivinityModDataLoader.UpdateLauncherPreferencesAsync(GetLarianStudiosAppDataFolder(), !Settings.DisableLauncherTelemetry, !Settings.DisableLauncherModWarnings);
+					});
+				}
 				return true;
 			}
 			catch (Exception ex)
@@ -2915,7 +2918,10 @@ Directory the zip will be extracted to:
 					}
 					else
 					{
-						await DivinityModDataLoader.UpdateLauncherPreferencesAsync(dir, !Settings.DisableLauncherTelemetry, !Settings.DisableLauncherModWarnings);
+						if (Settings.DisableLauncherTelemetry || Settings.DisableLauncherModWarnings)
+						{
+							await DivinityModDataLoader.UpdateLauncherPreferencesAsync(dir, !Settings.DisableLauncherTelemetry, !Settings.DisableLauncherModWarnings);
+						}
 					}
 
 					if (result)
