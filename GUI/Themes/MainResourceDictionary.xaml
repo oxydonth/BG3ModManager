@@ -70,6 +70,8 @@
 	<BitmapImage x:Key="RenameFileImage" UriSource="pack://application:,,,/Resources/Icons/Rename_16x.png" />
 	<BitmapImage x:Key="LoadCampaignOrderImage" UriSource="pack://application:,,,/Resources/Icons/LoadCampaignOrder_16x.png" />
 	<BitmapImage x:Key="DeleteModImage" UriSource="pack://application:,,,/Resources/Icons/DeleteAzureResource_16x.png" />
+	<BitmapImage x:Key="OsirisImage" UriSource="pack://application:,,,/Resources/Icons/Osiris_16x.png" />
+	<BitmapImage x:Key="OsirisModFixerImage" UriSource="pack://application:,,,/Resources/Icons/Osiris_ModFixer_16x.png" />
 	<!--  Overrides the default context menu open animation to remove flickering.  -->
 	<PopupAnimation x:Key="{x:Static SystemParameters.MenuPopupAnimationKey}">None</PopupAnimation>
 	<Style
@@ -944,6 +946,37 @@
 				ToolTipService.IsEnabled="{Binding HasToolTip}" />
 			<StackPanel Grid.Column="1" Orientation="Horizontal">
 				<Image
+					x:Name="OsirisStatusImage"
+					Width="16"
+					Height="16"
+					MaxWidth="16"
+					MaxHeight="16"
+					HorizontalAlignment="Center"
+					VerticalAlignment="Center"
+					DataContext="{Binding}"
+					RenderOptions.BitmapScalingMode="HighQuality"
+					Stretch="UniformToFill"
+					ToolTip="{Binding OsirisStatusToolTipText}"
+					Visibility="{Binding OsirisStatusVisibility}">
+					<Image.Style>
+						<Style TargetType="{x:Type Image}">
+							<Style.Triggers>
+								<DataTrigger Binding="{Binding Path=OsirisModStatus}" Value="{x:Static dapp:DivinityOsirisModStatus.NONE}">
+									<Setter Property="Source" Value="{x:Null}" />
+								</DataTrigger>
+								<DataTrigger Binding="{Binding Path=OsirisModStatus}" Value="{x:Static dapp:DivinityOsirisModStatus.SCRIPTS}">
+									<Setter Property="Source" Value="{StaticResource OsirisImage}" />
+									<Setter Property="Opacity" Value="1.0" />
+								</DataTrigger>
+								<DataTrigger Binding="{Binding Path=OsirisModStatus}" Value="{x:Static dapp:DivinityOsirisModStatus.MODFIXER}">
+									<Setter Property="Source" Value="{StaticResource OsirisModFixerImage}" />
+									<Setter Property="Opacity" Value="1.0" />
+								</DataTrigger>
+							</Style.Triggers>
+						</Style>
+					</Image.Style>
+				</Image>
+				<Image
 					x:Name="ExtenderStatusImage"
 					Width="16"
 					Height="16"
@@ -954,7 +987,8 @@
 					DataContext="{Binding}"
 					RenderOptions.BitmapScalingMode="HighQuality"
 					Stretch="UniformToFill"
-					ToolTip="{Binding ScriptExtenderSupportToolTipText}">
+					ToolTip="{Binding ScriptExtenderSupportToolTipText}"
+					Visibility="{Binding ExtenderStatusVisibility}">
 					<Image.Style>
 						<Style TargetType="{x:Type Image}">
 							<Style.Triggers>

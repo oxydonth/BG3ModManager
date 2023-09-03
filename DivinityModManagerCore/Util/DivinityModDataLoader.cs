@@ -450,7 +450,9 @@ namespace DivinityModManager.Util
 				var hasBuiltinDirectory = false;
 				var isOverridingBuiltinDirectory = false;
 				var hasModFolderData = false;
+				var hasOsirisScripts = DivinityOsirisModStatus.NONE;
 				var builtinModOverrides = new Dictionary<string, DivinityModData>();
+				var files = new HashSet<string>();
 
 				AbstractFileInfo extenderConfigPath = null;
 
@@ -459,11 +461,13 @@ namespace DivinityModManager.Util
 					for (int i = 0; i < pak.Files.Count; i++)
 					{
 						var f = pak.Files[i];
+						files.Add(f.Name);
+
 						if (f.Name.Contains(DivinityApp.EXTENDER_MOD_CONFIG))
 						{
 							extenderConfigPath = f;
 						}
-						if (IsModMetaFile(f))
+						else if (IsModMetaFile(f))
 						{
 							metaFiles.Add(f);
 						}
@@ -473,10 +477,21 @@ namespace DivinityModManager.Util
 							if (modFolderMatch.Success)
 							{
 								var modFolder = Path.GetFileName(modFolderMatch.Groups[2].Value.TrimEnd(Path.DirectorySeparatorChar));
+								if (f.Name.Contains($"Mods/{modFolder}/Story/RawFiles/Goals"))
+								{
+									if (hasOsirisScripts == DivinityOsirisModStatus.NONE)
+									{
+										hasOsirisScripts = DivinityOsirisModStatus.SCRIPTS;
+									}
+									if(f.Name.Contains("ForceRecompile.txt"))
+									{
+										hasOsirisScripts = DivinityOsirisModStatus.MODFIXER;
+									}
+								}
 								if (builtinMods.TryGetValue(modFolder, out var builtinMod))
 								{
 									hasBuiltinDirectory = true;
-									if(!builtinModOverrides.ContainsKey(modFolder))
+									if (!builtinModOverrides.ContainsKey(modFolder))
 									{
 										builtinModOverrides[builtinMod.Folder] = builtinMod;
 										if (!IgnoreBuiltinPath.Any(x => f.Name.Contains(x)))
@@ -566,6 +581,8 @@ namespace DivinityModManager.Util
 
 				if (modData != null)
 				{
+					modData.OsirisModStatus = hasOsirisScripts;
+					modData.Files = files;
 					if (isOverridingBuiltinDirectory)
 					{
 						modData.BuiltinOverrideModsText = String.Join(Environment.NewLine, builtinModOverrides.Values.OrderBy(x => x.Name).Select(x => $"{x.Folder} ({x.Name})"));

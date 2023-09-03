@@ -53,88 +53,77 @@ namespace DivinityModManager.Models
 		[DataMember] public string Targets { get; set; }
 		[Reactive] public DateTime? LastUpdated { get; set; }
 
-		private DivinityExtenderModStatus extenderModStatus = DivinityExtenderModStatus.NONE;
+		[Reactive] public DivinityExtenderModStatus ExtenderModStatus { get; set; }
+		[Reactive] public DivinityOsirisModStatus OsirisModStatus { get; set; }
 
 		public static int CurrentExtenderVersion { get; set; } = -1;
 
-		public DivinityExtenderModStatus ExtenderModStatus
+		private string ExtenderStatusToToolTipText(DivinityExtenderModStatus status, int requireVersion)
 		{
-			get => extenderModStatus;
-			set
-			{
-				this.RaiseAndSetIfChanged(ref extenderModStatus, value);
-				UpdateScriptExtenderToolTip(CurrentExtenderVersion);
-			}
-		}
-
-		public string ScriptExtenderSupportToolTipText { get; private set; }
-
-		public void UpdateScriptExtenderToolTip(int currentVersion = -1)
-		{
-			switch (ExtenderModStatus)
+			var result = "";
+			switch (status)
 			{
 				case DivinityExtenderModStatus.REQUIRED:
 				case DivinityExtenderModStatus.REQUIRED_MISSING:
 				case DivinityExtenderModStatus.REQUIRED_DISABLED:
 				case DivinityExtenderModStatus.REQUIRED_OLD:
-					ScriptExtenderSupportToolTipText = "";
-					if (ExtenderModStatus == DivinityExtenderModStatus.REQUIRED_MISSING)
+					if (status == DivinityExtenderModStatus.REQUIRED_MISSING)
 					{
-						ScriptExtenderSupportToolTipText = "[MISSING] ";
+						result = "[MISSING] ";
 					}
-					else if (ExtenderModStatus == DivinityExtenderModStatus.REQUIRED_DISABLED)
+					else if (status == DivinityExtenderModStatus.REQUIRED_DISABLED)
 					{
-						ScriptExtenderSupportToolTipText = "[EXTENSIONS DISABLED] ";
+						result = "[EXTENSIONS DISABLED] ";
 					}
-					else if (ExtenderModStatus == DivinityExtenderModStatus.REQUIRED_OLD)
+					else if (status == DivinityExtenderModStatus.REQUIRED_OLD)
 					{
-						ScriptExtenderSupportToolTipText = "[OLD] ";
+						result = "[OLD] ";
 					}
-					if (ScriptExtenderData.RequiredExtensionVersion > -1)
+					if (requireVersion > -1)
 					{
-						ScriptExtenderSupportToolTipText += $"Requires Script Extender v{ScriptExtenderData.RequiredExtensionVersion} or higher";
+						result += $"Requires Script Extender v{requireVersion} or higher";
 					}
 					else
 					{
-						ScriptExtenderSupportToolTipText += "Requires the Script Extender";
+						result += "Requires the Script Extender";
 					}
-					if (ExtenderModStatus == DivinityExtenderModStatus.REQUIRED_DISABLED)
+					if (status == DivinityExtenderModStatus.REQUIRED_DISABLED)
 					{
-						ScriptExtenderSupportToolTipText += " (Enable Extensions in the Script Extender config)";
+						result += " (Enable Extensions in the Script Extender config)";
 					}
-					if (ExtenderModStatus == DivinityExtenderModStatus.REQUIRED_OLD)
+					if (status == DivinityExtenderModStatus.REQUIRED_OLD)
 					{
-						ScriptExtenderSupportToolTipText += " (Update by running the game)";
+						result += " (Update by running the game)";
 					}
 					break;
 				case DivinityExtenderModStatus.SUPPORTS:
-					if (ScriptExtenderData.RequiredExtensionVersion > -1)
+					if (requireVersion > -1)
 					{
-						ScriptExtenderSupportToolTipText = $"Supports Script Extender v{ScriptExtenderData.RequiredExtensionVersion} or higher";
+						result = $"Supports Script Extender v{requireVersion} or higher";
 					}
 					else
 					{
-						ScriptExtenderSupportToolTipText = "Supports the Script Extender";
+						result = "Supports the Script Extender";
 					}
 					break;
 				case DivinityExtenderModStatus.NONE:
 				default:
-					ScriptExtenderSupportToolTipText = "";
+					result = "";
 					break;
 			}
-			if (ScriptExtenderSupportToolTipText != "")
+			if (result != "")
 			{
-				ScriptExtenderSupportToolTipText += Environment.NewLine;
+				result += Environment.NewLine;
 			}
-			if (currentVersion > -1)
+			if (CurrentExtenderVersion > -1)
 			{
-				ScriptExtenderSupportToolTipText += $"(Currently installed version is v{currentVersion})";
+				result += $"(Currently installed version is v{CurrentExtenderVersion})";
 			}
 			else
 			{
-				ScriptExtenderSupportToolTipText += "(No installed extender version found)";
+				result += "(No installed extender version found)";
 			}
-			this.RaisePropertyChanged("ScriptExtenderSupportToolTipText");
+			return result;
 		}
 
 		[DataMember] public DivinityModScriptExtenderConfig ScriptExtenderData { get; set; }
@@ -177,9 +166,6 @@ namespace DivinityModManager.Models
 
 		public bool HasDependencies => hasDependencies.Value;
 
-		private readonly ObservableAsPropertyHelper<Visibility> dependencyVisibility;
-		public Visibility DependencyVisibility => dependencyVisibility.Value;
-
 		[Reactive] public bool HasScriptExtenderSettings { get; set; }
 
 		[Reactive] public bool IsEditorMod { get; set; }
@@ -210,19 +196,34 @@ namespace DivinityModManager.Models
 		private readonly ObservableAsPropertyHelper<bool> _canOpenWorkshopLink;
 		public bool CanOpenWorkshopLink => _canOpenWorkshopLink.Value;
 
+		private readonly ObservableAsPropertyHelper<string> _extenderSupportToolTipText;
+		public string ScriptExtenderSupportToolTipText => _extenderSupportToolTipText.Value;
+
+		private readonly ObservableAsPropertyHelper<string> _osirisStatusToolTipText;
+		public string OsirisStatusToolTipText => _osirisStatusToolTipText.Value;
+
+		private readonly ObservableAsPropertyHelper<Visibility> dependencyVisibility;
+		public Visibility DependencyVisibility => dependencyVisibility.Value;
+
 		private readonly ObservableAsPropertyHelper<Visibility> _openWorkshopLinkVisibility;
 		public Visibility OpenWorkshopLinkVisibility => _openWorkshopLinkVisibility.Value;
 
 		private readonly ObservableAsPropertyHelper<Visibility> _toggleForceAllowInLoadOrderVisibility;
 		public Visibility ToggleForceAllowInLoadOrderVisibility => _toggleForceAllowInLoadOrderVisibility.Value;
 
+		private readonly ObservableAsPropertyHelper<Visibility> _extenderStatusVisibility;
+		public Visibility ExtenderStatusVisibility => _extenderStatusVisibility.Value;
+
+		private readonly ObservableAsPropertyHelper<Visibility> _osirisStatusVisibility;
+		public Visibility OsirisStatusVisibility => _osirisStatusVisibility.Value;
+
 		[Reactive] public bool CanDrag { get; set; }
-
 		[Reactive] public bool DeveloperMode { get; set; }
-
 		[Reactive] public bool HasColorOverride { get; set; }
 		[Reactive] public string SelectedColor { get; set; }
 		[Reactive] public string ListColor { get; set; }
+
+		public HashSet<string> Files { get; set; }
 
 		private DivinityModWorkshopData workshopData = new DivinityModWorkshopData();
 
@@ -283,6 +284,21 @@ namespace DivinityModManager.Models
 			ForceAllowInLoadOrder = b;
 			IsActive = b && IsForceLoaded;
 		}
+
+		private string OsirisStatusToTooltipText(DivinityOsirisModStatus status)
+		{
+			switch(status)
+			{
+				case DivinityOsirisModStatus.SCRIPTS:
+					return "Has Osiris Scripting";
+				case DivinityOsirisModStatus.MODFIXER:
+					return "Has Mod Fixer";
+				case DivinityOsirisModStatus.NONE:
+				default:
+					return "";
+			}
+		}
+
 
 		public DivinityModData(bool isBaseGameMod = false) : base()
 		{
@@ -364,6 +380,15 @@ namespace DivinityModManager.Models
 				(isEditorMod, isLarianMod, path) => !isEditorMod && !isLarianMod && File.Exists(path)).StartWith(false).ToProperty(this, nameof(CanDelete));
 			_canAddToLoadOrder = this.WhenAnyValue(x => x.ModType, x => x.IsLarianMod, x => x.IsForceLoaded, x => x.IsForceLoadedMergedMod, x => x.ForceAllowInLoadOrder,
 				(modType, isLarianMod, isForceLoaded, isMergedMod, forceAllowInLoadOrder) => modType != "Adventure" && !isLarianMod && (!isForceLoaded || isMergedMod) || forceAllowInLoadOrder).StartWith(true).ToProperty(this, nameof(CanAddToLoadOrder));
+
+			_extenderSupportToolTipText = this.WhenAnyValue(x => x.ExtenderModStatus, x => x.ScriptExtenderData.RequiredExtensionVersion).Select(x => ExtenderStatusToToolTipText(x.Item1, x.Item2)).ToProperty(this, nameof(ScriptExtenderSupportToolTipText), scheduler: RxApp.MainThreadScheduler);
+			_extenderStatusVisibility = this.WhenAnyValue(x => x.ExtenderModStatus).Select(x => x != DivinityExtenderModStatus.NONE ? Visibility.Visible : Visibility.Collapsed).ToProperty(this, nameof(ExtenderStatusVisibility), scheduler: RxApp.MainThreadScheduler);
+
+			var whenOsirisStatusChanges = this.WhenAnyValue(x => x.OsirisModStatus);
+			_osirisStatusVisibility = whenOsirisStatusChanges.Select(x => x != DivinityOsirisModStatus.NONE ? Visibility.Visible : Visibility.Collapsed).ToProperty(this, nameof(OsirisStatusVisibility), scheduler: RxApp.MainThreadScheduler);
+			_osirisStatusToolTipText = whenOsirisStatusChanges.Select(OsirisStatusToTooltipText).ToProperty(this, nameof(OsirisStatusToolTipText), scheduler: RxApp.MainThreadScheduler);
+			ExtenderModStatus = DivinityExtenderModStatus.NONE;
+			OsirisModStatus = DivinityOsirisModStatus.NONE;
 		}
 	}
 }
