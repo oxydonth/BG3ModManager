@@ -25,6 +25,7 @@ using DivinityModManager.Controls;
 using Xceed.Wpf.Toolkit;
 using DivinityModManager.Converters;
 using DivinityModManager.Models.Extender;
+using System.Reflection;
 
 namespace DivinityModManager.Views
 {
@@ -86,12 +87,12 @@ namespace DivinityModManager.Views
 
 		private void CreateExtenderSettings(BoolToVisibilityConverter boolToVisibilityConverter)
 		{
-			var props = from p in typeof(ScriptExtenderSettings).GetProperties()
-						let attr = p.GetCustomAttributes(typeof(SettingsEntryAttribute), true)
-						where attr.Length == 1
-						select new { Property = p, Attribute = attr.First() as SettingsEntryAttribute };
+			var settingsType = typeof(SettingsEntryAttribute);
+			var props = typeof(ScriptExtenderSettings).GetProperties()
+				.Select(x => SettingsAttributeProperty.FromProperty(x))
+				.Where(x => x.Attribute != null).ToList();
 
-			int count = props.Count() + 1;
+			int count = props.Count + 1;
 			int row = 0;
 
 			ExtenderSettingsAutoGrid.Children.Clear();
@@ -104,9 +105,11 @@ namespace DivinityModManager.Views
 
 			foreach (var prop in props)
 			{
-				TextBlock tb = new TextBlock();
-				tb.Text = prop.Attribute.DisplayName;
-				tb.ToolTip = prop.Attribute.Tooltip;
+				var tb = new TextBlock
+				{
+					Text = prop.Attribute.DisplayName,
+					ToolTip = prop.Attribute.Tooltip
+				};
 				ExtenderSettingsAutoGrid.Children.Add(tb);
 				Grid.SetRow(tb, row);
 
@@ -130,9 +133,11 @@ namespace DivinityModManager.Views
 				switch (propType)
 				{
 					case TypeCode.Boolean:
-						CheckBox cb = new CheckBox();
-						cb.ToolTip = prop.Attribute.Tooltip;
-						cb.VerticalAlignment = VerticalAlignment.Center;
+						CheckBox cb = new CheckBox
+						{
+							ToolTip = prop.Attribute.Tooltip,
+							VerticalAlignment = VerticalAlignment.Center
+						};
 						//cb.HorizontalAlignment = HorizontalAlignment.Right;
 						cb.SetBinding(CheckBox.IsCheckedProperty, new Binding(prop.Property.Name)
 						{
@@ -155,11 +160,13 @@ namespace DivinityModManager.Views
 						break;
 
 					case TypeCode.String:
-						UnfocusableTextBox utb = new UnfocusableTextBox();
-						utb.ToolTip = prop.Attribute.Tooltip;
-						utb.VerticalAlignment = VerticalAlignment.Center;
-						//utb.HorizontalAlignment = HorizontalAlignment.Stretch;
-						utb.TextAlignment = TextAlignment.Left;
+						UnfocusableTextBox utb = new UnfocusableTextBox
+						{
+							ToolTip = prop.Attribute.Tooltip,
+							VerticalAlignment = VerticalAlignment.Center,
+							//utb.HorizontalAlignment = HorizontalAlignment.Stretch;
+							TextAlignment = TextAlignment.Left
+						};
 						utb.SetBinding(UnfocusableTextBox.TextProperty, new Binding(prop.Property.Name)
 						{
 							Source = ViewModel.ExtenderSettings,

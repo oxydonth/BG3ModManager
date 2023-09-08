@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Reflection;
+using System.Runtime.InteropServices.WindowsRuntime;
 
 namespace DivinityModManager
 {
@@ -18,4 +16,20 @@ namespace DivinityModManager
 			IsDebug = isDebug;
 		}
 	}
+
+	public struct SettingsAttributeProperty
+	{
+		public PropertyInfo Property { get; set; }
+		public SettingsEntryAttribute Attribute { get; set; }
+
+		public static SettingsAttributeProperty FromProperty(PropertyInfo property)
+		{
+			return new SettingsAttributeProperty
+			{
+				Property = property,
+				Attribute = property.GetCustomAttribute<SettingsEntryAttribute>()
+			};
+		}
+	}
+
 }
