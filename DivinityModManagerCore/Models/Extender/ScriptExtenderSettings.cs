@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
@@ -39,11 +40,11 @@ namespace DivinityModManager.Models.Extender
             set { this.RaiseAndSetIfChanged(ref extenderVersion, value); }
         }
 
-        [SettingsEntry("Enable Extensions", "Make the Osiris extension functionality available ingame or in the editor")]
-        [Reactive]
-        [DataMember]
-        [DefaultValue(true)]
-        public bool EnableExtensions { get; set; }
+		[SettingsEntry("Custom Profile", "Use a profile other than Public\nThis should be the profile folder name")]
+		[Reactive]
+		[DataMember]
+		[DefaultValue("")]
+		public string CustomProfile { get; set; }
 
         [SettingsEntry("Create Console", "Creates a console window that logs extender internals\nMainly useful for debugging")]
         [Reactive]
@@ -99,7 +100,7 @@ namespace DivinityModManager.Models.Extender
 		[DefaultValue(false)]
 		public bool DisableStoryPatching { get; set; }
 
-		[SettingsEntry("Disable Mod Validation", "Disable module hashing when loading mods\nSpeeds up mod loading with no drawbacks")]
+        [SettingsEntry("Disable Mod Validation", "Disable module hashing when loading mods\nSpeeds up mod loading with no drawbacks")]
         [Reactive]
         [DataMember]
         [DefaultValue(true)]
@@ -111,7 +112,13 @@ namespace DivinityModManager.Models.Extender
         [DefaultValue(true)]
         public bool EnableAchievements { get; set; }
 
-        [SettingsEntry("Send Crash Reports", "Upload minidumps to the crash report collection server after a game crash")]
+		[SettingsEntry("Enable Extensions", "Enables or disables extender API functionality", true)]
+		[Reactive]
+		[DataMember]
+		[DefaultValue(true)]
+		public bool EnableExtensions { get; set; }
+
+		[SettingsEntry("Send Crash Reports", "Upload minidumps to the crash report collection server after a game crash")]
         [Reactive]
         [DataMember]
         [DefaultValue(true)]
@@ -139,7 +146,7 @@ namespace DivinityModManager.Models.Extender
         [Reactive]
         [DataMember]
         [DefaultValue(0)]
-        public int DebuggerFlags { get; set; } = 0;
+        public int DebuggerFlags { get; set; }
 
         [SettingsEntry("Enable Developer Mode", "Enables various debug functionality for development purposes\nThis can be checked by mods to enable additional log messages and more")]
         [Reactive]
@@ -159,6 +166,12 @@ namespace DivinityModManager.Models.Extender
         [DefaultValue("")]
         public string LuaBuiltinResourceDirectory { get; set; }
 
+		[SettingsEntry("Clear Console On Reset", "Clears the extender console when the reset command is used", true)]
+		[Reactive]
+		[DataMember]
+		[DefaultValue(true)]
+		public bool ClearOnReset { get; set; }
+
 		[SettingsEntry("Default to Client Side", "Defaults the extender console to the client-side\nThis is setting is intended for developers", true)]
 		[Reactive]
 		[DataMember]
@@ -175,13 +188,7 @@ namespace DivinityModManager.Models.Extender
 
         public ScriptExtenderSettings()
         {
-            DisableModValidation = true;
-            EnableAchievements = true;
-            SendCrashReports = true;
-            LogFailedCompile = true;
-            EnableExtensions = true;
-            DebuggerPort = 9999;
-            DebuggerFlags = 0;
+            SetToDefault();
 		}
 
         public void SetToDefault()
