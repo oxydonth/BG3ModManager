@@ -81,7 +81,25 @@ namespace DivinityModManager.Models.Extender
         [DefaultValue(false)]
         public bool LogRuntime { get; set; }
 
-        [SettingsEntry("Disable Mod Validation", "Disable module hashing when loading mods\nSpeeds up mod loading with no drawbacks")]
+		[SettingsEntry("Disable Launcher", "Prevents the exe from force-opening the launcher\nMay not work correctly if extender auto-updating is enabled, or the --skip-launcher launch param is set", true)]
+		[Reactive]
+		[DataMember]
+		[DefaultValue(false)]
+		public bool DisableLauncher { get; set; }
+
+		[SettingsEntry("Disable Story Merge", "Prevents story.div.osi merging, which automatically happens when mods are present\nMay only occur when loading a save", true)]
+		[Reactive]
+		[DataMember]
+		[DefaultValue(true)]
+		public bool DisableStoryMerge { get; set; }
+
+		[SettingsEntry("Disable Story Patching", "Prevents patching story.bin with story.div.osi when loading saves, effectively preventing the Osiris scripts in the save from updating", true)]
+		[Reactive]
+		[DataMember]
+		[DefaultValue(false)]
+		public bool DisableStoryPatching { get; set; }
+
+		[SettingsEntry("Disable Mod Validation", "Disable module hashing when loading mods\nSpeeds up mod loading with no drawbacks")]
         [Reactive]
         [DataMember]
         [DefaultValue(true)]
@@ -180,18 +198,15 @@ namespace DivinityModManager.Models.Extender
 
         public void Set(ScriptExtenderSettings osirisExtenderSettings)
         {
-            EnableExtensions = osirisExtenderSettings.EnableExtensions;
-            CreateConsole = osirisExtenderSettings.CreateConsole;
-            EnableLogging = osirisExtenderSettings.EnableLogging;
-            LogCompile = osirisExtenderSettings.LogCompile;
-            if (osirisExtenderSettings.LogDirectory.IsExistingDirectory()) LogDirectory = osirisExtenderSettings.LogDirectory;
-            DisableModValidation = osirisExtenderSettings.DisableModValidation;
-            EnableAchievements = osirisExtenderSettings.EnableAchievements;
-            SendCrashReports = osirisExtenderSettings.SendCrashReports;
-            EnableDebugger = osirisExtenderSettings.EnableDebugger;
-            DebuggerPort = osirisExtenderSettings.DebuggerPort;
-            DebuggerFlags = osirisExtenderSettings.DebuggerFlags;
-            DeveloperMode = osirisExtenderSettings.DeveloperMode;
+			PropertyDescriptorCollection props = TypeDescriptor.GetProperties(GetType());
+			foreach (PropertyDescriptor pr in props)
+			{
+                var value = pr.GetValue(osirisExtenderSettings);
+                if(value != null)
+                {
+                    pr.SetValue(this, value);
+                }
+			}
         }
     }
 }
