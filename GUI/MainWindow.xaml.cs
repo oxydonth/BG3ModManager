@@ -79,22 +79,22 @@ namespace DivinityModManager.Views
 
 		public TextWriterTraceListener DebugLogListener { get; private set; }
 
+		private readonly string _logsDir;
+		private readonly string _logFileName;
+
 		public void ToggleLogging(bool enabled)
 		{
 			if (enabled || ViewModel?.DebugMode == true)
 			{
 				if (DebugLogListener == null)
 				{
-					var logsDir = DivinityApp.GetAppDirectory("_Logs");
-					string sysFormat = CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern.Replace("/", "-");
-					if (!Directory.Exists(logsDir))
+					if (!Directory.Exists(_logsDir))
 					{
-						Directory.CreateDirectory(logsDir);
-						DivinityApp.Log($"Creating logs directory: {logsDir}");
+						Directory.CreateDirectory(_logsDir);
+						DivinityApp.Log($"Creating logs directory: {_logsDir}");
 					}
 
-					string logFileName = Path.Combine(logsDir, "debug_" + DateTime.Now.ToString(sysFormat + "_HH-mm-ss") + ".log");
-					DebugLogListener = new TextWriterTraceListener(logFileName, "DebugLogListener");
+					DebugLogListener = new TextWriterTraceListener(_logFileName, "DebugLogListener");
 					Trace.Listeners.Add(DebugLogListener);
 					Trace.AutoFlush = true;
 				}
@@ -161,6 +161,14 @@ namespace DivinityModManager.Views
 		{
 			InitializeComponent();
 			self = this;
+
+			_logsDir = DivinityApp.GetAppDirectory("_Logs");
+			string sysFormat = CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern.Replace("/", "-");
+#if DEBUG
+			_logFileName = Path.Combine(_logsDir, "debug_" + DateTime.Now.ToString(sysFormat + "_HH-mm-ss") + ".log");
+#else
+			_logFileName = Path.Combine(_logsDir, "release_" + DateTime.Now.ToString(sysFormat + "_HH-mm-ss") + ".log");
+#endif
 
 			Application.Current.DispatcherUnhandledException += OnUIException;
 			AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
