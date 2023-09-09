@@ -1,4 +1,8 @@
-﻿[*.cs]
+﻿root = true
+
+[*.cs]
+
+indent_style = tab
 
 # CS0168: Variable is declared but never used
 dotnet_diagnostic.CS0168.severity = silent
