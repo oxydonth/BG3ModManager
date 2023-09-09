@@ -197,8 +197,8 @@ namespace DivinityModManager.Models
 		private readonly ObservableAsPropertyHelper<bool> _canOpenWorkshopLink;
 		public bool CanOpenWorkshopLink => _canOpenWorkshopLink.Value;
 
-		private readonly ObservableAsPropertyHelper<bool> _canNexusModsLink;
-		public bool CanNexusModsLink => _canNexusModsLink.Value;
+		private readonly ObservableAsPropertyHelper<bool> _canOpenNexusModsLink;
+		public bool CanOpenNexusModsLink => _canOpenNexusModsLink.Value;
 
 		private readonly ObservableAsPropertyHelper<string> _extenderSupportToolTipText;
 		public string ScriptExtenderSupportToolTipText => _extenderSupportToolTipText.Value;
@@ -313,6 +313,8 @@ namespace DivinityModManager.Models
 			WorkshopData = new DivinityModWorkshopData();
 			NexusModsData = new NexusModsModData();
 
+			this.WhenAnyValue(x => x.UUID).BindTo(NexusModsData, x => x.UUID);
+
 			_toggleForceAllowInLoadOrderVisibility = this.WhenAnyValue(x => x.IsForceLoaded, x => x.HasMetadata)
 				.Select(b => b.Item1 && b.Item2 ? Visibility.Visible : Visibility.Collapsed)
 				.StartWith(Visibility.Collapsed)
@@ -324,8 +326,8 @@ namespace DivinityModManager.Models
 				.StartWith(Visibility.Collapsed)
 				.ToProperty(this, nameof(OpenWorkshopLinkVisibility), scheduler: RxApp.MainThreadScheduler);
 
-			_canNexusModsLink = this.WhenAnyValue(x => x.NexusModsEnabled, x => x.NexusModsData.ModId, (b, id) => b && id > -1).ToProperty(this, nameof(CanNexusModsLink));
-			_openNexusModsLinkVisibility = this.WhenAnyValue(x => x.CanNexusModsLink)
+			_canOpenNexusModsLink = this.WhenAnyValue(x => x.NexusModsEnabled, x => x.NexusModsData.ModId, (b, id) => b && id > -1).ToProperty(this, nameof(CanOpenNexusModsLink));
+			_openNexusModsLinkVisibility = this.WhenAnyValue(x => x.CanOpenNexusModsLink)
 				.Select(b => b ? Visibility.Visible : Visibility.Collapsed)
 				.StartWith(Visibility.Collapsed)
 				.ToProperty(this, nameof(OpenNexusModsLinkVisibility), scheduler: RxApp.MainThreadScheduler);

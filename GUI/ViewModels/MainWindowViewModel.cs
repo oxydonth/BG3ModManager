@@ -1604,6 +1604,7 @@ Directory the zip will be extracted to:
 					}
 					DivinityApp.IgnoredMods.Add(mod);
 				}
+
 				if (TryGetMod(mod.UUID, out var existingMod))
 				{
 					if (mod.Version.VersionInt > existingMod.Version.VersionInt)
@@ -2370,7 +2371,10 @@ Directory the zip will be extracted to:
 			}
 			CachedNexusModsData.LastVersion = this.Version;
 
-			CachedNexusModsData.Mods.AddOrUpdate(mods.Items.Where(x => x.NexusModsData.ModId > 0).Select(x => x.NexusModsData));
+			foreach(var mod in mods.Items.Where(x => x.NexusModsData.ModId > 0).Select(x => x.NexusModsData))
+			{
+				CachedNexusModsData.Mods[mod.UUID] = mod;
+			}
 
 			string contents = JsonConvert.SerializeObject(CachedNexusModsData, _nexusModsCachedDataSettings);
 			
@@ -2395,7 +2399,34 @@ Directory the zip will be extracted to:
 				{
 					if (cachedData != null)
 					{
-						CachedNexusModsData.Mods.AddOrUpdate(cachedData.Mods.Items);
+						foreach(var entry in cachedData.Mods)
+						{
+							if(CachedNexusModsData.Mods.TryGetValue(entry.Key, out var existing))
+							{
+								if(existing.UpdatedTimestamp < entry.Value.UpdatedTimestamp || !existing.IsUpdated)
+								{
+									CachedNexusModsData.Mods[entry.Key] = entry.Value;
+								}
+							}
+							else
+							{
+								CachedNexusModsData.Mods[entry.Key] = entry.Value;
+							}
+						}
+
+						foreach(var data in CachedNexusModsData.Mods.Values)
+						{
+							var existing = mods.Lookup(data.UUID);
+							if(existing.HasValue)
+							{
+								var mod = existing.Value;
+								mod.NexusModsData.Update(data);
+								mod.NexusModsData.LastFileId = data.LastFileId;
+
+								DivinityApp.Log($"Name({mod.Name}) NexusModsEnabled({mod.NexusModsEnabled}) mod.NexusModsData.ModId({mod.NexusModsData.ModId}) CanOpenNexusModsLink({mod.CanOpenNexusModsLink}) OpenNexusModsLinkVisibility({mod.OpenNexusModsLinkVisibility})");
+							}
+							
+						}
 					}
 				}
 			}));

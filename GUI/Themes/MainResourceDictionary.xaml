@@ -234,7 +234,7 @@
 						Command="{Binding Path=OpenNexusModsPageCommand, Source={x:Static dapp:DivinityApp.Commands}}"
 						CommandParameter="{Binding}"
 						Header="Open NexusMods Page (Browser)..."
-						IsEnabled="{Binding CanNexusModsLink}"
+						IsEnabled="{Binding CanOpenNexusModsLink}"
 						Visibility="{Binding OpenNexusModsLinkVisibility}">
 						<MenuItem.Icon>
 							<Image Source="{StaticResource OpenInBrowserImage}" />

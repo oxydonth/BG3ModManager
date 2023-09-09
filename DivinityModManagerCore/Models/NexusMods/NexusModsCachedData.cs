@@ -15,7 +15,7 @@ namespace DivinityModManager.Models.NexusMods
 		public long LastUpdated { get; set; }
 		public string LastVersion { get; set; }
 
-		public SourceCache<NexusMod, long> Mods { get; set; } = new SourceCache<NexusMod, long>(x => x.ModId);
+		public Dictionary<string,NexusModsModData> Mods { get; set; } = new Dictionary<string, NexusModsModData>();
 
 		public NexusModsCachedData()
 		{
