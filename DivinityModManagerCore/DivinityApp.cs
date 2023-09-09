@@ -41,6 +41,11 @@ namespace DivinityModManager
 		public const string MAIN_CAMPAIGN_UUID = "28ac9ce2-2aba-8cda-b3b5-6e922f71b6b8";
 		public const string GAMEMASTER_UUID = "NotYetAvailableInBG3";
 
+		public const string NEXUSMODS_GAME = "baldursgate3";
+		public const string NEXUSMODS_CACHE_FILE = "nexusmodsdata.json";
+
+		public const string WORKSHOP_CACHE_FILE = "workshopdata.json";
+
 		public const string EXTENDER_REPO_URL = "Norbyte/bg3se";
 		public const string EXTENDER_LATEST_URL = "https://github.com/Norbyte/bg3se/releases/latest";
 		public const string EXTENDER_APPDATA_DIRECTORY = "BG3ScriptExtender";

@@ -21,6 +21,7 @@ using System.Windows;
 using System.Windows.Automation.Peers;
 using System.Windows.Input;
 using System.Reflection;
+using DivinityModManager.Models.NexusMods;
 
 namespace DivinityModManager.Models
 {
@@ -225,13 +226,8 @@ namespace DivinityModManager.Models
 
 		public HashSet<string> Files { get; set; }
 
-		private DivinityModWorkshopData workshopData = new DivinityModWorkshopData();
-
-		public DivinityModWorkshopData WorkshopData
-		{
-			get => workshopData;
-			set { this.RaiseAndSetIfChanged(ref workshopData, value); }
-		}
+		[Reactive] public DivinityModWorkshopData WorkshopData { get; set; }
+		[Reactive] public NexusModsModData NexusModsData { get; set; }
 
 		//public DivinityModWorkshopData WorkshopData { get; private set; } = new DivinityModWorkshopData();
 		public ICommand OpenWorkshopPageCommand { get; private set; }
@@ -305,6 +301,9 @@ namespace DivinityModManager.Models
 			Targets = "";
 			Index = -1;
 			CanDrag = true;
+
+			WorkshopData = new DivinityModWorkshopData();
+			NexusModsData = new NexusModsModData();
 
 			_toggleForceAllowInLoadOrderVisibility = this.WhenAnyValue(x => x.IsForceLoaded, x => x.HasMetadata)
 				.Select(b => b.Item1 && b.Item2 ? Visibility.Visible : Visibility.Collapsed)

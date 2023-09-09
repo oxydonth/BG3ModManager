@@ -101,9 +101,9 @@
 						ChildMargin="4"
 						ColumnCount="2"
 						Columns="auto,*"
-						RowCount="15"
+						RowCount="16"
 						RowHeight="*"
-						Rows="auto,auto,auto,auto,auto,auto,auto,auto,auto,auto,auto,auto,auto,auto,auto">
+						Rows="auto,auto,auto,auto,auto,auto,auto,auto,auto,auto,auto,auto,auto,auto,auto,auto">
 						<autogrid:AutoGrid.Resources>
 							<Style BasedOn="{StaticResource {x:Type TextBlock}}" TargetType="TextBlock">
 								<Setter Property="DataContext" Value="{Binding}" />
@@ -118,6 +118,11 @@
 						<controls:UnfocusableTextBox
 							VerticalAlignment="Center"
 							Text="{Binding GameExecutablePath, UpdateSourceTrigger=PropertyChanged, FallbackValue=''}"
+							TextAlignment="Left" />
+						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="NexusModsAPIKey" />
+						<controls:UnfocusableTextBox
+							VerticalAlignment="Center"
+							Text="{Binding NexusModsAPIKey, UpdateSourceTrigger=PropertyChanged, FallbackValue=''}"
 							TextAlignment="Left" />
 						<!--<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="WorkshopPath" />
 						<controls:UnfocusableTextBox

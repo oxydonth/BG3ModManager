@@ -30,7 +30,7 @@ using System.Windows.Media;
 
 namespace DivinityModManager.Views
 {
-	public interface ModViewLayout
+	public interface IModViewLayout
 	{
 		void UpdateViewSelection(IEnumerable<ISelectable> dataList, ListView listView = null);
 		void SelectMods(IEnumerable<ISelectable> dataList, bool activeMods);
@@ -42,7 +42,7 @@ namespace DivinityModManager.Views
 	/// <summary>
 	/// Interaction logic for HorizonalModLayout.xaml
 	/// </summary>
-	public partial class HorizontalModLayout : HorizontalModLayoutBase, ModViewLayout
+	public partial class HorizontalModLayout : HorizontalModLayoutBase, IModViewLayout
 	{
 		private object _focusedList = null;
 

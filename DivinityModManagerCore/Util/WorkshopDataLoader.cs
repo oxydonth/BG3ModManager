@@ -14,7 +14,7 @@ using System.Web;
 
 namespace DivinityModManager.Util
 {
-	public static class DivinityWorkshopDataLoader
+	public static class WorkshopDataLoader
 	{
 		private static readonly string STEAM_API_GET_WORKSHOP_DATA_URL = "https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/?";
 		private static readonly string STEAM_API_GET_WORKSHOP_MODS_URL = "https://api.steampowered.com/IPublishedFileService/QueryFiles/v1/?";
@@ -30,7 +30,7 @@ namespace DivinityModManager.Util
 			return new List<string>();
 		}
 
-		public static async Task<int> LoadAllWorkshopDataAsync(List<DivinityModData> workshopMods, DivinityModManagerCachedWorkshopData cachedData)
+		public static async Task<int> LoadAllWorkshopDataAsync(List<DivinityModData> workshopMods, CachedWorkshopData cachedData)
 		{
 			if(workshopMods == null || workshopMods.Count == 0)
 			{
@@ -110,7 +110,7 @@ namespace DivinityModManager.Util
 			return totalLoaded;
 		}
 
-		public static async Task<bool> GetAllWorkshopDataAsync(DivinityModManagerCachedWorkshopData cachedData, string appid)
+		public static async Task<bool> GetAllWorkshopDataAsync(CachedWorkshopData cachedData, string appid)
 		{
 			DivinityApp.Log($"Attempting to get workshop data for mods missing workshop folders.");
 			int totalFound = 0;
@@ -196,7 +196,7 @@ namespace DivinityModManager.Util
 			}
 		}
 
-		public static async Task<int> FindWorkshopDataAsync(List<DivinityModData> mods, DivinityModManagerCachedWorkshopData cachedData, string appid)
+		public static async Task<int> FindWorkshopDataAsync(List<DivinityModData> mods, CachedWorkshopData cachedData, string appid)
 		{
 			if (mods == null || mods.Count == 0)
 			{

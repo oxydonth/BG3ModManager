@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 namespace DivinityModManager.Models
 {
 	[DataContract]
-	public class DivinityModManagerCachedWorkshopData
+	public class CachedWorkshopData
 	{
 		[DataMember] public long LastUpdated { get; set; } = -1;
 		[DataMember] public string LastVersion { get; set; } = "";

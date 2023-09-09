@@ -73,53 +73,19 @@ namespace DivinityModManager.Models
 		public bool AutomaticallyLoadGMCampaignMods => false;
 
 		[DataMember][Reactive] public long LastUpdateCheck { get; set; }
-		private string lastOrder = "";
 
-		[DataMember]
-		public string LastOrder
-		{
-			get => lastOrder;
-			set { this.RaiseAndSetIfChanged(ref lastOrder, value); }
-		}
+		[DataMember][Reactive] public string LastOrder { get; set; }
 
-		private string lastLoadedOrderFilePath = "";
+		[DataMember][Reactive] public string LastImportDirectoryPath { get; set; }
+		[DataMember][Reactive] public string LastLoadedOrderFilePath { get; set; }
+		[DataMember][Reactive] public string LastExtractOutputPath { get; set; }
 
-		[DataMember]
-		public string LastLoadedOrderFilePath
-		{
-			get => lastLoadedOrderFilePath;
-			set { this.RaiseAndSetIfChanged(ref lastLoadedOrderFilePath, value); }
-		}
-
-		private string lastExtractOutputPath = "";
-
-		[DataMember]
-		public string LastExtractOutputPath
-		{
-			get => lastExtractOutputPath;
-			set { this.RaiseAndSetIfChanged(ref lastExtractOutputPath, value); }
-		}
-
-		private bool darkThemeEnabled = true;
-
-		[DataMember]
-		public bool DarkThemeEnabled
-		{
-			get => darkThemeEnabled;
-			set { this.RaiseAndSetIfChanged(ref darkThemeEnabled, value); }
-		}
+		[DataMember][Reactive] public bool DarkThemeEnabled { get; set; }
 
 		[SettingsEntry("Shift Focus on Swap", "When moving selected mods to the opposite list with Enter, move focus to that list as well")]
 		[DataMember][Reactive] public bool ShiftListFocusOnSwap { get; set; }
 
-		private ScriptExtenderSettings extenderSettings;
-
-		[DataMember]
-		public ScriptExtenderSettings ExtenderSettings
-		{
-			get => extenderSettings;
-			set { this.RaiseAndSetIfChanged(ref extenderSettings, value); }
-		}
+		[DataMember][Reactive] public ScriptExtenderSettings ExtenderSettings { get; set; }
 
 		public string ExtenderLogDirectory
 		{
@@ -239,6 +205,11 @@ namespace DivinityModManager.Models
 			GameExecutablePath = "";
 			DocumentsFolderPathOverride = "";
 			WorkshopPath = "";
+			LastOrder = "";
+			LastExtractOutputPath = "";
+			LastImportDirectoryPath = "";
+			LastLoadedOrderFilePath = "";
+			DarkThemeEnabled = true;
 			LoadOrderPath = "Orders";
 			AutoAddDependenciesWhenExporting = true;
 			CheckForUpdates = true;

@@ -49,6 +49,7 @@ using System.Reactive.Subjects;
 using System.Windows.Markup;
 using DivinityModManager.Models.Extender;
 using DynamicData.Kernel;
+using DivinityModManager.Models.NexusMods;
 
 namespace DivinityModManager.ViewModels
 {
@@ -56,7 +57,7 @@ namespace DivinityModManager.ViewModels
 	{
 		[Reactive] public MainWindow View { get; private set; }
 
-		public ModViewLayout Layout { get; set; }
+		public IModViewLayout Layout { get; set; }
 
 		private ModListDropHandler dropHandler;
 
@@ -142,7 +143,8 @@ namespace DivinityModManager.ViewModels
 		protected ReadOnlyObservableCollection<DivinityModData> workshopModsCollection;
 		public ReadOnlyObservableCollection<DivinityModData> WorkshopMods => workshopModsCollection;
 
-		private DivinityModManagerCachedWorkshopData CachedWorkshopData { get; set; } = new DivinityModManagerCachedWorkshopData();
+		private NexusModsCachedData CachedNexusModsData { get; set; } = new NexusModsCachedData();
+		private CachedWorkshopData CachedWorkshopData { get; set; } = new CachedWorkshopData();
 
 		public DivinityPathwayData PathwayData { get; private set; } = new DivinityPathwayData();
 
@@ -1124,7 +1126,7 @@ Directory the zip will be extracted to:
 
 			Settings.ClearWorkshopCacheCommand = ReactiveCommand.Create(() =>
 			{
-				var filePath = DivinityApp.GetAppDirectory("Data", "workshopdata.json");
+				var filePath = DivinityApp.GetAppDirectory("Data", DivinityApp.WORKSHOP_CACHE_FILE);
 				if (File.Exists(filePath))
 				{
 					MessageBoxResult result = Xceed.Wpf.Toolkit.MessageBox.Show(View.SettingsWindow, $"Delete local workshop cache?\nThis cannot be undone.\nRefresh to download tag data once more.", "Confirm Delete Cache",
@@ -2017,12 +2019,19 @@ Directory the zip will be extracted to:
 				ValidateNames = true,
 				ReadOnlyChecked = true,
 				Multiselect = true,
-				InitialDirectory = GetInitialStartingDirectory()
+				InitialDirectory = !String.IsNullOrEmpty(Settings.LastImportDirectoryPath) ? Settings.LastImportDirectoryPath : GetInitialStartingDirectory()
 			};
 
 			if (dialog.ShowDialog(View) == true)
 			{
-				PathwayData.LastSaveFilePath = Path.GetDirectoryName(dialog.FileName);
+				var savedDirectory = Path.GetDirectoryName(dialog.FileName);
+				if(Settings.LastImportDirectoryPath != savedDirectory)
+				{
+					Settings.LastImportDirectoryPath = savedDirectory;
+					PathwayData.LastSaveFilePath = savedDirectory;
+					SaveSettings();
+				}
+
 				ImportMods(dialog.FileNames);
 			}
 		}
@@ -2282,7 +2291,7 @@ Directory the zip will be extracted to:
 
 		private async Task<bool> CacheAllWorkshopModsAsync()
 		{
-			var success = await DivinityWorkshopDataLoader.GetAllWorkshopDataAsync(CachedWorkshopData, AppSettings.DefaultPathways.Steam.AppID);
+			var success = await WorkshopDataLoader.GetAllWorkshopDataAsync(CachedWorkshopData, AppSettings.DefaultPathways.Steam.AppID);
 			if (success)
 			{
 				var cachedGUIDs = CachedWorkshopData.Mods.Select(x => x.UUID).ToHashSet();
@@ -2325,12 +2334,46 @@ Directory the zip will be extracted to:
 			}
 		}
 
+		private static readonly JsonSerializerSettings _nexusModsCachedDataSettings = new JsonSerializerSettings
+		{
+			NullValueHandling = NullValueHandling.Ignore,
+			Formatting = Formatting.None
+		};
+
+		private void SaveNexusModsDataBackground(bool updateLastTimestamp = true)
+		{
+			var filePath = DivinityApp.GetAppDirectory("Data", DivinityApp.NEXUSMODS_CACHE_FILE);
+			var parentDir = Path.GetDirectoryName(filePath);
+			if (!Directory.Exists(parentDir)) Directory.CreateDirectory(parentDir);
+
+			if(updateLastTimestamp)
+			{
+				CachedNexusModsData.LastUpdated = DateTimeOffset.Now.ToUnixTimeSeconds();
+			}
+			CachedNexusModsData.LastVersion = this.Version;
+
+			CachedNexusModsData.Mods.Clear();
+			CachedNexusModsData.Mods.AddRange(mods.Items.Where(x => x.NexusModsData.ModId > 0).Select(x => x.NexusModsData));
+
+			string contents = JsonConvert.SerializeObject(CachedNexusModsData, _nexusModsCachedDataSettings);
+			
+			RxApp.TaskpoolScheduler.ScheduleAsync((async (s, token) =>
+			{
+				var buffer = Encoding.UTF8.GetBytes(contents);
+				using (var fs = new System.IO.FileStream(filePath, System.IO.FileMode.Create,
+					System.IO.FileAccess.Write, System.IO.FileShare.None, buffer.Length, true))
+				{
+					await fs.WriteAsync(buffer, 0, buffer.Length);
+				}
+			}));
+		}
+
 		private void LoadWorkshopModDataBackground()
 		{
 			bool workshopCacheFound = false;
 			IsRefreshingWorkshop = true;
 
-			RxApp.TaskpoolScheduler.ScheduleAsync((Func<IScheduler, CancellationToken, Task>)(async (s, token) =>
+			RxApp.TaskpoolScheduler.ScheduleAsync((async (s, token) =>
 			{
 				workshopModLoadingCancelToken = token;
 				var loadedWorkshopMods = await LoadWorkshopModsAsync(workshopModLoadingCancelToken);
@@ -2345,11 +2388,11 @@ Directory the zip will be extracted to:
 					return Unit.Default;
 				}, RxApp.MainThreadScheduler);
 
-				var filePath = DivinityApp.GetAppDirectory("Data", "workshopdata.json");
+				var filePath = DivinityApp.GetAppDirectory("Data", DivinityApp.WORKSHOP_CACHE_FILE);
 
 				if (File.Exists(filePath))
 				{
-					DivinityModManagerCachedWorkshopData cachedData = DivinityJsonUtils.SafeDeserializeFromPath<DivinityModManagerCachedWorkshopData>(filePath);
+					var cachedData = DivinityJsonUtils.SafeDeserializeFromPath<CachedWorkshopData>(filePath);
 					if (cachedData != null)
 					{
 						CachedWorkshopData = cachedData;
@@ -2389,7 +2432,7 @@ Directory the zip will be extracted to:
 								StatusBarRightText = $"Downloading workshop data for {targetMods.Count} mods...";
 								StatusBarBusyIndicatorVisibility = Visibility.Visible;
 							});
-							var totalSuccesses = await DivinityWorkshopDataLoader.FindWorkshopDataAsync(targetMods, CachedWorkshopData, AppSettings.DefaultPathways.Steam.AppID);
+							var totalSuccesses = await WorkshopDataLoader.FindWorkshopDataAsync(targetMods, CachedWorkshopData, AppSettings.DefaultPathways.Steam.AppID);
 							if (totalSuccesses > 0)
 							{
 								UpdateModDataWithCachedData();
@@ -3112,7 +3155,7 @@ Directory the zip will be extracted to:
 				CheckFileExists = true,
 				CheckPathExists = true,
 				DefaultExt = ".zip",
-				Filter = "Archive file (*.zip;*.7z)|*.zip;*.7z;*.7zip;*.tar;*.bzip2;*.gzip;*.lzip|All files (*.*)|*.*",
+				Filter = "Archive file (*.zip;*.7z;*.rar)|*.zip;*.7z;*.7zip;*.tar;*.bzip2;*.gzip;*.lzip;*.rar|All files (*.*)|*.*",
 				Title = "Import Mods from Archive...",
 				ValidateNames = true,
 				ReadOnlyChecked = true,
@@ -3197,7 +3240,7 @@ Directory the zip will be extracted to:
 			DivinityApp.Log($"Imported Mod: {mod}");
 		}
 
-		private async Task<bool> ImportSevenZipArchiveAsync(string outputDirectory, System.IO.Stream stream,
+		private async Task<bool> ImportSevenZipArchiveAsync(NexusModFileVersionData info, string outputDirectory, System.IO.Stream stream,
 			Dictionary<string, string> jsonFiles, CancellationToken t, bool toActiveList = false)
 		{
 			int successes = 0;
@@ -3236,6 +3279,7 @@ Directory the zip will be extracted to:
 								var mod = await DivinityModDataLoader.LoadModDataFromPakAsync(outputFilePath, builtinMods, t);
 								if (mod != null)
 								{
+									mod.NexusModsData.SetModVersion(info);
 									successes += 1;
 									await Observable.Start(() =>
 									{
@@ -3274,7 +3318,7 @@ Directory the zip will be extracted to:
 			return successes >= total;
 		}
 
-		private async Task<bool> ImportGenericArchiveAsync(string outputDirectory, System.IO.Stream stream,
+		private async Task<bool> ImportGenericArchiveAsync(NexusModFileVersionData info, string outputDirectory, System.IO.Stream stream,
 			Dictionary<string, string> jsonFiles, CancellationToken t, bool toActiveList = false)
 		{
 			int successes = 0;
@@ -3315,6 +3359,7 @@ Directory the zip will be extracted to:
 								var mod = await DivinityModDataLoader.LoadModDataFromPakAsync(outputFilePath, builtinMods, t);
 								if (mod != null)
 								{
+									mod.NexusModsData.SetModVersion(info);
 									successes += 1;
 									await Observable.Start(() =>
 									{
@@ -3365,17 +3410,24 @@ Directory the zip will be extracted to:
 				fileStream = File.Open(archivePath, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.Read, 4096, true);
 				if (fileStream != null)
 				{
+					var nexusFileInfo = NexusModFileVersionData.FromFilePath(archivePath);
+
 					await fileStream.ReadAsync(new byte[fileStream.Length], 0, (int)fileStream.Length);
 					IncreaseMainProgressValue(taskStepAmount);
 
 					var extension = Path.GetExtension(archivePath);
 					if (SevenZipArchive.IsSevenZipFile(archivePath) || extension.Equals(".7z", StringComparison.OrdinalIgnoreCase) || extension.Equals(".7zip", StringComparison.OrdinalIgnoreCase))
 					{
-						success = await ImportSevenZipArchiveAsync(outputDirectory, fileStream, jsonFiles, t, toActiveList);
+						success = await ImportSevenZipArchiveAsync(nexusFileInfo, outputDirectory, fileStream, jsonFiles, t, toActiveList);
 					}
 					else
 					{
-						success = await ImportGenericArchiveAsync(outputDirectory, fileStream, jsonFiles, t, toActiveList);
+						success = await ImportGenericArchiveAsync(nexusFileInfo, outputDirectory, fileStream, jsonFiles, t, toActiveList);
+					}
+
+					if (nexusFileInfo.Success && success)
+					{
+						SaveNexusModsDataBackground(false);
 					}
 
 					IncreaseMainProgressValue(taskStepAmount);
@@ -4840,7 +4892,7 @@ Directory the zip will be extracted to:
 
 			this.ModUpdatesViewData = new ModUpdatesViewData(this);
 
-			var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+			var assembly = Assembly.GetExecutingAssembly();
 			var productName = ((AssemblyProductAttribute)Attribute.GetCustomAttribute(assembly, typeof(AssemblyProductAttribute), false)).Product;
 			Version = assembly.GetName().Version.ToString();
 			Title = $"{productName} {this.Version}";
