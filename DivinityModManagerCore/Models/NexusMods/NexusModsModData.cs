@@ -21,17 +21,34 @@ namespace DivinityModManager.Models.NexusMods
 		[JsonProperty("uuid")]
 		public string UUID { get; set; }
 
+		private long _lastFileId;
+
 		[JsonProperty("last_file_id")]
-		public long LastFileId { get; set; }
+		public long LastFileId
+		{
+			get => _lastFileId;
+			set
+			{
+				if(_lastFileId != value)
+				{
+					_lastFileId = value;
+					RaisePropertyChanged(nameof(LastFileId));
+				}
+			}
+		}
 
 		public event PropertyChangedEventHandler PropertyChanged;
+
+		public void RaisePropertyChanged(string propertyName)
+		{
+			PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+		}
 
 		public void SetModVersion(NexusModFileVersionData info)
 		{
 			if(info.Success)
 			{
-				ModId = info.ModId;
-				LastFileId = info.FileId;
+				SetModVersion(info.ModId, info.FileId);
 			}
 		}
 
@@ -40,13 +57,12 @@ namespace DivinityModManager.Models.NexusMods
 			if (ModId != modId)
 			{
 				ModId = modId;
-				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(LastFileId)));
+				RaisePropertyChanged(nameof(ModId));
 			}
 
 			if (fileId > -1 && LastFileId != fileId)
 			{
 				LastFileId = fileId;
-				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(LastFileId)));
 			}
 		}
 
@@ -61,7 +77,7 @@ namespace DivinityModManager.Models.NexusMods
 				if(value != null)
 				{
 					prop.SetValue(this, value);
-					PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(prop.Name));
+					RaisePropertyChanged(prop.Name);
 				}
 			}
 			IsUpdated = true;

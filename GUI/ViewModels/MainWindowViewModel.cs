@@ -2422,8 +2422,6 @@ Directory the zip will be extracted to:
 								var mod = existing.Value;
 								mod.NexusModsData.Update(data);
 								mod.NexusModsData.LastFileId = data.LastFileId;
-
-								DivinityApp.Log($"Name({mod.Name}) NexusModsEnabled({mod.NexusModsEnabled}) mod.NexusModsData.ModId({mod.NexusModsData.ModId}) CanOpenNexusModsLink({mod.CanOpenNexusModsLink}) OpenNexusModsLinkVisibility({mod.OpenNexusModsLinkVisibility})");
 							}
 							
 						}
