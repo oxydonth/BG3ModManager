@@ -77,13 +77,13 @@ namespace DivinityModManager.Views
 
 		private readonly System.Windows.Interop.WindowInteropHelper _hwnd;
 
-		private TextWriterTraceListener debugLogListener;
+		public TextWriterTraceListener DebugLogListener { get; private set; }
 
 		public void ToggleLogging(bool enabled)
 		{
 			if (enabled || ViewModel?.DebugMode == true)
 			{
-				if (debugLogListener == null)
+				if (DebugLogListener == null)
 				{
 					var logsDir = DivinityApp.GetAppDirectory("_Logs");
 					string sysFormat = CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern.Replace("/", "-");
@@ -94,16 +94,16 @@ namespace DivinityModManager.Views
 					}
 
 					string logFileName = Path.Combine(logsDir, "debug_" + DateTime.Now.ToString(sysFormat + "_HH-mm-ss") + ".log");
-					debugLogListener = new TextWriterTraceListener(logFileName, "DebugLogListener");
-					Trace.Listeners.Add(debugLogListener);
+					DebugLogListener = new TextWriterTraceListener(logFileName, "DebugLogListener");
+					Trace.Listeners.Add(DebugLogListener);
 					Trace.AutoFlush = true;
 				}
 			}
-			else if (debugLogListener != null && ViewModel?.DebugMode != true)
+			else if (DebugLogListener != null && ViewModel?.DebugMode != true)
 			{
-				Trace.Listeners.Remove(debugLogListener);
-				debugLogListener.Dispose();
-				debugLogListener = null;
+				Trace.Listeners.Remove(DebugLogListener);
+				DebugLogListener.Dispose();
+				DebugLogListener = null;
 				Trace.AutoFlush = false;
 			}
 		}
