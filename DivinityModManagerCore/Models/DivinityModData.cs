@@ -197,6 +197,9 @@ namespace DivinityModManager.Models
 		private readonly ObservableAsPropertyHelper<bool> _canOpenWorkshopLink;
 		public bool CanOpenWorkshopLink => _canOpenWorkshopLink.Value;
 
+		private readonly ObservableAsPropertyHelper<bool> _canNexusModsLink;
+		public bool CanNexusModsLink => _canNexusModsLink.Value;
+
 		private readonly ObservableAsPropertyHelper<string> _extenderSupportToolTipText;
 		public string ScriptExtenderSupportToolTipText => _extenderSupportToolTipText.Value;
 
@@ -209,6 +212,9 @@ namespace DivinityModManager.Models
 		private readonly ObservableAsPropertyHelper<Visibility> _openWorkshopLinkVisibility;
 		public Visibility OpenWorkshopLinkVisibility => _openWorkshopLinkVisibility.Value;
 
+		private readonly ObservableAsPropertyHelper<Visibility> _openNexusModsLinkVisibility;
+		public Visibility OpenNexusModsLinkVisibility => _openNexusModsLinkVisibility.Value;
+
 		private readonly ObservableAsPropertyHelper<Visibility> _toggleForceAllowInLoadOrderVisibility;
 		public Visibility ToggleForceAllowInLoadOrderVisibility => _toggleForceAllowInLoadOrderVisibility.Value;
 
@@ -218,6 +224,8 @@ namespace DivinityModManager.Models
 		private readonly ObservableAsPropertyHelper<Visibility> _osirisStatusVisibility;
 		public Visibility OsirisStatusVisibility => _osirisStatusVisibility.Value;
 
+		[Reactive] public bool WorkshopEnabled { get; set; }
+		[Reactive] public bool NexusModsEnabled { get; set; }
 		[Reactive] public bool CanDrag { get; set; }
 		[Reactive] public bool DeveloperMode { get; set; }
 		[Reactive] public bool HasColorOverride { get; set; }
@@ -229,11 +237,7 @@ namespace DivinityModManager.Models
 		[Reactive] public DivinityModWorkshopData WorkshopData { get; set; }
 		[Reactive] public NexusModsModData NexusModsData { get; set; }
 
-		//public DivinityModWorkshopData WorkshopData { get; private set; } = new DivinityModWorkshopData();
-		public ICommand OpenWorkshopPageCommand { get; private set; }
-		public ICommand OpenWorkshopPageInSteamCommand { get; private set; }
-
-		public string GetURL(bool asSteamBrowserProtocol = false)
+		public string GetWorkshopURL(bool asSteamBrowserProtocol = false)
 		{
 			if (WorkshopData != null && WorkshopData.ID != "")
 			{
@@ -295,6 +299,10 @@ namespace DivinityModManager.Models
 			}
 		}
 
+		private bool CanOpenWorkshopBoolCheck(bool enabled, bool isHidden, bool isLarianMod, string workshopID)
+		{
+			return enabled && !isHidden & !isLarianMod & !String.IsNullOrEmpty(workshopID);
+		}
 
 		public DivinityModData(bool isBaseGameMod = false) : base()
 		{
@@ -310,13 +318,17 @@ namespace DivinityModManager.Models
 				.StartWith(Visibility.Collapsed)
 				.ToProperty(this, nameof(ToggleForceAllowInLoadOrderVisibility), scheduler: RxApp.MainThreadScheduler);
 
-			_canOpenWorkshopLink = this.WhenAnyValue(x => x.IsHidden, x => x.IsLarianMod, x => x.WorkshopData.ID,
-	(b1, b2, id) => !b1 & !b2 & !String.IsNullOrEmpty(id)).ToProperty(this, nameof(CanOpenWorkshopLink));
-
+			_canOpenWorkshopLink = this.WhenAnyValue(x => x.WorkshopEnabled, x => x.IsHidden, x => x.IsLarianMod, x => x.WorkshopData.ID, CanOpenWorkshopBoolCheck).ToProperty(this, nameof(CanOpenWorkshopLink));
 			_openWorkshopLinkVisibility = this.WhenAnyValue(x => x.CanOpenWorkshopLink)
 				.Select(b => b ? Visibility.Visible : Visibility.Collapsed)
 				.StartWith(Visibility.Collapsed)
 				.ToProperty(this, nameof(OpenWorkshopLinkVisibility), scheduler: RxApp.MainThreadScheduler);
+
+			_canNexusModsLink = this.WhenAnyValue(x => x.NexusModsEnabled, x => x.NexusModsData.ModId, (b, id) => b && id > -1).ToProperty(this, nameof(CanNexusModsLink));
+			_openNexusModsLinkVisibility = this.WhenAnyValue(x => x.CanNexusModsLink)
+				.Select(b => b ? Visibility.Visible : Visibility.Collapsed)
+				.StartWith(Visibility.Collapsed)
+				.ToProperty(this, nameof(OpenNexusModsLinkVisibility), scheduler: RxApp.MainThreadScheduler);
 
 			var connection = this.Dependencies.Connect().ObserveOn(RxApp.MainThreadScheduler);
 			connection.Bind(out displayedDependencies).DisposeMany().Subscribe();

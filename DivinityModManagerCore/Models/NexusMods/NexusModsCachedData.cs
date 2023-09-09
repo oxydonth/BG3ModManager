@@ -1,4 +1,6 @@
-﻿using NexusModsNET.DataModels;
+﻿using DynamicData;
+
+using NexusModsNET.DataModels;
 
 using System;
 using System.Collections.Generic;
@@ -13,7 +15,7 @@ namespace DivinityModManager.Models.NexusMods
 		public long LastUpdated { get; set; }
 		public string LastVersion { get; set; }
 
-		public List<NexusMod> Mods { get; set; }
+		public SourceCache<NexusMod, long> Mods { get; set; } = new SourceCache<NexusMod, long>(x => x.ModId);
 
 		public NexusModsCachedData()
 		{

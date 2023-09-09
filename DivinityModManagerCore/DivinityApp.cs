@@ -43,6 +43,7 @@ namespace DivinityModManager
 
 		public const string NEXUSMODS_GAME = "baldursgate3";
 		public const string NEXUSMODS_CACHE_FILE = "nexusmodsdata.json";
+		public const string NEXUSMODS_MOD_URL = "https://www.nexusmods.com/baldursgate3/mods/{1}";
 
 		public const string WORKSHOP_CACHE_FILE = "workshopdata.json";
 
@@ -96,6 +97,9 @@ namespace DivinityModManager
 				NotifyStaticPropertyChanged();
 			}
 		}
+
+		public static bool WorkshopEnabled { get; set; }
+		public static bool NexusModsEnabled { get; set; }
 
 		public static IObservable<Func<DivinityModDependencyData, bool>> DependencyFilter { get; set; }
 

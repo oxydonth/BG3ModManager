@@ -33,6 +33,7 @@ namespace DivinityModManager.Util
 		public ReactiveCommand<DivinityModData, Unit> DeleteModCommand { get; private set; }
 		public ReactiveCommand<DivinityModData, Unit> OpenSteamWorkshopPageCommand { get; private set; }
 		public ReactiveCommand<DivinityModData, Unit> OpenSteamWorkshopPageInSteamCommand { get; private set; }
+		public ReactiveCommand<DivinityModData, Unit> OpenNexusModsPageInSteamCommand { get; private set; }
 		public ReactiveCommand<DivinityModData, Unit> ToggleForceAllowInLoadOrderCommand { get; private set; }
 
 		public void OpenFile(string path)
@@ -87,9 +88,21 @@ namespace DivinityModManager.Util
 			}
 		}
 
+		public void OpenNexusModsPage(DivinityModData mod)
+		{
+			if(mod.NexusModsData.ModId > -1)
+			{
+				var url = String.Format(DivinityApp.NEXUSMODS_MOD_URL, mod.NexusModsData.ModId);
+				if (!String.IsNullOrEmpty(url))
+				{
+					DivinityFileUtils.TryOpenPath(url);
+				}
+			}
+		}
+
 		public void OpenSteamWorkshopPage(DivinityModData mod)
 		{
-			var url = mod.GetURL();
+			var url = mod.GetWorkshopURL();
 			if (!String.IsNullOrEmpty(url))
 			{
 				DivinityFileUtils.TryOpenPath(url);
@@ -98,7 +111,7 @@ namespace DivinityModManager.Util
 
 		public void OpenSteamWorkshopPageInSteam(DivinityModData mod)
 		{
-			var url = mod.GetURL(true);
+			var url = mod.GetWorkshopURL(true);
 			if (!String.IsNullOrEmpty(url))
 			{
 				DivinityFileUtils.TryOpenPath(url);
@@ -159,6 +172,7 @@ namespace DivinityModManager.Util
 
 			OpenSteamWorkshopPageCommand = ReactiveCommand.Create<DivinityModData>(OpenSteamWorkshopPage, canExecuteViewModelCommands);
 			OpenSteamWorkshopPageInSteamCommand = ReactiveCommand.Create<DivinityModData>(OpenSteamWorkshopPageInSteam, canExecuteViewModelCommands);
+			OpenNexusModsPageInSteamCommand = ReactiveCommand.Create<DivinityModData>(OpenNexusModsPage, canExecuteViewModelCommands);
 			ToggleForceAllowInLoadOrderCommand = ReactiveCommand.Create<DivinityModData>(ToggleForceAllowInLoadOrder, canExecuteViewModelCommands);
 		}
 	}

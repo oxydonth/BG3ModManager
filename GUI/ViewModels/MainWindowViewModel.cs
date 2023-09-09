@@ -862,10 +862,25 @@ Directory the zip will be extracted to:
 
 			LoadAppConfig();
 
+			var workshopSupportEnabled = AppSettings.FeatureEnabled("Workshop");
+			var nexusModsSupportEnabled = AppSettings.FeatureEnabled("NexusMods");
+
+			if(DivinityApp.WorkshopEnabled != workshopSupportEnabled || DivinityApp.NexusModsEnabled != nexusModsSupportEnabled)
+			{
+				DivinityApp.WorkshopEnabled = workshopSupportEnabled;
+				DivinityApp.NexusModsEnabled = nexusModsSupportEnabled;
+
+				foreach (var mod in mods.Items)
+				{
+					mod.WorkshopEnabled = DivinityApp.WorkshopEnabled;
+					mod.NexusModsEnabled = DivinityApp.NexusModsEnabled;
+				}
+			}
+
 			canOpenWorkshopFolder = this.WhenAnyValue(x => x.WorkshopSupportEnabled, x => x.Settings.WorkshopPath,
 				(b, p) => (b && !String.IsNullOrEmpty(p) && Directory.Exists(p))).StartWith(false);
 
-			if (AppSettings.FeatureEnabled("Workshop"))
+			if (workshopSupportEnabled)
 			{
 				if (!String.IsNullOrWhiteSpace(Settings.WorkshopPath))
 				{
@@ -1575,28 +1590,31 @@ Directory the zip will be extracted to:
 		private void SetLoadedMods(IEnumerable<DivinityModData> loadedMods)
 		{
 			mods.Clear();
-			foreach (var m in loadedMods)
+			foreach (var mod in loadedMods)
 			{
-				if (m.IsLarianMod)
+				mod.WorkshopEnabled = DivinityApp.WorkshopEnabled;
+				mod.NexusModsEnabled = DivinityApp.NexusModsEnabled;
+
+				if (mod.IsLarianMod)
 				{
-					var existingIgnoredMod = DivinityApp.IgnoredMods.FirstOrDefault(x => x.UUID == m.UUID);
-					if (existingIgnoredMod != null && existingIgnoredMod != m)
+					var existingIgnoredMod = DivinityApp.IgnoredMods.FirstOrDefault(x => x.UUID == mod.UUID);
+					if (existingIgnoredMod != null && existingIgnoredMod != mod)
 					{
 						DivinityApp.IgnoredMods.Remove(existingIgnoredMod);
 					}
-					DivinityApp.IgnoredMods.Add(m);
+					DivinityApp.IgnoredMods.Add(mod);
 				}
-				if (TryGetMod(m.UUID, out var existingMod))
+				if (TryGetMod(mod.UUID, out var existingMod))
 				{
-					if (m.Version.VersionInt > existingMod.Version.VersionInt)
+					if (mod.Version.VersionInt > existingMod.Version.VersionInt)
 					{
-						mods.AddOrUpdate(m);
-						DivinityApp.Log($"Updated mod data from pak: Name({m.Name}) UUID({m.UUID}) Type({m.ModType}) Version({m.Version.VersionInt})");
+						mods.AddOrUpdate(mod);
+						DivinityApp.Log($"Updated mod data from pak: Name({mod.Name}) UUID({mod.UUID}) Type({mod.ModType}) Version({mod.Version.VersionInt})");
 					}
 				}
 				else
 				{
-					mods.AddOrUpdate(m);
+					mods.AddOrUpdate(mod);
 				}
 			}
 		}
@@ -2352,8 +2370,7 @@ Directory the zip will be extracted to:
 			}
 			CachedNexusModsData.LastVersion = this.Version;
 
-			CachedNexusModsData.Mods.Clear();
-			CachedNexusModsData.Mods.AddRange(mods.Items.Where(x => x.NexusModsData.ModId > 0).Select(x => x.NexusModsData));
+			CachedNexusModsData.Mods.AddOrUpdate(mods.Items.Where(x => x.NexusModsData.ModId > 0).Select(x => x.NexusModsData));
 
 			string contents = JsonConvert.SerializeObject(CachedNexusModsData, _nexusModsCachedDataSettings);
 			
@@ -2364,6 +2381,22 @@ Directory the zip will be extracted to:
 					System.IO.FileAccess.Write, System.IO.FileShare.None, buffer.Length, true))
 				{
 					await fs.WriteAsync(buffer, 0, buffer.Length);
+				}
+			}));
+		}
+
+		private void LoadNexusModDataBackground()
+		{
+			RxApp.TaskpoolScheduler.ScheduleAsync((async (s, token) =>
+			{
+				var filePath = DivinityApp.GetAppDirectory("Data", DivinityApp.NEXUSMODS_CACHE_FILE);
+
+				if (File.Exists(filePath) && DivinityJsonUtils.TrySafeDeserializeFromPath<NexusModsCachedData>(filePath, out var cachedData))
+				{
+					if (cachedData != null)
+					{
+						CachedNexusModsData.Mods.AddOrUpdate(cachedData.Mods.Items);
+					}
 				}
 			}));
 		}
@@ -2661,9 +2694,14 @@ Directory the zip will be extracted to:
 				IsLoadingOrder = false;
 				IsInitialized = true;
 
-				if (AppSettings.FeatureEnabled("Workshop"))
+				if (WorkshopSupportEnabled)
 				{
 					LoadWorkshopModDataBackground();
+				}
+
+				if (DivinityApp.NexusModsEnabled)
+				{
+					LoadNexusModDataBackground();
 				}
 
 				return Unit.Default;
@@ -3194,6 +3232,9 @@ Directory the zip will be extracted to:
 
 		private void AddImportedMod(DivinityModData mod, bool toActiveList = false)
 		{
+			mod.WorkshopEnabled = DivinityApp.WorkshopEnabled;
+			mod.NexusModsEnabled = DivinityApp.NexusModsEnabled;
+
 			if (mod.IsForceLoaded && !mod.IsForceLoadedMergedMod)
 			{
 				mods.AddOrUpdate(mod);
@@ -3707,7 +3748,7 @@ Directory the zip will be extracted to:
 			}
 			if (WorkshopSupportEnabled)
 			{
-				return $"{index}\t{mod.Name}\t{mod.Author}\t{mod.OutputPakName}\t{String.Join(", ", mod.Tags)}\t{String.Join(", ", mod.Dependencies.Items.Select(y => y.Name))}\t{mod.GetURL()}";
+				return $"{index}\t{mod.Name}\t{mod.Author}\t{mod.OutputPakName}\t{String.Join(", ", mod.Tags)}\t{String.Join(", ", mod.Dependencies.Items.Select(y => y.Name))}\t{mod.GetWorkshopURL()}";
 			}
 			return $"{index}\t{mod.Name}\t{mod.Author}\t{mod.OutputPakName}\t{String.Join(", ", mod.Tags)}\t{String.Join(", ", mod.Dependencies.Items.Select(y => y.Name))}";
 		}
@@ -3721,7 +3762,7 @@ Directory the zip will be extracted to:
 			}
 			if (WorkshopSupportEnabled)
 			{
-				return $"{index} {mod.Name} ({mod.OutputPakName}) {mod.GetURL()}";
+				return $"{index} {mod.Name} ({mod.OutputPakName}) {mod.GetWorkshopURL()}";
 			}
 			return $"{index} {mod.Name} ({mod.OutputPakName})";
 		}

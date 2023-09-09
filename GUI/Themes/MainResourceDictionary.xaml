@@ -231,6 +231,16 @@
 						</MenuItem.Icon>
 					</MenuItem>
 					<MenuItem
+						Command="{Binding Path=OpenNexusModsPageCommand, Source={x:Static dapp:DivinityApp.Commands}}"
+						CommandParameter="{Binding}"
+						Header="Open NexusMods Page (Browser)..."
+						IsEnabled="{Binding CanNexusModsLink}"
+						Visibility="{Binding OpenNexusModsLinkVisibility}">
+						<MenuItem.Icon>
+							<Image Source="{StaticResource OpenInBrowserImage}" />
+						</MenuItem.Icon>
+					</MenuItem>
+					<MenuItem
 						Command="{Binding Path=ToggleForceAllowInLoadOrderCommand, Source={x:Static dapp:DivinityApp.Commands}}"
 						CommandParameter="{Binding}"
 						Visibility="{Binding ToggleForceAllowInLoadOrderVisibility}">
@@ -368,12 +378,22 @@
 						Command="{Binding Path=OpenInFileExplorerCommand, Source={x:Static dapp:DivinityApp.Commands}}"
 						CommandParameter="{Binding FilePath}"
 						Header="Open in File Explorer..." />
-					<MenuItem Command="{Binding OpenWorkshopPageCommand}" Header="Open Steam Workshop Page (Browser)...">
+					<MenuItem
+						Command="{Binding Path=OpenSteamWorkshopPageCommand, Source={x:Static dapp:DivinityApp.Commands}}"
+						CommandParameter="{Binding}"
+						Header="Open Steam Workshop Page (Browser)..."
+						IsEnabled="{Binding CanOpenWorkshopLink}"
+						Visibility="{Binding OpenWorkshopLinkVisibility}">
 						<MenuItem.Icon>
 							<Image Source="{StaticResource OpenInBrowserImage}" />
 						</MenuItem.Icon>
 					</MenuItem>
-					<MenuItem Command="{Binding OpenWorkshopPageInSteamCommand}" Header="Open Steam Workshop Page (Steam)...">
+					<MenuItem
+						Command="{Binding Path=OpenSteamWorkshopPageInSteamCommand, Source={x:Static dapp:DivinityApp.Commands}}"
+						CommandParameter="{Binding}"
+						Header="Open Steam Workshop Page (Steam)..."
+						IsEnabled="{Binding CanOpenWorkshopLink}"
+						Visibility="{Binding OpenWorkshopLinkVisibility}">
 						<MenuItem.Icon>
 							<Image Source="{StaticResource OpenSteamWorkshopFolderImage}" />
 						</MenuItem.Icon>
