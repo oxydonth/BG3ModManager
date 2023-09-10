@@ -28,6 +28,8 @@ namespace DivinityModManager.Util
 		}
 
 		public static bool CanFetchData => _client != null && !_client.RateLimitsManagement.ApiDailyLimitExceeded() && !_client.RateLimitsManagement.ApiHourlyLimitExceeded();
+		public static bool LimitExceeded => _client != null && (_client.RateLimitsManagement.ApiDailyLimitExceeded() || !_client.RateLimitsManagement.ApiHourlyLimitExceeded());
+		public static bool IsInitialized => _client != null;
 
 		public static async Task<int> LoadAllModsDataAsync(List<DivinityModData> mods, CancellationToken t)
 		{

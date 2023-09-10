@@ -2421,7 +2421,12 @@ Directory the zip will be extracted to:
 
 		private async Task<int> UpdateNexuModDataForModsAsync(List<DivinityModData> mods, CancellationToken cts)
 		{
-			if(NexusModsDataLoader.CanFetchData)
+			if (!NexusModsDataLoader.IsInitialized && !String.IsNullOrEmpty(Settings.NexusModsAPIKey))
+			{
+				NexusModsDataLoader.Init(Settings.NexusModsAPIKey, AutoUpdater.AppTitle, Version);
+			}
+
+			if (NexusModsDataLoader.CanFetchData)
 			{
 				DivinityApp.Log($"Using NexusMods API to update {mods.Count} mods");
 				int successes = 0;
@@ -2445,6 +2450,10 @@ Directory the zip will be extracted to:
 				}
 
 				return successes;
+			}
+			else
+			{
+				DivinityApp.Log("NexusModsAPIKey not set, or daily/hourly limit reached. Skipping.");
 			}
 			return 0;
 		}
@@ -2486,6 +2495,11 @@ Directory the zip will be extracted to:
 				}
 			}
 
+			if(!NexusModsDataLoader.IsInitialized && !String.IsNullOrEmpty(Settings.NexusModsAPIKey))
+			{
+				NexusModsDataLoader.Init(Settings.NexusModsAPIKey, AutoUpdater.AppTitle, Version);
+			}
+
 			if(NexusModsDataLoader.CanFetchData)
 			{
 				RxApp.TaskpoolScheduler.ScheduleAsync((async (s, cts) =>
@@ -2515,7 +2529,7 @@ Directory the zip will be extracted to:
 			}
 			else
 			{
-				DivinityApp.Log("NexusModsAPIKey not set. Skipping.");
+				DivinityApp.Log("NexusModsAPIKey not set, or daily/hourly limit reached. Skipping.");
 			}
 		}
 
