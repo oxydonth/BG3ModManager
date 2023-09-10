@@ -2376,6 +2376,8 @@ Directory the zip will be extracted to:
 				CachedNexusModsData.Mods[mod.UUID] = mod;
 			}
 
+			DivinityApp.Log($"Saving NexusMods mod info cache to '{filePath}'");
+
 			string contents = JsonConvert.SerializeObject(CachedNexusModsData, _nexusModsCachedDataSettings);
 			
 			RxApp.TaskpoolScheduler.ScheduleAsync((async (s, token) =>
@@ -2391,48 +2393,99 @@ Directory the zip will be extracted to:
 
 		private void LoadNexusModDataBackground()
 		{
-			RxApp.TaskpoolScheduler.ScheduleAsync((async (s, token) =>
+			var filePath = DivinityApp.GetAppDirectory("Data", DivinityApp.NEXUSMODS_CACHE_FILE);
+			DivinityApp.Log($"Checking & loading {filePath}");
+
+			if (File.Exists(filePath) && DivinityJsonUtils.TrySafeDeserializeFromPath<NexusModsCachedData>(filePath, out var cachedData))
 			{
-				var filePath = DivinityApp.GetAppDirectory("Data", DivinityApp.NEXUSMODS_CACHE_FILE);
-
-				if (File.Exists(filePath) && DivinityJsonUtils.TrySafeDeserializeFromPath<NexusModsCachedData>(filePath, out var cachedData))
+				foreach (var entry in cachedData.Mods)
 				{
-					if (cachedData != null)
+					if (CachedNexusModsData.Mods.TryGetValue(entry.Key, out var existing))
 					{
-						foreach(var entry in cachedData.Mods)
+						if (existing.UpdatedTimestamp < entry.Value.UpdatedTimestamp || !existing.IsUpdated)
 						{
-							if(CachedNexusModsData.Mods.TryGetValue(entry.Key, out var existing))
-							{
-								if(existing.UpdatedTimestamp < entry.Value.UpdatedTimestamp || !existing.IsUpdated)
-								{
-									CachedNexusModsData.Mods[entry.Key] = entry.Value;
-								}
-							}
-							else
-							{
-								CachedNexusModsData.Mods[entry.Key] = entry.Value;
-							}
-						}
-
-						foreach(var data in CachedNexusModsData.Mods.Values)
-						{
-							var existing = mods.Lookup(data.UUID);
-							if(existing.HasValue)
-							{
-								var mod = existing.Value;
-								mod.NexusModsData.Update(data);
-								mod.NexusModsData.LastFileId = data.LastFileId;
-							}
-							
+							CachedNexusModsData.Mods[entry.Key] = entry.Value;
 						}
 					}
+					else
+					{
+						CachedNexusModsData.Mods[entry.Key] = entry.Value;
+					}
 				}
-			}));
+
+				DivinityApp.Log("Updating mods with cached data.");
+
+				foreach (var data in CachedNexusModsData.Mods.Values)
+				{
+					var existing = mods.Lookup(data.UUID);
+					if (existing.HasValue)
+					{
+						var mod = existing.Value;
+						mod.NexusModsData.Update(data);
+						mod.NexusModsData.LastFileId = data.LastFileId;
+					}
+
+				}
+			}
+
+			if(!String.IsNullOrEmpty(Settings.NexusModsAPIKey))
+			{
+				RxApp.TaskpoolScheduler.ScheduleAsync((async (s, token) =>
+				{
+					NexusModsDataLoader.Init(Settings.NexusModsAPIKey, AutoUpdater.AppTitle, Version);
+					var checkMods = mods.Items.Where(x => x.NexusModsData.ModId > 0).ToList();
+					DivinityApp.Log($"Using NexusMods API to update {checkMods.Count} mods");
+					int successes = 0;
+					try
+					{
+						successes = await NexusModsDataLoader.LoadAllModsDataAsync(checkMods, token);
+					}
+					catch(Exception ex)
+					{
+						DivinityApp.Log($"Error fetching NexusMods data:\n{ex}");
+					}
+					
+					if (successes > 0)
+					{
+						DivinityApp.Log($"Fetched NexusMods mod info for {successes} mods.");
+						RxApp.MainThreadScheduler.Schedule(() =>
+						{
+							SaveNexusModsDataBackground(true);
+						});
+					}
+					else
+					{
+						DivinityApp.Log($"Failed to fetch any NexusMods mod info.");
+					}
+				}));
+			}
+			else
+			{
+				DivinityApp.Log("NexusModsAPIKey not set. Skipping.");
+			}
 		}
 
 		private void LoadWorkshopModDataBackground()
 		{
 			bool workshopCacheFound = false;
+
+			var filePath = DivinityApp.GetAppDirectory("Data", DivinityApp.WORKSHOP_CACHE_FILE);
+
+			if (File.Exists(filePath))
+			{
+				var cachedData = DivinityJsonUtils.SafeDeserializeFromPath<CachedWorkshopData>(filePath);
+				if (cachedData != null)
+				{
+					CachedWorkshopData = cachedData;
+					if (String.IsNullOrEmpty(CachedWorkshopData.LastVersion) || CachedWorkshopData.LastVersion != this.Version)
+					{
+						CachedWorkshopData.LastUpdated = -1;
+					}
+					UpdateModDataWithCachedData();
+					workshopCacheFound = true;
+				}
+			}
+
 			IsRefreshingWorkshop = true;
 
 			RxApp.TaskpoolScheduler.ScheduleAsync((async (s, token) =>
@@ -2449,23 +2502,6 @@ Directory the zip will be extracted to:
 					}
 					return Unit.Default;
 				}, RxApp.MainThreadScheduler);
-
-				var filePath = DivinityApp.GetAppDirectory("Data", DivinityApp.WORKSHOP_CACHE_FILE);
-
-				if (File.Exists(filePath))
-				{
-					var cachedData = DivinityJsonUtils.SafeDeserializeFromPath<CachedWorkshopData>(filePath);
-					if (cachedData != null)
-					{
-						CachedWorkshopData = cachedData;
-						if (String.IsNullOrEmpty(CachedWorkshopData.LastVersion) || CachedWorkshopData.LastVersion != this.Version)
-						{
-							CachedWorkshopData.LastUpdated = -1;
-						}
-						UpdateModDataWithCachedData();
-						workshopCacheFound = true;
-					}
-				}
 
 				if (!Settings.DisableWorkshopTagCheck)
 				{

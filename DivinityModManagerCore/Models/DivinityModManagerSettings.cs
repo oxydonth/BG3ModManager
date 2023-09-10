@@ -31,6 +31,9 @@ namespace DivinityModManager.Models
 		[SettingsEntry("Game Executable Path", "The path to bg3.exe")]
 		[DataMember][Reactive] public string GameExecutablePath { get; set; }
 
+		[SettingsEntry("NexusMods API Key", "Your personal NexusMods API key, which will allow the mod manager to fetch mod updates/information")]
+		[DataMember][Reactive] public string NexusModsAPIKey { get; set; }
+
 		[SettingsEntry("Output Path Override", "[EXPERIMENTAL]\nOverride the default location to %LOCALAPPDATA%\\Larian Studios\\Baldur's Gate 3\nThis folder is used when exporting load orders, loading profiles, and loading mods.")]
 		[DataMember][Reactive] public string DocumentsFolderPathOverride { get; set; }
 

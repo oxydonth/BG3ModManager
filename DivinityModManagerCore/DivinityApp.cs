@@ -41,7 +41,8 @@ namespace DivinityModManager
 		public const string MAIN_CAMPAIGN_UUID = "28ac9ce2-2aba-8cda-b3b5-6e922f71b6b8";
 		public const string GAMEMASTER_UUID = "NotYetAvailableInBG3";
 
-		public const string NEXUSMODS_GAME = "baldursgate3";
+		public const string NEXUSMODS_GAME_DOMAIN = "baldursgate3";
+		public const long NEXUSMODS_GAME_ID = 3474;
 		public const string NEXUSMODS_CACHE_FILE = "nexusmodsdata.json";
 		public const string NEXUSMODS_MOD_URL = "https://www.nexusmods.com/baldursgate3/mods/{0}";
 
