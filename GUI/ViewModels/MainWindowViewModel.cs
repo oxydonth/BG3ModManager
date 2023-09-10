@@ -3579,7 +3579,7 @@ Directory the zip will be extracted to:
 								}
 								catch (Exception ex)
 								{
-									taskResult.AddError(entry.Key, ex);
+									taskResult.AddError(reader.Entry.Key, ex);
 									DivinityApp.Log($"Error reading json file '{reader.Entry.Key}' from archive:\n{ex}");
 								}
 							}
