@@ -627,6 +627,11 @@
 				Text="{Binding Description}"
 				TextWrapping="Wrap"
 				Visibility="{Binding DescriptionVisibility}" />
+			<StackPanel Orientation="Vertical" Visibility="{Binding NexusModsInformationVisibility}">
+				<Separator Background="{DynamicResource {x:Static adonisUI:Brushes.Layer1HighlightBorderBrush}}" />
+				<TextBlock Text="{Binding NexusModsTooltipInfo}" />
+				<Separator Background="{DynamicResource {x:Static adonisUI:Brushes.Layer1HighlightBorderBrush}}" />
+			</StackPanel>
 			<StackPanel
 				Margin="2"
 				Orientation="Vertical"
@@ -675,9 +680,7 @@
 				<TextBlock Margin="2" Visibility="{Binding HasScriptExtenderSettings, Converter={StaticResource BoolToVisibilityConverter}}">
 					<Run Foreground="Goldenrod" Text="Script Extender " /><Run Foreground="Lime" Text="v" /><Run Foreground="Lime" Text="{Binding ScriptExtenderData.RequiredExtensionVersion}" />
 				</TextBlock>
-				<TextBlock Margin="2">
-					<Run Text="Last Updated on " /><Run Text="{Binding LastUpdated, StringFormat={x:Static dapp:DivinityApp.DateTimeTooltipFormat}}" />
-				</TextBlock>
+				<TextBlock Margin="2" Text="{Binding LastModifiedDateText}" />
 			</StackPanel>
 			<StackPanel
 				Margin="2"

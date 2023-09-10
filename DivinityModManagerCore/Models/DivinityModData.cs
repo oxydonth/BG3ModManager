@@ -22,6 +22,7 @@ using System.Windows.Automation.Peers;
 using System.Windows.Input;
 using System.Reflection;
 using DivinityModManager.Models.NexusMods;
+using System.Globalization;
 
 namespace DivinityModManager.Models
 {
@@ -197,14 +198,14 @@ namespace DivinityModManager.Models
 		private readonly ObservableAsPropertyHelper<bool> _canOpenWorkshopLink;
 		public bool CanOpenWorkshopLink => _canOpenWorkshopLink.Value;
 
-		private readonly ObservableAsPropertyHelper<bool> _canOpenNexusModsLink;
-		public bool CanOpenNexusModsLink => _canOpenNexusModsLink.Value;
-
 		private readonly ObservableAsPropertyHelper<string> _extenderSupportToolTipText;
 		public string ScriptExtenderSupportToolTipText => _extenderSupportToolTipText.Value;
 
 		private readonly ObservableAsPropertyHelper<string> _osirisStatusToolTipText;
 		public string OsirisStatusToolTipText => _osirisStatusToolTipText.Value;
+
+		private readonly ObservableAsPropertyHelper<string> _lastModifiedDateText;
+		public string LastModifiedDateText => _lastModifiedDateText.Value;
 
 		private readonly ObservableAsPropertyHelper<Visibility> dependencyVisibility;
 		public Visibility DependencyVisibility => dependencyVisibility.Value;
@@ -224,8 +225,27 @@ namespace DivinityModManager.Models
 		private readonly ObservableAsPropertyHelper<Visibility> _osirisStatusVisibility;
 		public Visibility OsirisStatusVisibility => _osirisStatusVisibility.Value;
 
+		#region NexusMods Properties
+
+		private readonly ObservableAsPropertyHelper<bool> _canOpenNexusModsLink;
+		public bool CanOpenNexusModsLink => _canOpenNexusModsLink.Value;
+
 		private readonly ObservableAsPropertyHelper<Visibility> _nexusImageVisibility;
 		public Visibility NexusImageVisibility => _nexusImageVisibility.Value;
+
+		private readonly ObservableAsPropertyHelper<Visibility> _nexusModsInformationVisibility;
+		public Visibility NexusModsInformationVisibility => _nexusModsInformationVisibility.Value;
+
+		private readonly ObservableAsPropertyHelper<DateTime> _nexusModsCreatedDate;
+		public DateTime NexusModsCreatedDate => _nexusModsCreatedDate.Value;
+
+		private readonly ObservableAsPropertyHelper<DateTime> _nexusModsUpdatedDate;
+		public DateTime NexusModsUpdatedDate => _nexusModsUpdatedDate.Value;
+
+		private readonly ObservableAsPropertyHelper<string> _nexusModsTooltipInfo;
+		public string NexusModsTooltipInfo => _nexusModsTooltipInfo.Value;
+
+		#endregion
 
 		[Reactive] public bool WorkshopEnabled { get; set; }
 		[Reactive] public bool NexusModsEnabled { get; set; }
@@ -307,6 +327,28 @@ namespace DivinityModManager.Models
 			return enabled && !isHidden & !isLarianMod & !String.IsNullOrEmpty(workshopID);
 		}
 
+		private string NexusModsInfoToTooltip(DateTime createdDate, DateTime updatedDate, long endorsements)
+		{
+			var lines = new List<String>();
+
+			if (endorsements > 0)
+			{
+				lines.Add($"Endorsements: {endorsements}");
+			}
+
+			if (createdDate != DateTime.MinValue)
+			{
+				lines.Add($"Created on {createdDate.ToString(DivinityApp.DateTimeColumnFormat, CultureInfo.InstalledUICulture)}");
+			}
+
+			if(updatedDate != DateTime.MinValue)
+			{
+				lines.Add($"Last updated on {createdDate.ToString(DivinityApp.DateTimeColumnFormat, CultureInfo.InstalledUICulture)}");
+			}
+
+			return String.Join("\n", lines);
+		}
+
 		public DivinityModData(bool isBaseGameMod = false) : base()
 		{
 			Targets = "";
@@ -322,6 +364,17 @@ namespace DivinityModManager.Models
 				.Select(uri => uri != null && !String.IsNullOrEmpty(uri.AbsolutePath) ? Visibility.Visible : Visibility.Collapsed)
 				.StartWith(Visibility.Collapsed)
 				.ToProperty(this, nameof(NexusImageVisibility), scheduler: RxApp.MainThreadScheduler);
+
+			_nexusModsInformationVisibility = this.WhenAnyValue(x => x.NexusModsData.IsUpdated)
+				.Select(b => b ? Visibility.Visible : Visibility.Collapsed)
+				.StartWith(Visibility.Collapsed)
+				.ToProperty(this, nameof(NexusModsInformationVisibility), scheduler: RxApp.MainThreadScheduler);
+
+			_nexusModsCreatedDate = this.WhenAnyValue(x => x.NexusModsData.CreatedTimestamp).SkipWhile(x => x <= 0).Select(x => DateUtils.UnixTimeStampToDateTime(x)).ToProperty(this, nameof(NexusModsCreatedDate));
+			_nexusModsUpdatedDate = this.WhenAnyValue(x => x.NexusModsData.UpdatedTimestamp).SkipWhile(x => x <= 0).Select(x => DateUtils.UnixTimeStampToDateTime(x)).ToProperty(this, nameof(NexusModsUpdatedDate));
+
+			_nexusModsTooltipInfo = this.WhenAnyValue(x => x.NexusModsCreatedDate, x => x.NexusModsUpdatedDate, x => x.NexusModsData.EndorsementCount)
+				.Select(x => NexusModsInfoToTooltip(x.Item1, x.Item2, x.Item3)).ToProperty(this, nameof(NexusModsTooltipInfo));
 
 			_toggleForceAllowInLoadOrderVisibility = this.WhenAnyValue(x => x.IsForceLoaded, x => x.HasMetadata, x => x.IsForceLoadedMergedMod)
 				.Select(b => b.Item1 && b.Item2 && !b.Item3 ? Visibility.Visible : Visibility.Collapsed)
@@ -410,6 +463,11 @@ namespace DivinityModManager.Models
 			_osirisStatusToolTipText = whenOsirisStatusChanges.Select(OsirisStatusToTooltipText).ToProperty(this, nameof(OsirisStatusToolTipText), scheduler: RxApp.MainThreadScheduler);
 			ExtenderModStatus = DivinityExtenderModStatus.NONE;
 			OsirisModStatus = DivinityOsirisModStatus.NONE;
+
+			_lastModifiedDateText = this.WhenAnyValue(x => x.LastUpdated).SkipWhile(x => !x.HasValue)
+				.Select(x => $"Last Modified on {x.Value.ToString(DivinityApp.DateTimeColumnFormat, CultureInfo.InstalledUICulture)}")
+				.StartWith("")
+				.ToProperty(this, nameof(LastModifiedDateText), scheduler:RxApp.MainThreadScheduler);
 		}
 	}
 }

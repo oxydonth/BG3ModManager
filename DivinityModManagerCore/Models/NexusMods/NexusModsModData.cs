@@ -1,4 +1,6 @@
-﻿using Newtonsoft.Json;
+﻿using DivinityModManager.Util;
+
+using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 
 using NexusModsNET.DataModels;
@@ -10,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
@@ -124,6 +127,7 @@ namespace DivinityModManager.Models.NexusMods
 				}
 			}
 			IsUpdated = true;
+			RaisePropertyChanged(nameof(IsUpdated));
 		}
 
 		public void Update(NexusMod data)
@@ -143,6 +147,7 @@ namespace DivinityModManager.Models.NexusMods
 				}
 			}
 			IsUpdated = true;
+			RaisePropertyChanged(nameof(IsUpdated));
 		}
 
 		[JsonIgnore]
