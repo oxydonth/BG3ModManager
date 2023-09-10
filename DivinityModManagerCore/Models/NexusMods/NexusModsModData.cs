@@ -16,7 +16,7 @@ using System.Threading.Tasks;
 
 namespace DivinityModManager.Models.NexusMods
 {
-	public class NexusModsModData : NexusMod, INotifyPropertyChanged
+	public class NexusModsModData : INotifyPropertyChanged
 	{
 		[JsonProperty("uuid")]
 		public string UUID { get; set; }
@@ -36,6 +36,48 @@ namespace DivinityModManager.Models.NexusMods
 				}
 			}
 		}
+
+		[JsonProperty("name")]
+		public string Name { get; set; }
+
+		[JsonProperty("summary")]
+		public string Summary { get; set; }
+
+		//[JsonProperty("description")]
+		//public string Description { get; set; }
+
+		[JsonProperty("picture_url")]
+		public Uri PictureUrl { get; set; }
+
+		[JsonProperty("mod_id")]
+		public long ModId { get; set; }
+
+		[JsonProperty("category_id")]
+		public long CategoryId { get; set; }
+
+		[JsonProperty("version")]
+		public string Version { get; set; }
+
+		[JsonProperty("endorsement_count")]
+		public long EndorsementCount { get; set; }
+
+		[JsonProperty("created_timestamp")]
+		public long CreatedTimestamp { get; set; }
+
+		[JsonProperty("updated_timestamp")]
+		public long UpdatedTimestamp { get; set; }
+
+		[JsonProperty("author")]
+		public string Author { get; set; }
+
+		[JsonProperty("contains_adult_content")]
+		public bool ContainsAdultContent { get; set; }
+
+		[JsonProperty("status")]
+		public string Status { get; set; }
+
+		[JsonProperty("available")]
+		public bool Available { get; set; }
 
 		public event PropertyChangedEventHandler PropertyChanged;
 
@@ -66,18 +108,38 @@ namespace DivinityModManager.Models.NexusMods
 			}
 		}
 
-		public void Update(NexusMod data)
-		{
-			var properties = typeof(NexusMod)
+		private static readonly IEnumerable<PropertyInfo> _lazySerializedProperties = typeof(NexusModsModData)
 			.GetProperties(BindingFlags.Public | BindingFlags.Instance)
 			.Where(prop => prop.GetCustomAttribute<JsonPropertyAttribute>(true) != null);
-			foreach(var prop in properties)
+
+		public void Update(NexusModsModData data)
+		{
+			foreach(var prop in _lazySerializedProperties)
 			{
 				var value = prop.GetValue(data);
 				if(value != null)
 				{
 					prop.SetValue(this, value);
 					RaisePropertyChanged(prop.Name);
+				}
+			}
+			IsUpdated = true;
+		}
+
+		public void Update(NexusMod data)
+		{
+			var t = typeof(NexusMod);
+			foreach(var prop in _lazySerializedProperties)
+			{
+				var nexusProp = t.GetProperty(prop.Name);
+				if(nexusProp != null)
+				{
+					var value = nexusProp.GetValue(data);
+					if (value != null)
+					{
+						prop.SetValue(this, value);
+						RaisePropertyChanged(prop.Name);
+					}
 				}
 			}
 			IsUpdated = true;
