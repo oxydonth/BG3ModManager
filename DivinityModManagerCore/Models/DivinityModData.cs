@@ -224,6 +224,9 @@ namespace DivinityModManager.Models
 		private readonly ObservableAsPropertyHelper<Visibility> _osirisStatusVisibility;
 		public Visibility OsirisStatusVisibility => _osirisStatusVisibility.Value;
 
+		private readonly ObservableAsPropertyHelper<Visibility> _nexusImageVisibility;
+		public Visibility NexusImageVisibility => _nexusImageVisibility.Value;
+
 		[Reactive] public bool WorkshopEnabled { get; set; }
 		[Reactive] public bool NexusModsEnabled { get; set; }
 		[Reactive] public bool CanDrag { get; set; }
@@ -314,6 +317,11 @@ namespace DivinityModManager.Models
 			NexusModsData = new NexusModsModData();
 
 			this.WhenAnyValue(x => x.UUID).BindTo(NexusModsData, x => x.UUID);
+
+			_nexusImageVisibility = this.WhenAnyValue(x => x.NexusModsData.PictureUrl)
+				.Select(uri => uri != null && !String.IsNullOrEmpty(uri.AbsolutePath) ? Visibility.Visible : Visibility.Collapsed)
+				.StartWith(Visibility.Collapsed)
+				.ToProperty(this, nameof(NexusImageVisibility), scheduler: RxApp.MainThreadScheduler);
 
 			_toggleForceAllowInLoadOrderVisibility = this.WhenAnyValue(x => x.IsForceLoaded, x => x.HasMetadata)
 				.Select(b => b.Item1 && b.Item2 ? Visibility.Visible : Visibility.Collapsed)

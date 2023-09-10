@@ -34,6 +34,7 @@
 	<conv:StringNotEmptyToVisibilityConverter x:Key="StringNotEmptyToVisibilityConverter" />
 	<conv:StringToSolidBrushConverter x:Key="StringToSolidBrushConverter" />
 	<conv:StringToLinearBrushConverter x:Key="StringToLinearBrushConverter" />
+	<conv:UriToBitmapImageConverter x:Key="UriToBitmapImageConverter" />
 	<xconv:ProgressBarWidthConverter x:Key="ProgressBarWidthConverter" />
 	<templateSelectors:TagTemplateSelector x:Key="TagTemplateSelector" />
 	<BitmapImage x:Key="SaveImage" UriSource="pack://application:,,,/Resources/Icons/Save_16x.png" />
@@ -575,6 +576,7 @@
 			</Style>
 		</controls:AutomationTooltip.Style>
 		<StackPanel
+			x:Name="InfoStackPanel"
 			MaxWidth="700"
 			Background="Transparent"
 			Orientation="Vertical">
@@ -694,6 +696,13 @@
 				<TextBlock Foreground="OrangeRed" Text="Overwritten builtin folders:" />
 				<TextBlock Text="{Binding BuiltinOverrideModsText}" />
 			</StackPanel>
+			<Image
+				MaxWidth="256"
+				MaxHeight="256"
+				RenderOptions.BitmapScalingMode="HighQuality"
+				Source="{Binding NexusModsData.PictureUrl, Converter={StaticResource UriToBitmapImageConverter}}"
+				Stretch="UniformToFill"
+				Visibility="{Binding NexusImageVisibility}" />
 		</StackPanel>
 	</controls:AutomationTooltip>
 	<Style

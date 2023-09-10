@@ -259,6 +259,7 @@
     <Compile Include="Converters\StringToLinearBrushConverter.cs" />
     <Compile Include="Converters\StringToSolidBrushConverter.cs" />
     <Compile Include="Converters\StringToUriConverter.cs" />
+    <Compile Include="Converters\UriToBitmapImageConverter.cs" />
     <Compile Include="Extensions\DependencyObjectExtensions.cs" />
     <Compile Include="MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
