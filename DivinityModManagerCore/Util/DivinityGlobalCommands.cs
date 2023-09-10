@@ -109,7 +109,7 @@ namespace DivinityModManager.Util
 		public void OpenNexusModsPage(DivinityModData mod)
 		{
 			DivinityApp.Log($"Opening url: {String.Format(DivinityApp.NEXUSMODS_MOD_URL, mod.NexusModsData.ModId)} | {mod.Name}");
-			if (mod.NexusModsData.ModId > -1)
+			if (mod.NexusModsData.ModId >= DivinityApp.NEXUSMODS_MOD_ID_START)
 			{
 				var url = String.Format(DivinityApp.NEXUSMODS_MOD_URL, mod.NexusModsData.ModId);
 				if (!String.IsNullOrEmpty(url))

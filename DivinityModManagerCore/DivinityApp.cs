@@ -45,6 +45,7 @@ namespace DivinityModManager
 		public const long NEXUSMODS_GAME_ID = 3474;
 		public const string NEXUSMODS_CACHE_FILE = "nexusmodsdata.json";
 		public const string NEXUSMODS_MOD_URL = "https://www.nexusmods.com/baldursgate3/mods/{0}";
+		public const long NEXUSMODS_MOD_ID_START = 1;
 
 		public const string WORKSHOP_CACHE_FILE = "workshopdata.json";
 

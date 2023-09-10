@@ -334,7 +334,7 @@ namespace DivinityModManager.Models
 				.StartWith(Visibility.Collapsed)
 				.ToProperty(this, nameof(OpenWorkshopLinkVisibility), scheduler: RxApp.MainThreadScheduler);
 
-			_canOpenNexusModsLink = this.WhenAnyValue(x => x.NexusModsEnabled, x => x.NexusModsData.ModId, (b, id) => b && id > -1).ToProperty(this, nameof(CanOpenNexusModsLink));
+			_canOpenNexusModsLink = this.WhenAnyValue(x => x.NexusModsEnabled, x => x.NexusModsData.ModId, (b, id) => b && id >= DivinityApp.NEXUSMODS_MOD_ID_START).ToProperty(this, nameof(CanOpenNexusModsLink));
 			_openNexusModsLinkVisibility = this.WhenAnyValue(x => x.CanOpenNexusModsLink)
 				.Select(b => b ? Visibility.Visible : Visibility.Collapsed)
 				.StartWith(Visibility.Collapsed)
