@@ -323,8 +323,8 @@ namespace DivinityModManager.Models
 				.StartWith(Visibility.Collapsed)
 				.ToProperty(this, nameof(NexusImageVisibility), scheduler: RxApp.MainThreadScheduler);
 
-			_toggleForceAllowInLoadOrderVisibility = this.WhenAnyValue(x => x.IsForceLoaded, x => x.HasMetadata)
-				.Select(b => b.Item1 && b.Item2 ? Visibility.Visible : Visibility.Collapsed)
+			_toggleForceAllowInLoadOrderVisibility = this.WhenAnyValue(x => x.IsForceLoaded, x => x.HasMetadata, x => x.IsForceLoadedMergedMod)
+				.Select(b => b.Item1 && b.Item2 && !b.Item3 ? Visibility.Visible : Visibility.Collapsed)
 				.StartWith(Visibility.Collapsed)
 				.ToProperty(this, nameof(ToggleForceAllowInLoadOrderVisibility), scheduler: RxApp.MainThreadScheduler);
 
