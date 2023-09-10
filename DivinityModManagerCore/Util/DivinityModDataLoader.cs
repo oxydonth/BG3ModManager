@@ -477,6 +477,7 @@ namespace DivinityModManager.Util
 							if (modFolderMatch.Success)
 							{
 								var modFolder = Path.GetFileName(modFolderMatch.Groups[2].Value.TrimEnd(Path.DirectorySeparatorChar));
+								var skipbuiltinCheck = false;
 								if (f.Name.Contains($"Mods/{modFolder}/Story/RawFiles/Goals"))
 								{
 									if (hasOsirisScripts == DivinityOsirisModStatus.NONE)
@@ -486,6 +487,22 @@ namespace DivinityModManager.Util
 									if(f.Name.Contains("ForceRecompile.txt"))
 									{
 										hasOsirisScripts = DivinityOsirisModStatus.MODFIXER;
+										continue;
+									}
+									else
+									{
+										using (var stream = f.MakeStream())
+										{
+											using (var sr = new System.IO.StreamReader(stream))
+											{
+												string text = await sr.ReadToEndAsync();
+												if(text.Contains("NRD_KillStory") || text.Contains("NRD_BadCall"))
+												{
+													hasOsirisScripts = DivinityOsirisModStatus.MODFIXER;
+													continue;
+												}
+											}
+										}
 									}
 								}
 								if (builtinMods.TryGetValue(modFolder, out var builtinMod))
