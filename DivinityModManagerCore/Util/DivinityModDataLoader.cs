@@ -453,6 +453,7 @@ namespace DivinityModManager.Util
 				var hasOsirisScripts = DivinityOsirisModStatus.NONE;
 				var builtinModOverrides = new Dictionary<string, DivinityModData>();
 				var files = new HashSet<string>();
+				var baseGameFiles = new HashSet<string>();
 
 				AbstractFileInfo extenderConfigPath = null;
 
@@ -508,14 +509,27 @@ namespace DivinityModManager.Util
 								if (builtinMods.TryGetValue(modFolder, out var builtinMod))
 								{
 									hasBuiltinDirectory = true;
-									if (!builtinModOverrides.ContainsKey(modFolder))
+									if (!IgnoreBuiltinPath.Any(x => f.Name.Contains(x)))
 									{
-										builtinModOverrides[builtinMod.Folder] = builtinMod;
-										if (!IgnoreBuiltinPath.Any(x => f.Name.Contains(x)))
+										isOverridingBuiltinDirectory = true;
+										
+										if (f.Size() > 0)
 										{
-											isOverridingBuiltinDirectory = true;
+											if (modFolder == "Game" && f.Name.Contains("GUI"))
+											{
+												if (f.Name.EndsWith(".xaml")) baseGameFiles.Add(f.Name);
+											}
+											else
+											{
+												baseGameFiles.Add(f.Name);
+											}
 										}
-										DivinityApp.Log($"Found a mod with a builtin directory. Pak({pakName}) Folder({modFolder}) File({f.Name}");
+
+										if (!builtinModOverrides.ContainsKey(modFolder))
+										{
+											builtinModOverrides[builtinMod.Folder] = builtinMod;
+											DivinityApp.Log($"Found a mod with a builtin directory. Pak({pakName}) Folder({modFolder}) File({f.Name}");
+										}
 									}
 								}
 								else
@@ -602,7 +616,14 @@ namespace DivinityModManager.Util
 					modData.Files = files;
 					if (isOverridingBuiltinDirectory)
 					{
-						modData.BuiltinOverrideModsText = String.Join(Environment.NewLine, builtinModOverrides.Values.OrderBy(x => x.Name).Select(x => $"{x.Folder} ({x.Name})"));
+						if(baseGameFiles.Count < DivinityApp.MAX_FILE_OVERRIDE_DISPLAY)
+						{
+							modData.BuiltinOverrideModsText = String.Join(Environment.NewLine, baseGameFiles.OrderBy(x => x));
+						}
+						else
+						{
+							modData.BuiltinOverrideModsText = String.Join(Environment.NewLine, builtinModOverrides.Values.OrderBy(x => x.Name).Select(x => $"{x.Folder} ({x.Name})"));
+						}
 						modData.IsForceLoaded = true;
 					}
 					modData.FilePath = pakPath;

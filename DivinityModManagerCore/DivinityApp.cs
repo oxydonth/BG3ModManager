@@ -56,6 +56,8 @@ namespace DivinityModManager
 		public const string EXTENDER_UPDATER_FILE = "DWrite.dll";
 		public const int EXTENDER_DEFAULT_VERSION = 1;
 
+		public const int MAX_FILE_OVERRIDE_DISPLAY = 10;
+
 		public const LSLib.LS.Enums.Game GAME = LSLib.LS.Enums.Game.BaldursGate3;
 		public const LSLib.LS.Story.Compiler.TargetGame GAME_COMPILER = LSLib.LS.Story.Compiler.TargetGame.BG3;
 
