@@ -1234,7 +1234,7 @@ Directory the zip will be extracted to:
 
 			this.WhenAnyValue(x => x.Settings.NexusModsAPIKey).Subscribe((key) =>
 			{
-				if(!String.IsNullOrEmpty(key))
+				if(String.IsNullOrEmpty(key))
 				{
 					NexusModsDataLoader.Dispose();
 				}
