@@ -1,11 +1,7 @@
-﻿using Alphaleonis.Win32.Filesystem;
-
-using DivinityModManager.Controls;
+﻿using DivinityModManager.Controls;
 using DivinityModManager.Converters;
 using DivinityModManager.Models;
 using DivinityModManager.ViewModels;
-
-using DynamicData.Binding;
 
 using GongSolutions.Wpf.DragDrop.Utilities;
 
@@ -17,9 +13,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.IO.Packaging;
 using System.Linq;
-using System.Reactive;
 using System.Reactive.Concurrency;
-using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Windows;
 using System.Windows.Automation.Peers;
@@ -294,7 +288,9 @@ namespace DivinityModManager.Views
 			{
 				var selectedMods = ViewModel.ActiveMods.Where(x => x.IsSelected).ToList();
 
-				var selectedMod = selectedMods.First();
+				if (selectedMods.Count <= 0) return;
+
+				var selectedMod = selectedMods.FirstOrDefault();
 				var nextSelectedIndex = ViewModel.ActiveMods.IndexOf(selectedMod);
 
 				var scrollTargetIndex = InactiveModsListView.SelectedIndex;
@@ -344,7 +340,10 @@ namespace DivinityModManager.Views
 			{
 				var selectedMods = ViewModel.InactiveMods.Where(x => x.IsSelected).ToList();
 
-				var nextSelectedIndex = ViewModel.InactiveMods.IndexOf(selectedMods.First());
+				if (selectedMods.Count <= 0) return;
+
+				var selectedMod = selectedMods.FirstOrDefault();
+				var nextSelectedIndex = ViewModel.InactiveMods.IndexOf(selectedMod);
 
 				var scrollTargetIndex = ActiveModsListView.SelectedIndex;
 				var dropInfo = new ManualDropInfo(selectedMods, ActiveModsListView.SelectedIndex, ActiveModsListView, ViewModel.ActiveMods, ViewModel.InactiveMods);
@@ -363,8 +362,6 @@ namespace DivinityModManager.Views
 				}
 
 				_updateScroll?.Dispose();
-
-				var selectedMod = selectedMods.First();
 
 				_updateScroll = RxApp.MainThreadScheduler.Schedule(TimeSpan.FromMilliseconds(250), _ =>
 				{
