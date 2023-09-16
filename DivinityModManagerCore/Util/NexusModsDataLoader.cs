@@ -90,10 +90,9 @@ namespace DivinityModManager.Util
 
 		public static async Task<List<NexusModsModDownloadLink>> GetLatestDownloadsForMods(List<DivinityModData> mods, CancellationToken t)
 		{
-			if (!CanFetchData || mods.Count <= 0) return 0;
-			_isActive = true;
-
 			var links = new List<NexusModsModDownloadLink>();
+			if (!CanFetchData || mods.Count <= 0) return links;
+			_isActive = true;
 
 			try
 			{
@@ -119,7 +118,7 @@ namespace DivinityModManager.Util
 								if(file != null)
 								{
 									var fileId = file.FileId;
-									var linkResult = await dataLoader.ModFiles.GetModFileDownloadLinksAsync(DivinityApp.NEXUSMODS_GAME_DOMAIN, mod.NexusModsData.ModId, fileId, t)
+									var linkResult = await dataLoader.ModFiles.GetModFileDownloadLinksAsync(DivinityApp.NEXUSMODS_GAME_DOMAIN, mod.NexusModsData.ModId, fileId, t);
 									if(linkResult != null && linkResult.Count() > 0)
 									{
 										var primaryLink = linkResult.FirstOrDefault();

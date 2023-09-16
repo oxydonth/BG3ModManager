@@ -50,6 +50,7 @@ using System.Windows.Markup;
 using DivinityModManager.Models.Extender;
 using DynamicData.Kernel;
 using DivinityModManager.Models.NexusMods;
+using DivinityModManager.Models.Updates;
 
 namespace DivinityModManager.ViewModels
 {
@@ -1330,7 +1331,7 @@ Directory the zip will be extracted to:
 			return newWorkshopMods;
 		}
 
-		public void CheckForModUpdates(CancellationToken cts)
+		public void CheckForWorkshopModUpdates(CancellationToken cts)
 		{
 			ModUpdatesViewData.Clear();
 
@@ -1357,10 +1358,11 @@ Directory the zip will be extracted to:
 								DivinityApp.Log($"Update available for ({pakMod.FileName}): Workshop({workshopMod.LastModified}) > Local({pakMod.LastModified})");
 							}
 
-							ModUpdatesViewData.Updates.Add(new DivinityModUpdateData()
+							ModUpdatesViewData.Mods.Add(new DivinityModUpdateData()
 							{
 								LocalMod = pakMod,
-								WorkshopMod = workshopMod
+								UpdatedMod = workshopMod,
+								IsNewMod = false,
 							});
 							count++;
 						}
@@ -1373,7 +1375,11 @@ Directory the zip will be extracted to:
 				}
 				else
 				{
-					ModUpdatesViewData.NewMods.Add(workshopMod);
+					ModUpdatesViewData.Mods.Add(new DivinityModUpdateData()
+					{
+						UpdatedMod = workshopMod,
+						IsNewMod = true,
+					});
 					count++;
 				}
 			}
@@ -2566,7 +2572,7 @@ Directory the zip will be extracted to:
 					DivinityApp.Log($"Loaded '{workshopMods.Count}' workshop mods from '{Settings.WorkshopPath}'.");
 					if (!workshopModLoadingCancelToken.IsCancellationRequested)
 					{
-						CheckForModUpdates(workshopModLoadingCancelToken);
+						CheckForWorkshopModUpdates(workshopModLoadingCancelToken);
 					}
 					return Unit.Default;
 				}, RxApp.MainThreadScheduler);
