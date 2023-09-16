@@ -65,8 +65,8 @@ namespace DivinityModManager.ViewModels
 		[MenuSettings("File", "Reload All")]
 		public Hotkey Refresh { get; private set; } = new Hotkey(Key.F5);
 
-		[MenuSettings("File", "Refresh Workshop Updates")]
-		public Hotkey RefreshWorkshop { get; private set; } = new Hotkey(Key.F6);
+		[MenuSettings("File", "Refresh Mod Updates")]
+		public Hotkey RefreshModUpdates { get; private set; } = new Hotkey(Key.F6);
 
 		[MenuSettings("Edit", "Moved Selected Mods to Opposite List", true)]
 		public Hotkey Confirm { get; private set; } = new Hotkey(Key.Enter);

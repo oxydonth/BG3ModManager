@@ -51,6 +51,8 @@ using DivinityModManager.Models.Extender;
 using DynamicData.Kernel;
 using DivinityModManager.Models.NexusMods;
 using DivinityModManager.Models.Updates;
+using DivinityModManager.Models.Cache;
+using DivinityModManager.ModUpdater;
 
 namespace DivinityModManager.ViewModels
 {
@@ -144,8 +146,7 @@ namespace DivinityModManager.ViewModels
 		protected ReadOnlyObservableCollection<DivinityModData> workshopModsCollection;
 		public ReadOnlyObservableCollection<DivinityModData> WorkshopMods => workshopModsCollection;
 
-		private NexusModsCachedData CachedNexusModsData { get; set; } = new NexusModsCachedData();
-		private CachedWorkshopData CachedWorkshopData { get; set; } = new CachedWorkshopData();
+		private ModUpdateHandler UpdateHandler;
 
 		public DivinityPathwayData PathwayData { get; private set; } = new DivinityPathwayData();
 
@@ -229,7 +230,7 @@ namespace DivinityModManager.ViewModels
 		[Reactive] public bool IsDragging { get; set; }
 		[Reactive] public bool AppSettingsLoaded { get; set; }
 		[Reactive] public bool IsRefreshing { get; private set; }
-		[Reactive] public bool IsRefreshingWorkshop { get; private set; }
+		[Reactive] public bool IsRefreshingModUpdates { get; private set; }
 
 		private readonly ObservableAsPropertyHelper<bool> _isLocked;
 
@@ -310,7 +311,7 @@ namespace DivinityModManager.ViewModels
 		public ReactiveCommand<DivinityLoadOrder, Unit> DeleteOrderCommand { get; private set; }
 		public ReactiveCommand<object, Unit> ToggleOrderRenamingCommand { get; set; }
 		public ReactiveCommand<Unit, Unit> RefreshCommand { get; private set; }
-		public ReactiveCommand<Unit, Unit> RefreshWorkshopCommand { get; private set; }
+		public ReactiveCommand<Unit, Unit> RefreshModUpdatesCommand { get; private set; }
 
 		private DivinityGameLaunchWindowAction actionOnGameLaunch = DivinityGameLaunchWindowAction.None;
 		public DivinityGameLaunchWindowAction ActionOnGameLaunch
@@ -1389,7 +1390,7 @@ Directory the zip will be extracted to:
 				DivinityApp.Log($"'{count}' mod updates pending.");
 			}
 			ModUpdatesViewData.OnLoaded?.Invoke();
-			IsRefreshingWorkshop = false;
+			IsRefreshingModUpdates = false;
 		}
 
 		private string GetLarianStudiosAppDataFolder()
@@ -1990,7 +1991,7 @@ Directory the zip will be extracted to:
 
 					if (result.Mods.Count > 0 && result.Mods.Any(x => x.NexusModsData.ModId >= DivinityApp.NEXUSMODS_MOD_ID_START))
 					{
-						await UpdateNexuModDataForModsAsync(result.Mods, MainProgressToken.Token);
+						await UpdateHandler.Nexus.Update(result.Mods, MainProgressToken.Token);
 					}
 
 					await ctrl.Yield();
@@ -2327,7 +2328,7 @@ Directory the zip will be extracted to:
 		private readonly List<string> ignoredModProjectNames = new List<string> { "Test", "Debug" };
 		private bool CanFetchWorkshopData(DivinityModData mod)
 		{
-			if (CachedWorkshopData.NonWorkshopMods.Contains(mod.UUID))
+			if (UpdateHandler.Workshop.CacheData.NonWorkshopMods.Contains(mod.UUID))
 			{
 				return false;
 			}
@@ -2336,299 +2337,68 @@ Directory the zip will be extracted to:
 			{
 				return false;
 			}
-			else if (mod.Author == "Larian" || String.IsNullOrEmpty(mod.DisplayName))
+			else if (mod.IsLarianMod || String.IsNullOrEmpty(mod.DisplayName))
 			{
 				return false;
 			}
-			return String.IsNullOrEmpty(mod.WorkshopData.ID) || !CachedWorkshopData.Mods.Any(x => x.UUID == mod.UUID);
+			return String.IsNullOrEmpty(mod.WorkshopData.ID) || !UpdateHandler.Workshop.CacheData.Mods.ContainsKey(mod.UUID);
 		}
 
-		private async Task<bool> CacheAllWorkshopModsAsync()
+		private async Task<bool> LoadAllCachedDataAsync()
 		{
-			var success = await WorkshopDataLoader.GetAllWorkshopDataAsync(CachedWorkshopData, AppSettings.DefaultPathways.Steam.AppID);
-			if (success)
+			await UpdateHandler.LoadAsync(Version, MainProgressToken.Token);
+			if(UpdateHandler.Nexus.IsEnabled)
 			{
-				var cachedGUIDs = CachedWorkshopData.Mods.Select(x => x.UUID).ToHashSet();
-				var nonWorkshopMods = UserMods.Where(x => !cachedGUIDs.Contains(x.UUID)).ToList();
-				if (nonWorkshopMods.Count > 0)
+				foreach (var kvp in UpdateHandler.Nexus.CacheData.Mods)
 				{
-					foreach (var m in nonWorkshopMods)
+					var existing = mods.Lookup(kvp.Key);
+					if (existing.HasValue)
 					{
-						CachedWorkshopData.AddNonWorkshopMod(m.UUID);
+						var mod = existing.Value;
+						mod.NexusModsData.Update(kvp.Value);
+						mod.NexusModsData.LastFileId = kvp.Value.LastFileId;
 					}
 				}
-			}
-			return success;
-		}
-
-
-		private void UpdateModDataWithCachedData()
-		{
-			foreach (var mod in UserMods)
-			{
-				var cachedMods = CachedWorkshopData.Mods.Where(x => x.UUID == mod.UUID);
-				if (cachedMods != null)
-				{
-					foreach (var cachedMod in cachedMods)
-					{
-						if (String.IsNullOrEmpty(mod.WorkshopData.ID) || mod.WorkshopData.ID == cachedMod.WorkshopID)
-						{
-							mod.WorkshopData.ID = cachedMod.WorkshopID;
-							mod.WorkshopData.CreatedDate = DateUtils.UnixTimeStampToDateTime(cachedMod.Created);
-							mod.WorkshopData.UpdatedDate = DateUtils.UnixTimeStampToDateTime(cachedMod.LastUpdated);
-							mod.WorkshopData.Tags = cachedMod.Tags;
-							mod.AddTags(cachedMod.Tags);
-							if (cachedMod.LastUpdated > 0)
-							{
-								mod.LastUpdated = mod.WorkshopData.UpdatedDate;
-							}
-						}
-					}
-				}
-			}
-		}
-
-		private static readonly JsonSerializerSettings _nexusModsCachedDataSettings = new JsonSerializerSettings
-		{
-			NullValueHandling = NullValueHandling.Ignore,
-			Formatting = Formatting.None
-		};
-
-		private async Task<bool> SaveNexusModsDataAsync(bool updateLastTimestamp = true)
-		{
-			var filePath = DivinityApp.GetAppDirectory("Data", DivinityApp.NEXUSMODS_CACHE_FILE);
-			var parentDir = Path.GetDirectoryName(filePath);
-			if (!Directory.Exists(parentDir)) Directory.CreateDirectory(parentDir);
-
-			if(updateLastTimestamp)
-			{
-				CachedNexusModsData.LastUpdated = DateTimeOffset.Now.ToUnixTimeSeconds();
-			}
-			CachedNexusModsData.LastVersion = this.Version;
-
-			foreach(var mod in mods.Items.Where(x => x.NexusModsData.ModId >= DivinityApp.NEXUSMODS_MOD_ID_START).Select(x => x.NexusModsData))
-			{
-				CachedNexusModsData.Mods[mod.UUID] = mod;
-			}
-
-			DivinityApp.Log($"Saving NexusMods mod info cache to '{filePath}'");
-
-			string contents = JsonConvert.SerializeObject(CachedNexusModsData, _nexusModsCachedDataSettings);
-
-			var buffer = Encoding.UTF8.GetBytes(contents);
-			using (var fs = new System.IO.FileStream(filePath, System.IO.FileMode.Create,
-				System.IO.FileAccess.Write, System.IO.FileShare.None, buffer.Length, true))
-			{
-				await fs.WriteAsync(buffer, 0, buffer.Length);
 			}
 
 			return true;
 		}
 
-		private async Task<int> UpdateNexuModDataForModsAsync(List<DivinityModData> mods, CancellationToken cts)
+		private void RefreshAllModUpdatesBackground()
 		{
-			if (!NexusModsDataLoader.IsInitialized && !String.IsNullOrEmpty(Settings.NexusModsAPIKey))
+			IsRefreshingModUpdates = true;
+			var disposable = RxApp.TaskpoolScheduler.ScheduleAsync(async (sch, cts) =>
 			{
-				NexusModsDataLoader.Init(Settings.NexusModsAPIKey, AutoUpdater.AppTitle, Version);
-			}
+				UpdateHandler.Workshop.SteamAppID = AppSettings.DefaultPathways.Steam.AppID;
 
-			if (NexusModsDataLoader.CanFetchData)
-			{
-				DivinityApp.Log($"Using NexusMods API to update {mods.Count} mods");
-				int successes = 0;
-				try
-				{
-					successes = await NexusModsDataLoader.LoadAllModsDataAsync(mods, cts);
-				}
-				catch (Exception ex)
-				{
-					DivinityApp.Log($"Error fetching NexusMods data:\n{ex}");
-				}
+				UpdateHandler.Nexus.APIKey = Settings.NexusModsAPIKey;
+				UpdateHandler.Nexus.AppName = AutoUpdater.AppTitle;
+				UpdateHandler.Nexus.AppVersion = Version;
 
-				if (successes > 0)
-				{
-					DivinityApp.Log($"Fetched NexusMods mod info for {successes} mods.");
-					await SaveNexusModsDataAsync();
-				}
-				else
-				{
-					DivinityApp.Log($"Failed to fetch any NexusMods mod info.");
-				}
+				UpdateHandler.Workshop.IsEnabled = WorkshopSupportEnabled && !Settings.DisableWorkshopTagCheck;
+				UpdateHandler.Nexus.IsEnabled = DivinityApp.NexusModsEnabled;
 
-				return successes;
-			}
-			else
-			{
-				DivinityApp.Log("NexusModsAPIKey not set, or daily/hourly limit reached. Skipping.");
-			}
-			return 0;
-		}
-
-		private void LoadNexusModDataBackground()
-		{
-			var filePath = DivinityApp.GetAppDirectory("Data", DivinityApp.NEXUSMODS_CACHE_FILE);
-			DivinityApp.Log($"Checking & loading {filePath}");
-
-			if (File.Exists(filePath) && DivinityJsonUtils.TrySafeDeserializeFromPath<NexusModsCachedData>(filePath, out var cachedData))
-			{
-				foreach (var entry in cachedData.Mods)
+				if (UpdateHandler.Workshop.IsEnabled)
 				{
-					if (CachedNexusModsData.Mods.TryGetValue(entry.Key, out var existing))
+					var loadedWorkshopMods = await LoadWorkshopModsAsync(cts);
+					await Observable.Start(() =>
 					{
-						if (existing.UpdatedTimestamp < entry.Value.UpdatedTimestamp || !existing.IsUpdated)
+						workshopMods.AddOrUpdate(loadedWorkshopMods);
+						DivinityApp.Log($"Loaded '{workshopMods.Count}' workshop mods from '{Settings.WorkshopPath}'.");
+						if (!workshopModLoadingCancelToken.IsCancellationRequested)
 						{
-							CachedNexusModsData.Mods[entry.Key] = entry.Value;
+							CheckForWorkshopModUpdates(workshopModLoadingCancelToken);
 						}
-					}
-					else
-					{
-						CachedNexusModsData.Mods[entry.Key] = entry.Value;
-					}
+						return Unit.Default;
+					}, RxApp.MainThreadScheduler);
 				}
 
-				DivinityApp.Log("Updating mods with cached data.");
+				await UpdateHandler.LoadAsync(Version, cts);
+				await UpdateHandler.UpdateAsync(UserMods, cts);
+				await UpdateHandler.SaveAsync(UserMods, Version, cts);
 
-				foreach (var data in CachedNexusModsData.Mods.Values)
-				{
-					var existing = mods.Lookup(data.UUID);
-					if (existing.HasValue)
-					{
-						var mod = existing.Value;
-						mod.NexusModsData.Update(data);
-						mod.NexusModsData.LastFileId = data.LastFileId;
-					}
-
-				}
-			}
-
-			if(!NexusModsDataLoader.IsInitialized && !String.IsNullOrEmpty(Settings.NexusModsAPIKey))
-			{
-				NexusModsDataLoader.Init(Settings.NexusModsAPIKey, AutoUpdater.AppTitle, Version);
-			}
-
-			if(NexusModsDataLoader.CanFetchData)
-			{
-				RxApp.TaskpoolScheduler.ScheduleAsync((async (s, cts) =>
-				{
-					var checkMods = mods.Items.Where(x => x.NexusModsData.ModId >= DivinityApp.NEXUSMODS_MOD_ID_START).ToList();
-					DivinityApp.Log($"Using NexusMods API to update {checkMods.Count} mods");
-					int successes = 0;
-					try
-					{
-						successes = await NexusModsDataLoader.LoadAllModsDataAsync(checkMods, cts);
-					}
-					catch(Exception ex)
-					{
-						DivinityApp.Log($"Error fetching NexusMods data:\n{ex}");
-					}
-					
-					if (successes > 0)
-					{
-						DivinityApp.Log($"Fetched NexusMods mod info for {successes} mods.");
-						await SaveNexusModsDataAsync();
-					}
-					else
-					{
-						DivinityApp.Log($"Failed to fetch any NexusMods mod info.");
-					}
-				}));
-			}
-			else
-			{
-				DivinityApp.Log("NexusModsAPIKey not set, or daily/hourly limit reached. Skipping.");
-			}
-		}
-
-		private void LoadWorkshopModDataBackground()
-		{
-			bool workshopCacheFound = false;
-
-			var filePath = DivinityApp.GetAppDirectory("Data", DivinityApp.WORKSHOP_CACHE_FILE);
-
-			if (File.Exists(filePath))
-			{
-				var cachedData = DivinityJsonUtils.SafeDeserializeFromPath<CachedWorkshopData>(filePath);
-				if (cachedData != null)
-				{
-					CachedWorkshopData = cachedData;
-					if (String.IsNullOrEmpty(CachedWorkshopData.LastVersion) || CachedWorkshopData.LastVersion != this.Version)
-					{
-						CachedWorkshopData.LastUpdated = -1;
-					}
-					UpdateModDataWithCachedData();
-					workshopCacheFound = true;
-				}
-			}
-
-			IsRefreshingWorkshop = true;
-
-			RxApp.TaskpoolScheduler.ScheduleAsync((async (s, token) =>
-			{
-				workshopModLoadingCancelToken = token;
-				var loadedWorkshopMods = await LoadWorkshopModsAsync(workshopModLoadingCancelToken);
-				await Observable.Start(() =>
-				{
-					workshopMods.AddOrUpdate(loadedWorkshopMods);
-					DivinityApp.Log($"Loaded '{workshopMods.Count}' workshop mods from '{Settings.WorkshopPath}'.");
-					if (!workshopModLoadingCancelToken.IsCancellationRequested)
-					{
-						CheckForWorkshopModUpdates(workshopModLoadingCancelToken);
-					}
-					return Unit.Default;
-				}, RxApp.MainThreadScheduler);
-
-				if (!Settings.DisableWorkshopTagCheck)
-				{
-					if (!workshopCacheFound || CachedWorkshopData.LastUpdated == -1 || (DateTimeOffset.Now.ToUnixTimeSeconds() - CachedWorkshopData.LastUpdated >= 3600))
-					{
-						RxApp.MainThreadScheduler.Schedule(() =>
-						{
-							StatusBarRightText = "Downloading workshop data...";
-							StatusBarBusyIndicatorVisibility = Visibility.Visible;
-						});
-						bool success = await CacheAllWorkshopModsAsync();
-						if (success)
-						{
-							UpdateModDataWithCachedData();
-							CachedWorkshopData.LastUpdated = DateTimeOffset.Now.ToUnixTimeSeconds();
-						}
-					}
-					else
-					{
-						DivinityApp.Log("Checking for mods missing workshop data.");
-						var targetMods = UserMods.Where(x => CanFetchWorkshopData(x)).ToList();
-						if (targetMods.Count > 0)
-						{
-							RxApp.MainThreadScheduler.Schedule(() =>
-							{
-								StatusBarRightText = $"Downloading workshop data for {targetMods.Count} mods...";
-								StatusBarBusyIndicatorVisibility = Visibility.Visible;
-							});
-							var totalSuccesses = await WorkshopDataLoader.FindWorkshopDataAsync(targetMods, CachedWorkshopData, AppSettings.DefaultPathways.Steam.AppID);
-							if (totalSuccesses > 0)
-							{
-								UpdateModDataWithCachedData();
-							}
-						}
-					}
-
-					CachedWorkshopData.LastVersion = this.Version;
-
-					RxApp.MainThreadScheduler.Schedule(() =>
-					{
-						StatusBarRightText = "";
-						StatusBarBusyIndicatorVisibility = Visibility.Collapsed;
-						string updateMessage = !CachedWorkshopData.CacheUpdated ? "cached " : "";
-						ShowAlert($"Loaded {updateMessage}workshop data ({CachedWorkshopData.Mods.Count} mods)", AlertType.Success, 60);
-					});
-
-					if (CachedWorkshopData.CacheUpdated)
-					{
-						await DivinityFileUtils.WriteFileAsync(filePath, CachedWorkshopData.Serialize());
-						CachedWorkshopData.CacheUpdated = false;
-					}
-				}
-			}));
+				IsRefreshingModUpdates = false;
+			});
 		}
 
 		private async Task<Unit> RefreshAsync(IScheduler ctrl, CancellationToken t)
@@ -2833,15 +2603,7 @@ Directory the zip will be extracted to:
 				IsLoadingOrder = false;
 				IsInitialized = true;
 
-				if (WorkshopSupportEnabled)
-				{
-					LoadWorkshopModDataBackground();
-				}
-
-				if (DivinityApp.NexusModsEnabled)
-				{
-					LoadNexusModDataBackground();
-				}
+				RefreshAllModUpdatesBackground();
 
 				return Unit.Default;
 			}, RxApp.MainThreadScheduler);
@@ -3361,7 +3123,7 @@ Directory the zip will be extracted to:
 					await ImportOrderZipFileAsync(result, dialog.FileName, false, MainProgressToken.Token);
 					if (result.Mods.Count > 0 && result.Mods.Any(x => x.NexusModsData.ModId >= DivinityApp.NEXUSMODS_MOD_ID_START))
 					{
-						await UpdateNexuModDataForModsAsync(result.Mods, MainProgressToken.Token);
+						await UpdateHandler.Nexus.Update(result.Mods, MainProgressToken.Token);
 					}
 					await ctrl.Yield();
 					RxApp.MainThreadScheduler.Schedule(_ =>
@@ -3639,7 +3401,7 @@ Directory the zip will be extracted to:
 
 					if (nexusFileInfo.Success && success)
 					{
-						await SaveNexusModsDataAsync(false);
+						await UpdateHandler.Nexus.SaveCacheAsync(false, Version, MainProgressToken.Token);
 					}
 
 					IncreaseMainProgressValue(taskStepAmount);
@@ -5086,6 +4848,7 @@ Directory the zip will be extracted to:
 			MainProgressValue = 0d;
 			MainProgressIsActive = true;
 			StatusBarBusyIndicatorVisibility = Visibility.Collapsed;
+			UpdateHandler = new ModUpdateHandler();
 
 			exceptionHandler = new MainWindowExceptionHandler(this);
 			RxApp.DefaultExceptionHandler = exceptionHandler;
@@ -5148,17 +4911,16 @@ Directory the zip will be extracted to:
 
 			Keys.Refresh.AddAction(() => RefreshCommand.Execute(Unit.Default).Subscribe(), canRefreshObservable);
 
-			var canRefreshWorkshop = this.WhenAnyValue(x => x.IsRefreshing, x => x.IsRefreshingWorkshop, x => x.AppSettingsLoaded, (b1, b2, b3) => !b1 && !b2 && b3 && AppSettings.FeatureEnabled("Workshop")).StartWith(false);
+			var canRefreshModUpdates = this.WhenAnyValue(x => x.IsRefreshing, x => x.IsRefreshingModUpdates, x => x.AppSettingsLoaded, (b1, b2, b3) => !b1 && !b2 && b3).StartWith(false);
 
-			RefreshWorkshopCommand = ReactiveCommand.Create(() =>
+			RefreshModUpdatesCommand = ReactiveCommand.Create(() =>
 			{
 				ModUpdatesViewData?.Clear();
 				ModUpdatesViewVisible = ModUpdatesAvailable = false;
-				workshopMods.Clear();
-				LoadWorkshopModDataBackground();
-			}, canRefreshWorkshop, RxApp.MainThreadScheduler);
+				RefreshAllModUpdatesBackground();
+			}, canRefreshModUpdates, RxApp.MainThreadScheduler);
 
-			Keys.RefreshWorkshop.AddAction(() => RefreshWorkshopCommand.Execute(Unit.Default).Subscribe(), canRefreshWorkshop);
+			Keys.RefreshModUpdates.AddAction(() => RefreshModUpdatesCommand.Execute(Unit.Default).Subscribe(), canRefreshModUpdates);
 
 			IObservable<bool> canStartExport = this.WhenAny(x => x.MainProgressToken, (t) => t != null).StartWith(false);
 			Keys.ExportOrderToZip.AddAction(ExportLoadOrderToArchive_Start, canStartExport);

@@ -142,17 +142,21 @@ namespace DivinityModManager.Util
 			return links;
 		}
 
-		public static async Task<int> LoadAllModsDataAsync(List<DivinityModData> mods, CancellationToken t)
+		public static async Task<int> LoadAllModsDataAsync(IEnumerable<DivinityModData> mods, CancellationToken t)
 		{
-			if (!CanFetchData || mods.Count <= 0) return 0;
+			if (!CanFetchData) return 0;
 			var totalLoaded = 0;
 
 			_isActive = true;
 
 			try
 			{
-				var apiCallAmount = mods.Count(x => x.NexusModsData.ModId >= DivinityApp.NEXUSMODS_MOD_ID_START);
-				if (!CanDoTask(apiCallAmount))
+				var targetMods = mods.Where(mod => mod.NexusModsData.ModId >= DivinityApp.NEXUSMODS_MOD_ID_START).ToList();
+				var total = targetMods.Count;
+				if (total == 0) return 0;
+
+				var apiCallAmount = total; // 1 call for 1 mod
+				if (!CanDoTask(total))
 				{
 					var apiAmounts = _client.RateLimitsManagement.APILimits;
 
@@ -161,18 +165,17 @@ namespace DivinityModManager.Util
 					return totalLoaded;
 				}
 
+				DivinityApp.Log($"Using NexusMods API to update {total} mods");
+
 				using (var dataLoader = new InfosInquirer(_client))
 				{
-					foreach (var mod in mods)
+					foreach (var mod in targetMods)
 					{
-						if (mod.NexusModsData.ModId >= DivinityApp.NEXUSMODS_MOD_ID_START)
+						var result = await dataLoader.Mods.GetMod(DivinityApp.NEXUSMODS_GAME_DOMAIN, mod.NexusModsData.ModId, t);
+						if (result != null)
 						{
-							var result = await dataLoader.Mods.GetMod(DivinityApp.NEXUSMODS_GAME_DOMAIN, mod.NexusModsData.ModId, t);
-							if (result != null)
-							{
-								mod.NexusModsData.Update(result);
-								totalLoaded++;
-							}
+							mod.NexusModsData.Update(result);
+							totalLoaded++;
 						}
 
 						if (t.IsCancellationRequested) break;

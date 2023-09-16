@@ -146,7 +146,7 @@ namespace DivinityModManager.ViewModels
 						new TaskDialogButton(ButtonType.No)
 					},
 				WindowTitle = "Update Mods?",
-				Content = "Override local mods with the latest workshop versions?",
+				Content = "Override local mods with the selected updates?",
 				MainIcon = TaskDialogIcon.Warning
 			})
 			{
@@ -161,7 +161,7 @@ namespace DivinityModManager.ViewModels
 		private void CopyFilesProgress_RunWorkerCompleted(object sender, System.ComponentModel.RunWorkerCompletedEventArgs e)
 		{
 			Unlocked = true;
-			DivinityApp.Log("Workshop mod copying complete.");
+			DivinityApp.Log("Mod updating complete.");
 			try
 			{
 				if (e.Result is CopyModUpdatesTask args)
@@ -171,7 +171,7 @@ namespace DivinityModManager.ViewModels
 			}
 			catch(Exception ex)
 			{
-				string message = $"Error copying workshop mods: {ex}";
+				string message = $"Error copying mods: {ex}";
 				DivinityApp.Log(message);
 				MainWindow.Self.AlertBar.SetDangerAlert(message);
 			}
@@ -186,7 +186,7 @@ namespace DivinityModManager.ViewModels
 				var totalWork = args.NewFilesToMove.Count + args.UpdatesToMove.Count;
 				if (args.NewFilesToMove.Count > 0)
 				{
-					DivinityApp.Log($"Copying '{args.NewFilesToMove.Count}' new workshop mod(s) to the local mods folder.");
+					DivinityApp.Log($"Copying '{args.NewFilesToMove.Count}' new mod(s) to the local mods folder.");
 
 					foreach (string file in args.NewFilesToMove)
 					{
@@ -219,19 +219,19 @@ namespace DivinityModManager.ViewModels
 				{
 					string backupFolder = Path.Combine(_mainWindowViewModel.PathwayData.AppDataGameFolder, "Mods_Old_ModManager");
 					Directory.CreateDirectory(backupFolder);
-					DivinityApp.Log($"Copying '{args.UpdatesToMove.Count}' workshop mod update(s) to the local mods folder.");
+					DivinityApp.Log($"Copying '{args.UpdatesToMove.Count}' mod update(s) to the local mods folder.");
 					foreach (string file in args.UpdatesToMove)
 					{
 						if (e.Cancel) return;
 						string baseName = Path.GetFileName(file);
 						try
 						{
-							DivinityApp.Log($"Moving workshop mod into mods folder: '{file}'.");
+							DivinityApp.Log($"Moving mod into mods folder: '{file}'.");
 							File.Copy(file, Path.Combine(args.ModPakFolder, Path.GetFileName(file)), true);
 						}
 						catch(Exception ex)
 						{
-							DivinityApp.Log($"Error copying workshop mod:\n{ex}");
+							DivinityApp.Log($"Error copying mod:\n{ex}");
 						}
 						dialog.ReportProgress(args.TotalMoved / totalWork, $"Copying '{baseName}'...", null);
 						args.TotalMoved++;
