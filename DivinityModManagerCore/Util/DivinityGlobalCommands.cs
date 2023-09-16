@@ -34,6 +34,7 @@ namespace DivinityModManager.Util
 		public ReactiveCommand<DivinityModData, Unit> OpenSteamWorkshopPageCommand { get; private set; }
 		public ReactiveCommand<DivinityModData, Unit> OpenSteamWorkshopPageInSteamCommand { get; private set; }
 		public ReactiveCommand<DivinityModData, Unit> OpenNexusModsPageCommand { get; private set; }
+		public ReactiveCommand<string, Unit> OpenURLCommand { get; private set; }
 		public ReactiveCommand<DivinityModData, Unit> ToggleForceAllowInLoadOrderCommand { get; private set; }
 
 		public void OpenFile(string path)
@@ -88,9 +89,17 @@ namespace DivinityModManager.Util
 			}
 		}
 
+		public void OpenURL(string url)
+		{
+			if (!String.IsNullOrEmpty(url))
+			{
+				DivinityFileUtils.TryOpenPath(url);
+			}
+		}
+
 		public void OpenSteamWorkshopPage(DivinityModData mod)
 		{
-			var url = mod.GetWorkshopURL();
+			var url = mod.GetURL(ModSourceType.STEAM);
 			if (!String.IsNullOrEmpty(url))
 			{
 				DivinityFileUtils.TryOpenPath(url);
@@ -99,7 +108,7 @@ namespace DivinityModManager.Util
 
 		public void OpenSteamWorkshopPageInSteam(DivinityModData mod)
 		{
-			var url = mod.GetWorkshopURL(true);
+			var url = mod.GetURL(ModSourceType.STEAM, true);
 			if (!String.IsNullOrEmpty(url))
 			{
 				DivinityFileUtils.TryOpenPath(url);
@@ -108,14 +117,19 @@ namespace DivinityModManager.Util
 
 		public void OpenNexusModsPage(DivinityModData mod)
 		{
-			DivinityApp.Log($"Opening url: {String.Format(DivinityApp.NEXUSMODS_MOD_URL, mod.NexusModsData.ModId)} | {mod.Name}");
-			if (mod.NexusModsData.ModId >= DivinityApp.NEXUSMODS_MOD_ID_START)
+			var url = mod.GetURL(ModSourceType.NEXUSMODS);
+			if (!String.IsNullOrEmpty(url))
 			{
-				var url = String.Format(DivinityApp.NEXUSMODS_MOD_URL, mod.NexusModsData.ModId);
-				if (!String.IsNullOrEmpty(url))
-				{
-					DivinityFileUtils.TryOpenPath(url);
-				}
+				DivinityFileUtils.TryOpenPath(url);
+			}
+		}
+
+		public void OpenRepositoryPage(DivinityModData mod)
+		{
+			var url = mod.GetURL(ModSourceType.GITHUB);
+			if (!String.IsNullOrEmpty(url))
+			{
+				DivinityFileUtils.TryOpenPath(url);
 			}
 		}
 
@@ -171,6 +185,7 @@ namespace DivinityModManager.Util
 				}
 			}, canExecuteViewModelCommands);
 
+			OpenURLCommand = ReactiveCommand.Create<string>(OpenURL, canExecuteViewModelCommands);
 			OpenSteamWorkshopPageCommand = ReactiveCommand.Create<DivinityModData>(OpenSteamWorkshopPage, canExecuteViewModelCommands);
 			OpenSteamWorkshopPageInSteamCommand = ReactiveCommand.Create<DivinityModData>(OpenSteamWorkshopPageInSteam, canExecuteViewModelCommands);
 			OpenNexusModsPageCommand = ReactiveCommand.Create<DivinityModData>(OpenNexusModsPage, canExecuteViewModelCommands);

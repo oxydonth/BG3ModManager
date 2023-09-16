@@ -99,10 +99,10 @@ namespace DivinityModManager.Views
 		private void Sort(string sortBy, ListSortDirection direction, object sender, bool modUpdatesGrid = false)
 		{
 			if (sortBy == "Version" || sortBy == "Current") sortBy = "Version.Version";
-			if (sortBy == "New") sortBy = "WorkshopMod.Version.Version";
+			if (sortBy == "New") sortBy = "UpdatedMod.Version.Version";
 			if (sortBy == "#") sortBy = "Index";
 			
-			if (modUpdatesGrid && sortBy != "IsSelected" && sortBy != "WorkshopMod.Version.Version") 
+			if (modUpdatesGrid && sortBy != "IsSelected" && sortBy != "UpdatedMod.Version.Version") 
 			{
 				sortBy = "LocalMod." + sortBy;
 			}

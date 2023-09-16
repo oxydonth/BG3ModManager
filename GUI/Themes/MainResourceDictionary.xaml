@@ -14,9 +14,11 @@
 	xmlns:dd="urn:gong-wpf-dragdrop"
 	xmlns:divThemes="clr-namespace:DivinityModManager.Themes"
 	xmlns:dmcore="clr-namespace:DivinityModManager;assembly=DivinityModManagerCore"
+	xmlns:i="http://schemas.microsoft.com/expression/2010/interactivity"
 	xmlns:local="clr-namespace:DivinityModManager.Views"
 	xmlns:sys="clr-namespace:System;assembly=mscorlib"
 	xmlns:templateSelectors="clr-namespace:DivinityModManager.Controls.TemplateSelectors"
+	xmlns:updates="clr-namespace:DivinityModManager.Models.Updates;assembly=DivinityModManagerCore"
 	xmlns:vm="clr-namespace:DivinityModManager.ViewModels;assembly=DivinityModManagerCore"
 	xmlns:xc="http://schemas.xceed.com/wpf/xaml/toolkit"
 	xmlns:xconv="clr-namespace:Xceed.Wpf.Toolkit.Converters;assembly=Xceed.Wpf.Toolkit"
@@ -425,7 +427,7 @@
 		x:Key="DivinityModUpdateListItem"
 		BasedOn="{StaticResource DivinityModUpdateNewListItem}"
 		TargetType="{x:Type ListViewItem}">
-		<Setter Property="Tag" Value="{Binding WorkshopMod}" />
+		<Setter Property="Tag" Value="{Binding UpdatedMod}" />
 	</Style>
 	<Style BasedOn="{StaticResource {x:Type ListView}}" TargetType="controls:ModListView">
 		<Setter Property="Background" Value="{DynamicResource {x:Static adonisUI:Brushes.Layer4BackgroundBrush}}" />
@@ -1315,8 +1317,8 @@
 			</GridViewColumn>
 		</GridView.Columns>
 	</GridView>
-	<DataTemplate x:Key="ModUpdateNameTemplate" DataType="{x:Type data:DivinityModUpdateData}">
-		<ContentControl Content="{Binding WorkshopMod}" ContentTemplate="{StaticResource ModNameTemplate}" />
+	<DataTemplate x:Key="ModUpdateNameTemplate" DataType="{x:Type updates:DivinityModUpdateData}">
+		<ContentControl Content="{Binding UpdatedMod}" ContentTemplate="{StaticResource ModNameTemplate}" />
 	</DataTemplate>
 	<GridView
 		x:Key="ModUpdatesGridView"
@@ -1353,7 +1355,7 @@
 				HeaderTemplate="{StaticResource GridViewTextblockHeaderTemplate}">
 				<GridViewColumn.CellTemplate>
 					<DataTemplate>
-						<TextBlock Text="{Binding WorkshopMod.Author}" ToolTip="{Binding WorkshopMod.Author}" />
+						<TextBlock Text="{Binding Author}" ToolTip="{Binding Author}" />
 					</DataTemplate>
 				</GridViewColumn.CellTemplate>
 			</GridViewColumn>
@@ -1368,7 +1370,7 @@
 				</GridViewColumn.HeaderContainerStyle>
 				<GridViewColumn.CellTemplate>
 					<DataTemplate>
-						<TextBlock Text="{Binding LocalMod.Version.Version}" ToolTip="{Binding LocalMod.Version.Version}" />
+						<TextBlock Text="{Binding CurrentVersion}" ToolTip="{Binding CurrentVersion}" />
 					</DataTemplate>
 				</GridViewColumn.CellTemplate>
 			</GridViewColumn>
@@ -1378,47 +1380,49 @@
 				HeaderTemplate="{StaticResource GridViewTextblockHeaderTemplate}">
 				<GridViewColumn.HeaderContainerStyle>
 					<Style BasedOn="{StaticResource GridViewLeftContainerStyle}" TargetType="{x:Type GridViewColumnHeader}">
-						<Setter Property="Control.ToolTip" Value="Workshop Mod's Version" />
+						<Setter Property="Control.ToolTip" Value="Update Version" />
 					</Style>
 				</GridViewColumn.HeaderContainerStyle>
 				<GridViewColumn.CellTemplate>
 					<DataTemplate>
-						<TextBlock Text="{Binding WorkshopMod.Version.Version}" ToolTip="{Binding WorkshopMod.Version.Version}" />
+						<TextBlock Text="{Binding UpdateVersion}" ToolTip="{Binding UpdateVersion}" />
 					</DataTemplate>
 				</GridViewColumn.CellTemplate>
 			</GridViewColumn>
 			<GridViewColumn
 				Width="100"
-				Header="Modified Date"
+				Header="Update Date"
 				HeaderTemplate="{StaticResource GridViewTextblockHeaderTemplate}">
 				<GridViewColumn.HeaderContainerStyle>
 					<Style BasedOn="{StaticResource GridViewLeftContainerStyle}" TargetType="{x:Type GridViewColumnHeader}">
-						<Setter Property="Control.ToolTip" Value="Workshop Mod's Last Modified Date" />
+						<Setter Property="Control.ToolTip" Value="Update Date" />
 					</Style>
 				</GridViewColumn.HeaderContainerStyle>
 				<GridViewColumn.CellTemplate>
 					<DataTemplate>
-						<TextBlock Text="{Binding WorkshopMod.LastModified, StringFormat={x:Static dapp:DivinityApp.DateTimeColumnFormat}}" ToolTip="{Binding WorkshopMod.LastModified, StringFormat={x:Static dapp:DivinityApp.DateTimeTooltipFormat}}" />
+						<TextBlock Text="{Binding LastModified, StringFormat={x:Static dapp:DivinityApp.DateTimeColumnFormat}}" ToolTip="{Binding WorkshopMod.LastModified, StringFormat={x:Static dapp:DivinityApp.DateTimeTooltipFormat}}" />
 					</DataTemplate>
 				</GridViewColumn.CellTemplate>
 			</GridViewColumn>
 			<GridViewColumn
 				Width="80"
-				Header="Type"
+				Header="Source"
 				HeaderTemplate="{StaticResource GridViewTextblockHeaderTemplate}">
+				<GridViewColumn.HeaderContainerStyle>
+					<Style BasedOn="{StaticResource GridViewLeftContainerStyle}" TargetType="{x:Type GridViewColumnHeader}">
+						<Setter Property="Control.ToolTip" Value="The Update Source" />
+					</Style>
+				</GridViewColumn.HeaderContainerStyle>
 				<GridViewColumn.CellTemplate>
 					<DataTemplate>
-						<TextBlock Text="{Binding WorkshopMod.ModType}" ToolTip="{Binding WorkshopMod.ModType}" />
-					</DataTemplate>
-				</GridViewColumn.CellTemplate>
-			</GridViewColumn>
-			<GridViewColumn
-				Width="Auto"
-				Header="Modes"
-				HeaderTemplate="{StaticResource GridViewTextblockHeaderTemplate}">
-				<GridViewColumn.CellTemplate>
-					<DataTemplate>
-						<TextBlock Text="{Binding WorkshopMod.Targets}" ToolTip="{Binding WorkshopMod.Targets}" />
+						<TextBlock ToolTip="{Binding UpdateLink}">
+							<Hyperlink
+								Command="{Binding Path=OpenURLCommand, Source={x:Static dapp:DivinityApp.Commands}}"
+								CommandParameter="{Binding UpdateLink}"
+								NavigateUri="{Binding UpdateLink}">
+								<TextBlock Text="{Binding SourceText}" />
+							</Hyperlink>
+						</TextBlock>
 					</DataTemplate>
 				</GridViewColumn.CellTemplate>
 			</GridViewColumn>

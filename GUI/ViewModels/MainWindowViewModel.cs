@@ -3919,11 +3919,8 @@ Directory the zip will be extracted to:
 			{
 				index = "Override";
 			}
-			if (WorkshopSupportEnabled)
-			{
-				return $"{index}\t{mod.Name}\t{mod.Author}\t{mod.OutputPakName}\t{String.Join(", ", mod.Tags)}\t{String.Join(", ", mod.Dependencies.Items.Select(y => y.Name))}\t{mod.GetWorkshopURL()}";
-			}
-			return $"{index}\t{mod.Name}\t{mod.Author}\t{mod.OutputPakName}\t{String.Join(", ", mod.Tags)}\t{String.Join(", ", mod.Dependencies.Items.Select(y => y.Name))}";
+			var urls = String.Join(";", mod.GetAllURLs());
+			return $"{index}\t{mod.Name}\t{mod.Author}\t{mod.OutputPakName}\t{String.Join(", ", mod.Tags)}\t{String.Join(", ", mod.Dependencies.Items.Select(y => y.Name))}\t{urls}";
 		}
 
 		private string ModToTextLine(DivinityModData mod)
@@ -3933,11 +3930,8 @@ Directory the zip will be extracted to:
 			{
 				index = "Override";
 			}
-			if (WorkshopSupportEnabled)
-			{
-				return $"{index} {mod.Name} ({mod.OutputPakName}) {mod.GetWorkshopURL()}";
-			}
-			return $"{index} {mod.Name} ({mod.OutputPakName})";
+			var urls = String.Join(";", mod.GetAllURLs());
+			return $"{index} {mod.Name} ({mod.OutputPakName}) {urls}";
 		}
 
 		private void ExportLoadOrderToTextFileAs()
@@ -3983,16 +3977,8 @@ Directory the zip will be extracted to:
 					}
 					else if (fileType.Equals(".tsv", StringComparison.OrdinalIgnoreCase))
 					{
-						if (WorkshopSupportEnabled)
-						{
-							outputText = "Index\tName\tAuthor\tFileName\tTags\tDependencies\tURL\n";
-							outputText += String.Join("\n", exportMods.Select(ModToTSVLine));
-						}
-						else
-						{
-							outputText = "Index\tName\tAuthor\tFileName\tTags\tDependencies\n";
-							outputText += String.Join("\n", exportMods.Select(ModToTSVLine));
-						}
+						outputText = "Index\tName\tAuthor\tFileName\tTags\tDependencies\tURL\n";
+						outputText += String.Join("\n", exportMods.Select(ModToTSVLine));
 					}
 					else
 					{

@@ -1,10 +1,12 @@
 ﻿using Newtonsoft.Json;
 
 using ReactiveUI;
+using ReactiveUI.Fody.Helpers;
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -13,65 +15,12 @@ namespace DivinityModManager.Models
 	[JsonObject(MemberSerialization.OptIn)]
 	public class DivinityModVersion2 : ReactiveObject
 	{
-		private ulong major = 0;
+		[Reactive] public ulong Major { get; set; }
+		[Reactive] public ulong Minor { get; set; }
+		[Reactive] public ulong Revision { get; set; }
+		[Reactive] public ulong Build { get; set; }
 
-		public ulong Major
-		{
-			get { return major; }
-			set
-			{
-				this.RaiseAndSetIfChanged(ref major, value);
-				UpdateVersion();
-			}
-		}
-
-		private ulong minor = 0;
-
-		public ulong Minor
-		{
-			get { return minor; }
-			set
-			{
-				this.RaiseAndSetIfChanged(ref minor, value);
-				UpdateVersion();
-			}
-		}
-
-		private ulong revision = 0;
-
-		public ulong Revision
-		{
-			get { return revision; }
-			set
-			{
-				this.RaiseAndSetIfChanged(ref revision, value);
-				UpdateVersion();
-			}
-		}
-
-		private ulong build = 0;
-
-		public ulong Build
-		{
-			get { return build; }
-			set
-			{
-				this.RaiseAndSetIfChanged(ref build, value);
-				UpdateVersion();
-			}
-		}
-
-		private string version;
-
-		[JsonProperty]
-		public string Version
-		{
-			get { return version; }
-			set
-			{
-				this.RaiseAndSetIfChanged(ref version, value);
-			}
-		}
+		[JsonProperty] [Reactive] public string Version { get; set; }
 
 		private ulong versionInt = 0;
 
@@ -90,15 +39,20 @@ namespace DivinityModManager.Models
 			}
 		}
 
-		private void UpdateVersion()
+		private void UpdateVersion(ulong major, ulong minor, ulong revision, ulong build)
 		{
-			Version = String.Format("{0}.{1}.{2}.{3}", Major, Minor, Revision, Build);
+			Version = String.Format("{0}.{1}.{2}.{3}", major, minor, revision, build);
 			var nextVersion = ToInt();
 			if (nextVersion != versionInt)
 			{
 				versionInt = ToInt();
 				this.RaisePropertyChanged("VersionInt");
 			}
+		}
+
+		private void UpdateVersion()
+		{
+			UpdateVersion(Major, Minor, Revision, Build);
 		}
 
 		public ulong ToInt()
@@ -113,29 +67,17 @@ namespace DivinityModManager.Models
 
 		public void ParseInt(ulong vInt, bool update = true)
 		{
+			vInt = Math.Max(ulong.MinValue, Math.Min(vInt, ulong.MaxValue));
 			if (versionInt != vInt)
 			{
 				versionInt = vInt;
 				this.RaisePropertyChanged("VersionInt");
+
+				Major = versionInt >> 55;
+				Minor = (versionInt >> 47) & 0xFF;
+				Revision = (versionInt >> 31) & 0xFFFF;
+				Build = versionInt & 0x7FFFFFFFUL;
 			}
-			/*
-			major = (sbyte)(versionInt >> 55);
-			minor = (sbyte)(versionInt >> 47);
-			revision = (Int16)(versionInt >> 31) & 0xFF;
-			build = (versionInt & 0x7FFFFFFF);
-			*/
-			major = versionInt >> 55;
-			minor = (versionInt >> 47) & 0xFF;
-			revision = (versionInt >> 31) & 0xFFFF;
-			build = versionInt & 0x7FFFFFFFUL;
-			if (update)
-			{
-				UpdateVersion();
-			}
-			this.RaisePropertyChanged("Major");
-			this.RaisePropertyChanged("Minor");
-			this.RaisePropertyChanged("Revision");
-			this.RaisePropertyChanged("Build");
 		}
 
 		public static DivinityModVersion2 FromInt(ulong vInt)
@@ -168,14 +110,20 @@ namespace DivinityModManager.Models
 			return a.VersionInt <= b.VersionInt;
 		}
 
-		public DivinityModVersion2() { }
+		public DivinityModVersion2()
+		{
+			this.WhenAnyValue(x => x.Major, x => x.Minor, x => x.Revision, x => x.Build).Subscribe((x) =>
+			{
+				UpdateVersion();
+			});
+		}
 
-		public DivinityModVersion2(ulong vInt)
+		public DivinityModVersion2(ulong vInt) : base()
 		{
 			ParseInt(vInt);
 		}
 
-		public DivinityModVersion2(ulong headerMajor, ulong headerMinor, ulong headerRevision, ulong headerBuild)
+		public DivinityModVersion2(ulong headerMajor, ulong headerMinor, ulong headerRevision, ulong headerBuild) : base()
 		{
 			Major = headerMajor;
 			Minor = headerMinor;

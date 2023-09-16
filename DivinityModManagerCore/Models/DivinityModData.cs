@@ -23,6 +23,7 @@ using System.Windows.Input;
 using System.Reflection;
 using DivinityModManager.Models.NexusMods;
 using System.Globalization;
+using DivinityModManager.Models.Github;
 
 namespace DivinityModManager.Models
 {
@@ -259,21 +260,60 @@ namespace DivinityModManager.Models
 
 		[Reactive] public DivinityModWorkshopData WorkshopData { get; set; }
 		[Reactive] public NexusModsModData NexusModsData { get; set; }
+		[Reactive] public GithubModData GithubData { get; set; }
 
-		public string GetWorkshopURL(bool asSteamBrowserProtocol = false)
+		public string GetURL(ModSourceType modSourceType, bool asProtocol = false)
 		{
-			if (WorkshopData != null && WorkshopData.ID != "")
+			switch (modSourceType)
 			{
-				if (!asSteamBrowserProtocol)
-				{
-					return $"https://steamcommunity.com/sharedfiles/filedetails/?id={WorkshopData.ID}";
-				}
-				else
-				{
-					return $"steam://url/CommunityFilePage/{WorkshopData.ID}";
-				}
+				case ModSourceType.STEAM:
+					if (WorkshopData != null && WorkshopData.ID != "")
+					{
+						if (!asProtocol)
+						{
+							return $"https://steamcommunity.com/sharedfiles/filedetails/?id={WorkshopData.ID}";
+						}
+						else
+						{
+							return $"steam://url/CommunityFilePage/{WorkshopData.ID}";
+						}
+					}
+					break;
+				case ModSourceType.NEXUSMODS:
+					if (NexusModsData != null && NexusModsData.ModId >= DivinityApp.NEXUSMODS_MOD_ID_START)
+					{
+						return String.Format(DivinityApp.NEXUSMODS_MOD_URL, NexusModsData.ModId);
+					}
+					break;
+				case ModSourceType.GITHUB:
+					if (GithubData != null)
+					{
+						return $"https://github.com/{GithubData.Author}/{GithubData.Repository}";
+					}
+					break;
 			}
 			return "";
+		}
+
+		public List<string> GetAllURLs(bool asProtocol = false)
+		{
+			var urls = new List<string>();
+			var steamUrl = GetURL(ModSourceType.STEAM, asProtocol);
+			if (!String.IsNullOrEmpty(steamUrl))
+			{
+				urls.Add(steamUrl);
+			}
+			var nexusUrl = GetURL(ModSourceType.NEXUSMODS, asProtocol);
+			if (!String.IsNullOrEmpty(nexusUrl))
+			{
+				urls.Add(nexusUrl);
+			}
+			var githubUrl = GetURL(ModSourceType.GITHUB, asProtocol);
+			if (!String.IsNullOrEmpty(githubUrl))
+			{
+				urls.Add(githubUrl);
+			}
+			return urls;
 		}
 
 		public override string ToString()
@@ -357,6 +397,7 @@ namespace DivinityModManager.Models
 
 			WorkshopData = new DivinityModWorkshopData();
 			NexusModsData = new NexusModsModData();
+			//GithubData = new GithubModData();
 
 			this.WhenAnyValue(x => x.UUID).BindTo(NexusModsData, x => x.UUID);
 
