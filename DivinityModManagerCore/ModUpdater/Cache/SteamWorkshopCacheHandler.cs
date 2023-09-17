@@ -11,7 +11,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace DivinityModManager.ModUpdater
+namespace DivinityModManager.ModUpdater.Cache
 {
 	public class SteamWorkshopCacheHandler : IExternalModCacheHandler<SteamWorkshopCachedData>
 	{
@@ -52,7 +52,7 @@ namespace DivinityModManager.ModUpdater
 			{
 				if (CacheData.Mods.TryGetValue(mod.UUID, out var cachedMod))
 				{
-					if (String.IsNullOrEmpty(mod.WorkshopData.ID) || mod.WorkshopData.ID == cachedMod.WorkshopID)
+					if (string.IsNullOrEmpty(mod.WorkshopData.ID) || mod.WorkshopData.ID == cachedMod.WorkshopID)
 					{
 						mod.WorkshopData.ID = cachedMod.WorkshopID;
 						mod.WorkshopData.CreatedDate = DateUtils.UnixTimeStampToDateTime(cachedMod.Created);

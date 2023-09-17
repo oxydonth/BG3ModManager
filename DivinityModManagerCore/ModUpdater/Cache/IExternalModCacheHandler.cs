@@ -13,7 +13,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace DivinityModManager.ModUpdater
+namespace DivinityModManager.ModUpdater.Cache
 {
 	public interface IExternalModCacheHandler<T> where T : IModCacheData
 	{
@@ -37,7 +37,7 @@ namespace DivinityModManager.ModUpdater
 				var cachedData = await DivinityJsonUtils.DeserializeFromPathAsync<T>(filePath, cts);
 				if (cachedData != null)
 				{
-					if (String.IsNullOrEmpty(cachedData.LastVersion) || cachedData.LastVersion != currentAppVersion)
+					if (string.IsNullOrEmpty(cachedData.LastVersion) || cachedData.LastVersion != currentAppVersion)
 					{
 						cachedData.LastUpdated = -1;
 					}
@@ -73,7 +73,7 @@ namespace DivinityModManager.ModUpdater
 
 				return true;
 			}
-			catch(Exception ex)
+			catch (Exception ex)
 			{
 				DivinityApp.Log($"Error saving cache:\n{ex}");
 			}

@@ -11,7 +11,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace DivinityModManager.ModUpdater
+namespace DivinityModManager.ModUpdater.Cache
 {
 	public class NexusModsCacheHandler : IExternalModCacheHandler<NexusModsCachedData>
 	{
@@ -32,7 +32,7 @@ namespace DivinityModManager.ModUpdater
 
 		public async Task<bool> Update(IEnumerable<DivinityModData> mods, CancellationToken cts)
 		{
-			if (!NexusModsDataLoader.IsInitialized && !String.IsNullOrEmpty(APIKey))
+			if (!NexusModsDataLoader.IsInitialized && !string.IsNullOrEmpty(APIKey))
 			{
 				NexusModsDataLoader.Init(APIKey, AppName, AppVersion);
 			}

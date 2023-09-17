@@ -53,6 +53,7 @@ using DivinityModManager.Models.NexusMods;
 using DivinityModManager.Models.Updates;
 using DivinityModManager.Models.Cache;
 using DivinityModManager.ModUpdater;
+using DivinityModManager.ModUpdater.Cache;
 
 namespace DivinityModManager.ViewModels
 {
