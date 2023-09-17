@@ -1,5 +1,6 @@
 ﻿using DivinityModManager.Models;
-
+using DivinityModManager.Models.Cache;
+using DivinityModManager.ModUpdater.Cache;
 using Newtonsoft.Json;
 
 using System;
@@ -13,9 +14,14 @@ namespace DivinityModManager.ModUpdater
 {
 	public class ModUpdateHandler
 	{
-		public NexusModsCacheHandler Nexus { get; private set; }
-		public SteamWorkshopCacheHandler Workshop { get; private set; }
-		public GithubModsCacheHandler Github { get; private set; }
+		private readonly NexusModsCacheHandler _nexus;
+		public NexusModsCacheHandler Nexus => _nexus;
+
+		private readonly SteamWorkshopCacheHandler _workshop;
+		public SteamWorkshopCacheHandler Workshop => _workshop;
+
+		private readonly GithubModsCacheHandler _github;
+		public GithubModsCacheHandler Github => _github;
 
 		public static readonly JsonSerializerSettings DefaultSerializerSettings = new JsonSerializerSettings
 		{
@@ -95,11 +101,16 @@ namespace DivinityModManager.ModUpdater
 			return false;
 		}
 
+		public bool DeleteCache()
+		{
+			return Nexus.DeleteCache() || Workshop.DeleteCache() || Github.DeleteCache();
+		}
+
 		public ModUpdateHandler()
 		{
-			Nexus = new NexusModsCacheHandler();
-			Workshop = new SteamWorkshopCacheHandler();
-			Github = new GithubModsCacheHandler();
+			_nexus = new NexusModsCacheHandler();
+			_workshop = new SteamWorkshopCacheHandler();
+			_github = new GithubModsCacheHandler();
 		}
 	}
 }

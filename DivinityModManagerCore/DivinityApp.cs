@@ -43,11 +43,8 @@ namespace DivinityModManager
 
 		public const string NEXUSMODS_GAME_DOMAIN = "baldursgate3";
 		public const long NEXUSMODS_GAME_ID = 3474;
-		public const string NEXUSMODS_CACHE_FILE = "nexusmodsdata.json";
 		public const string NEXUSMODS_MOD_URL = "https://www.nexusmods.com/baldursgate3/mods/{0}";
 		public const long NEXUSMODS_MOD_ID_START = 1;
-
-		public const string WORKSHOP_CACHE_FILE = "workshopdata.json";
 
 		public const string EXTENDER_REPO_URL = "Norbyte/bg3se";
 		public const string EXTENDER_LATEST_URL = "https://github.com/Norbyte/bg3se/releases/latest";

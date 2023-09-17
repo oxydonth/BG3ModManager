@@ -146,7 +146,7 @@ namespace DivinityModManager.ViewModels
 		protected ReadOnlyObservableCollection<DivinityModData> workshopModsCollection;
 		public ReadOnlyObservableCollection<DivinityModData> WorkshopMods => workshopModsCollection;
 
-		private ModUpdateHandler UpdateHandler;
+		private readonly ModUpdateHandler UpdateHandler;
 
 		public DivinityPathwayData PathwayData { get; private set; } = new DivinityPathwayData();
 
@@ -907,7 +907,6 @@ Directory the zip will be extracted to:
 					if (!String.IsNullOrEmpty(Settings.WorkshopPath) && Directory.Exists(Settings.WorkshopPath))
 					{
 						DivinityApp.Log($"Workshop path set to: '{Settings.WorkshopPath}'.");
-						SaveSettings();
 					}
 				}
 				else if (Directory.Exists(Settings.WorkshopPath))
@@ -1141,24 +1140,26 @@ Directory the zip will be extracted to:
 				}
 			});
 
-			Settings.ClearWorkshopCacheCommand = ReactiveCommand.Create(() =>
+			Settings.ClearCacheCommand = ReactiveCommand.Create(() =>
 			{
-				var filePath = DivinityApp.GetAppDirectory("Data", DivinityApp.WORKSHOP_CACHE_FILE);
-				if (File.Exists(filePath))
-				{
-					MessageBoxResult result = Xceed.Wpf.Toolkit.MessageBox.Show(View.SettingsWindow, $"Delete local workshop cache?\nThis cannot be undone.\nRefresh to download tag data once more.", "Confirm Delete Cache",
+				MessageBoxResult result = Xceed.Wpf.Toolkit.MessageBox.Show(View.SettingsWindow, $"Delete local mod cache?\nThis cannot be undone.", "Confirm Delete Cache",
 					MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No, View.MainWindowMessageBox_OK.Style);
-					if (result == MessageBoxResult.Yes)
+				if (result == MessageBoxResult.Yes)
+				{
+					try
 					{
-						try
+						if (UpdateHandler.DeleteCache())
 						{
-							RecycleBinHelper.DeleteFile(filePath, false, true);
-							ShowAlert($"Deleted local workshop cache at '{filePath}'", AlertType.Success, 20);
+							ShowAlert($"Deleted local cache in {DivinityApp.GetAppDirectory("Data")}", AlertType.Success, 20);
 						}
-						catch (Exception ex)
+						else
 						{
-							ShowAlert($"Error deleting workshop cache:\n{ex}", AlertType.Danger);
+							ShowAlert($"No cache to delete.", AlertType.Warning, 20);
 						}
+					}
+					catch (Exception ex)
+					{
+						ShowAlert($"Error deleting workshop cache:\n{ex}", AlertType.Danger);
 					}
 				}
 			}).DisposeWith(Settings.Disposables);

@@ -478,7 +478,6 @@ namespace DivinityModManager.Util
 							if (modFolderMatch.Success)
 							{
 								var modFolder = Path.GetFileName(modFolderMatch.Groups[2].Value.TrimEnd(Path.DirectorySeparatorChar));
-								var skipbuiltinCheck = false;
 								if (f.Name.Contains($"Mods/{modFolder}/Story/RawFiles/Goals"))
 								{
 									if (hasOsirisScripts == DivinityOsirisModStatus.NONE)

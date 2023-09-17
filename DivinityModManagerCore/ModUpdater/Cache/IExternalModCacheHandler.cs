@@ -15,7 +15,7 @@ using System.Threading.Tasks;
 
 namespace DivinityModManager.ModUpdater
 {
-	public interface IExternalModCacheHandler<T>
+	public interface IExternalModCacheHandler<T> where T : IModCacheData
 	{
 		ModSourceType SourceType { get; }
 		string FileName { get; }
@@ -53,7 +53,7 @@ namespace DivinityModManager.ModUpdater
 			try
 			{
 				var parentDir = DivinityApp.GetAppDirectory("Data");
-				var filePath = Path.Combine(parentDir, DivinityApp.NEXUSMODS_CACHE_FILE);
+				var filePath = Path.Combine(parentDir, handler.FileName);
 				if (!Directory.Exists(parentDir)) Directory.CreateDirectory(parentDir);
 
 				if (updateLastTimestamp)
@@ -68,12 +68,31 @@ namespace DivinityModManager.ModUpdater
 				using (var fs = new System.IO.FileStream(filePath, System.IO.FileMode.Create,
 					System.IO.FileAccess.Write, System.IO.FileShare.None, buffer.Length, true))
 				{
-					await fs.WriteAsync(buffer, 0, buffer.Length);
+					await fs.WriteAsync(buffer, 0, buffer.Length, cts);
 				}
 
 				return true;
 			}
 			catch(Exception ex)
+			{
+				DivinityApp.Log($"Error saving cache:\n{ex}");
+			}
+			return false;
+		}
+
+		public static bool DeleteCache<T>(this IExternalModCacheHandler<T> handler, bool permanent = false) where T : IModCacheData
+		{
+			try
+			{
+				var parentDir = DivinityApp.GetAppDirectory("Data");
+				var filePath = Path.Combine(parentDir, handler.FileName);
+				if (File.Exists(filePath))
+				{
+					RecycleBinHelper.DeleteFile(filePath, false, permanent);
+					return true;
+				}
+			}
+			catch (Exception ex)
 			{
 				DivinityApp.Log($"Error saving cache:\n{ex}");
 			}

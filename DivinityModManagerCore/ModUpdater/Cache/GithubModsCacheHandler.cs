@@ -16,7 +16,14 @@ namespace DivinityModManager.ModUpdater
 	{
 		public ModSourceType SourceType => ModSourceType.GITHUB;
 		public string FileName => "githubdata.json";
-		public JsonSerializerSettings SerializerSettings => ModUpdateHandler.DefaultSerializerSettings;
+
+		//Format Github data so people can more easily edit/add mods manually.
+		public JsonSerializerSettings SerializerSettings => new JsonSerializerSettings()
+		{
+			NullValueHandling = NullValueHandling.Ignore,
+			Formatting = Formatting.Indented,
+		};
+
 		public bool IsEnabled { get; set; }
 		public GithubModsCachedData CacheData { get; set; }
 

@@ -173,7 +173,7 @@ namespace DivinityModManager.Models
 		public ICommand ExportExtenderSettingsCommand { get; set; }
 		public ICommand ResetExtenderSettingsToDefaultCommand { get; set; }
 		public ICommand ResetKeybindingsCommand { get; set; }
-		public ICommand ClearWorkshopCacheCommand { get; set; }
+		public ICommand ClearCacheCommand { get; set; }
 		public ICommand AddLaunchParamCommand { get; set; }
 		public ICommand ClearLaunchParamsCommand { get; set; }
 
