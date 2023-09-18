@@ -736,7 +736,7 @@ Directory the zip will be extracted to:
 				var extenderAppDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), DivinityApp.EXTENDER_APPDATA_DIRECTORY);
 				if (Directory.Exists(extenderAppDataDir))
 				{
-					var files = Directory.EnumerateFiles(extenderAppDataDir, new DirectoryEnumerationFilters()
+					var files = Directory.EnumerateFiles(extenderAppDataDir, DirectoryEnumerationOptions.Recursive | DirectoryEnumerationOptions.Files, new DirectoryEnumerationFilters()
 					{
 						CancellationToken = t,
 						InclusionFilter = (f) => f.FileName.Equals(DivinityApp.EXTENDER_APPDATA_DLL, StringComparison.OrdinalIgnoreCase)
@@ -772,6 +772,10 @@ Directory the zip will be extracted to:
 						Settings.ExtenderSettings.ExtenderIsAvailable = hasExtenderInstalled;
 						Settings.ExtenderSettings.ExtenderVersion = extenderVersion;
 					}
+				}
+				else
+				{
+					DivinityApp.Log($"Extender Local AppData folder not found at '{extenderAppDataDir}'. Skipping.");
 				}
 				return Unit.Default;
 			}, RxApp.MainThreadScheduler);
@@ -2261,14 +2265,13 @@ Directory the zip will be extracted to:
 			}
 		}
 
-		private void CheckModForExtenderData(DivinityModData mod)
+		private void UpdateModExtenderStatus(DivinityModData mod)
 		{
+			mod.CurrentExtenderVersion = Settings.ExtenderSettings.ExtenderVersion;
+
 			if (mod.ScriptExtenderData != null && mod.ScriptExtenderData.HasAnySettings)
 			{
-				// Assume an Lua-only mod actually requires the extender, otherwise functionality is limited.
-				bool onlyUsesLua = mod.ScriptExtenderData.FeatureFlags.Contains("Lua") && !mod.ScriptExtenderData.FeatureFlags.Contains("Osiris");
-
-				if (!mod.ScriptExtenderData.FeatureFlags.Contains("Preprocessor") || onlyUsesLua)
+				if (mod.ScriptExtenderData.Lua)
 				{
 					if (!Settings.ExtenderSettings.EnableExtensions)
 					{
@@ -2278,7 +2281,7 @@ Directory the zip will be extracted to:
 					{
 						if (Settings.ExtenderSettings != null && Settings.ExtenderSettings.ExtenderVersion > -1 && Settings.ExtenderSettings.ExtenderUpdaterIsAvailable)
 						{
-							if (mod.ScriptExtenderData.RequiredExtensionVersion > -1 && Settings.ExtenderSettings.ExtenderVersion < mod.ScriptExtenderData.RequiredExtensionVersion)
+							if (mod.ScriptExtenderData.RequiredVersion > -1 && Settings.ExtenderSettings.ExtenderVersion < mod.ScriptExtenderData.RequiredVersion)
 							{
 								mod.ExtenderModStatus = DivinityExtenderModStatus.REQUIRED_OLD;
 							}
@@ -2308,10 +2311,9 @@ Directory the zip will be extracted to:
 		{
 			if (Settings != null && Mods.Count > 0)
 			{
-				DivinityModData.CurrentExtenderVersion = Settings.ExtenderSettings.ExtenderVersion;
 				foreach (var mod in Mods)
 				{
-					CheckModForExtenderData(mod);
+					UpdateModExtenderStatus(mod);
 				}
 			}
 		}
@@ -3217,7 +3219,7 @@ Directory the zip will be extracted to:
 				}
 			}
 			mods.AddOrUpdate(mod);
-			CheckModForExtenderData(mod);
+			UpdateModExtenderStatus(mod);
 			DivinityApp.Log($"Imported Mod: {mod}");
 		}
 

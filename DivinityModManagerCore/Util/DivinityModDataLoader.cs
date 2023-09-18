@@ -341,7 +341,7 @@ namespace DivinityModManager.Util
 								if (extenderConfig != null)
 								{
 									modData.ScriptExtenderData = extenderConfig;
-									if (modData.ScriptExtenderData.RequiredExtensionVersion > -1) modData.HasScriptExtenderSettings = true;
+									if (modData.ScriptExtenderData.RequiredVersion > -1) modData.HasScriptExtenderSettings = true;
 								}
 								else
 								{
@@ -644,7 +644,7 @@ namespace DivinityModManager.Util
 						if (extenderConfig != null)
 						{
 							modData.ScriptExtenderData = extenderConfig;
-							if (modData.ScriptExtenderData.RequiredExtensionVersion > -1) modData.HasScriptExtenderSettings = true;
+							if (modData.ScriptExtenderData.RequiredVersion > -1) modData.HasScriptExtenderSettings = true;
 						}
 						else
 						{
@@ -1811,6 +1811,8 @@ namespace DivinityModManager.Util
 			return null;
 		}
 
+		private static List<string> _fallbackFeatureFlags = new List<string>();
+
 		private static async Task<DivinityModScriptExtenderConfig> LoadScriptExtenderConfigAsync(string configFile)
 		{
 			try
@@ -1827,14 +1829,15 @@ namespace DivinityModManager.Util
 						}
 						else
 						{
+							DivinityApp.Log($"Error reading '{configFile}'. Trying to manually read json text.");
 							var jsonObj = JObject.Parse(text);
 							if (jsonObj != null)
 							{
 								config = new DivinityModScriptExtenderConfig
 								{
-									RequiredExtensionVersion = jsonObj.GetValue<int>("RequiredExtensionVersion", -1),
-									FeatureFlags = jsonObj.GetValue<List<string>>("FeatureFlags", null)
+									RequiredVersion = jsonObj.GetValue("RequiredExtensionVersion", -1)
 								};
+								config.FeatureFlags.AddRange(jsonObj.GetValue("FeatureFlags", _fallbackFeatureFlags));
 								return config;
 							}
 						}
@@ -1866,14 +1869,15 @@ namespace DivinityModManager.Util
 							}
 							else
 							{
+								DivinityApp.Log($"Error reading Config.json. Trying to manually read json text.");
 								var jsonObj = JObject.Parse(text);
 								if (jsonObj != null)
 								{
 									config = new DivinityModScriptExtenderConfig
 									{
-										RequiredExtensionVersion = jsonObj.GetValue<int>("RequiredExtensionVersion", -1),
-										FeatureFlags = jsonObj.GetValue<List<string>>("FeatureFlags", null)
+										RequiredVersion = jsonObj.GetValue("RequiredExtensionVersion", -1)
 									};
+									config.FeatureFlags.AddRange(jsonObj.GetValue("FeatureFlags", _fallbackFeatureFlags));
 									return config;
 								}
 							}

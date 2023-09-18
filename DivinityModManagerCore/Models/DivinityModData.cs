@@ -59,9 +59,9 @@ namespace DivinityModManager.Models
 		[Reactive] public DivinityExtenderModStatus ExtenderModStatus { get; set; }
 		[Reactive] public DivinityOsirisModStatus OsirisModStatus { get; set; }
 
-		public static int CurrentExtenderVersion { get; set; } = -1;
+		[Reactive] public int CurrentExtenderVersion { get; set; }
 
-		private string ExtenderStatusToToolTipText(DivinityExtenderModStatus status, int requireVersion)
+		private string ExtenderStatusToToolTipText(DivinityExtenderModStatus status, int requiredVersion, int currentVersion)
 		{
 			var result = "";
 			switch (status)
@@ -82,9 +82,9 @@ namespace DivinityModManager.Models
 					{
 						result = "[OLD] ";
 					}
-					if (requireVersion > -1)
+					if (requiredVersion > -1)
 					{
-						result += $"Requires Script Extender v{requireVersion} or higher";
+						result += $"Requires Script Extender v{requiredVersion} or higher";
 					}
 					else
 					{
@@ -100,9 +100,9 @@ namespace DivinityModManager.Models
 					}
 					break;
 				case DivinityExtenderModStatus.SUPPORTS:
-					if (requireVersion > -1)
+					if (requiredVersion > -1)
 					{
-						result = $"Supports Script Extender v{requireVersion} or higher";
+						result = $"Supports Script Extender v{requiredVersion} or higher";
 					}
 					else
 					{
@@ -118,9 +118,9 @@ namespace DivinityModManager.Models
 			{
 				result += Environment.NewLine;
 			}
-			if (CurrentExtenderVersion > -1)
+			if (currentVersion > -1)
 			{
-				result += $"(Currently installed version is v{CurrentExtenderVersion})";
+				result += $"(Currently installed version is v{currentVersion})";
 			}
 			else
 			{
@@ -129,7 +129,7 @@ namespace DivinityModManager.Models
 			return result;
 		}
 
-		[DataMember] public DivinityModScriptExtenderConfig ScriptExtenderData { get; set; }
+		[DataMember] [Reactive] public DivinityModScriptExtenderConfig ScriptExtenderData { get; set; }
 		[DataMember] public SourceList<DivinityModDependencyData> Dependencies { get; set; } = new SourceList<DivinityModDependencyData>();
 
 		protected ReadOnlyObservableCollection<DivinityModDependencyData> displayedDependencies;
@@ -496,7 +496,8 @@ namespace DivinityModManager.Models
 			_canAddToLoadOrder = this.WhenAnyValue(x => x.ModType, x => x.IsLarianMod, x => x.IsForceLoaded, x => x.IsForceLoadedMergedMod, x => x.ForceAllowInLoadOrder,
 				(modType, isLarianMod, isForceLoaded, isMergedMod, forceAllowInLoadOrder) => modType != "Adventure" && !isLarianMod && (!isForceLoaded || isMergedMod) || forceAllowInLoadOrder).StartWith(true).ToProperty(this, nameof(CanAddToLoadOrder));
 
-			_extenderSupportToolTipText = this.WhenAnyValue(x => x.ExtenderModStatus, x => x.ScriptExtenderData.RequiredExtensionVersion).Select(x => ExtenderStatusToToolTipText(x.Item1, x.Item2)).ToProperty(this, nameof(ScriptExtenderSupportToolTipText), scheduler: RxApp.MainThreadScheduler);
+			_extenderSupportToolTipText = this.WhenAnyValue(x => x.ExtenderModStatus, x => x.ScriptExtenderData.RequiredVersion, x => x.CurrentExtenderVersion)
+				.Select(x => ExtenderStatusToToolTipText(x.Item1, x.Item2, x.Item3)).ToProperty(this, nameof(ScriptExtenderSupportToolTipText), scheduler: RxApp.MainThreadScheduler);
 			_extenderStatusVisibility = this.WhenAnyValue(x => x.ExtenderModStatus).Select(x => x != DivinityExtenderModStatus.NONE ? Visibility.Visible : Visibility.Collapsed).ToProperty(this, nameof(ExtenderStatusVisibility), scheduler: RxApp.MainThreadScheduler);
 
 			var whenOsirisStatusChanges = this.WhenAnyValue(x => x.OsirisModStatus);

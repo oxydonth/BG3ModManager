@@ -52,7 +52,7 @@ namespace DivinityModManager
 		public const string EXTENDER_APPDATA_DLL = "BG3ScriptExtender.dll";
 		public const string EXTENDER_MOD_CONFIG = "ScriptExtender/Config.json";
 		public const string EXTENDER_UPDATER_FILE = "DWrite.dll";
-		public const int EXTENDER_DEFAULT_VERSION = 1;
+		public const int EXTENDER_DEFAULT_VERSION = 2;
 
 		public const int MAX_FILE_OVERRIDE_DISPLAY = 10;
 
@@ -87,14 +87,14 @@ namespace DivinityModManager
 			}
 		}
 
-		private static bool isKeyboardNavigating = false;
+		private static bool _isKeyboardNavigating = false;
 
 		public static bool IsKeyboardNavigating
 		{
-			get => isKeyboardNavigating;
+			get => _isKeyboardNavigating;
 			set
 			{
-				isKeyboardNavigating = value;
+				_isKeyboardNavigating = value;
 				NotifyStaticPropertyChanged();
 			}
 		}
