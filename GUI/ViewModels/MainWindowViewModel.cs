@@ -291,6 +291,12 @@ namespace DivinityModManager.ViewModels
 		[Reactive] public bool WorkshopSupportEnabled { get; set; }
 		[Reactive] public bool CanMoveSelectedMods { get; set; }
 
+		private readonly ObservableAsPropertyHelper<Visibility> _updatingBusyIndicatorVisibility;
+		public Visibility UpdatingBusyIndicatorVisibility => _updatingBusyIndicatorVisibility.Value;
+
+		private readonly ObservableAsPropertyHelper<Visibility> _updateCountVisibility;
+		public Visibility UpdateCountVisibility => _updateCountVisibility.Value;
+
 		public IObservable<bool> canRenameOrder;
 
 		private IObservable<bool> canOpenWorkshopFolder;
@@ -4880,6 +4886,10 @@ Directory the zip will be extracted to:
 
 			_isLocked = this.WhenAnyValue(x => x.IsDragging, x => x.IsRefreshing, x => x.IsLoadingOrder, (b1, b2, b3) => b1 || b2 || b3).StartWith(false).ToProperty(this, nameof(IsLocked));
 			_allowDrop = this.WhenAnyValue(x => x.IsLoadingOrder, x => x.IsRefreshing, x => x.IsInitialized, (b1, b2, b3) => !b1 && !b2 && b3).StartWith(true).ToProperty(this, nameof(AllowDrop));
+
+			var whenRefreshing = this.WhenAnyValue(x => x.UpdateHandler.IsRefreshing);
+			_updatingBusyIndicatorVisibility = whenRefreshing.Select(b => b ? Visibility.Visible : Visibility.Collapsed).StartWith(Visibility.Visible).ToProperty(this, nameof(UpdatingBusyIndicatorVisibility), scheduler: RxApp.MainThreadScheduler);
+			_updateCountVisibility = whenRefreshing.Select(b => b ? Visibility.Collapsed : Visibility.Visible).StartWith(Visibility.Visible).ToProperty(this, nameof(UpdateCountVisibility), scheduler: RxApp.MainThreadScheduler);
 
 			_keys = new AppKeys(this);
 

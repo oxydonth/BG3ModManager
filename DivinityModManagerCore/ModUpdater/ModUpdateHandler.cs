@@ -3,6 +3,9 @@ using DivinityModManager.Models.Cache;
 using DivinityModManager.ModUpdater.Cache;
 using Newtonsoft.Json;
 
+using ReactiveUI;
+using ReactiveUI.Fody.Helpers;
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,7 +15,7 @@ using System.Threading.Tasks;
 
 namespace DivinityModManager.ModUpdater
 {
-	public class ModUpdateHandler
+	public class ModUpdateHandler : ReactiveObject
 	{
 		private readonly NexusModsCacheHandler _nexus;
 		public NexusModsCacheHandler Nexus => _nexus;
@@ -23,6 +26,8 @@ namespace DivinityModManager.ModUpdater
 		private readonly GithubModsCacheHandler _github;
 		public GithubModsCacheHandler Github => _github;
 
+		[Reactive] public bool IsRefreshing { get; set; }
+
 		public static readonly JsonSerializerSettings DefaultSerializerSettings = new JsonSerializerSettings
 		{
 			NullValueHandling = NullValueHandling.Ignore,
@@ -31,7 +36,8 @@ namespace DivinityModManager.ModUpdater
 
 		public async Task<bool> UpdateAsync(IEnumerable<DivinityModData> mods, CancellationToken cts)
 		{
-			if(Workshop.IsEnabled)
+			IsRefreshing = true;
+			if (Workshop.IsEnabled)
 			{
 				await Workshop.Update(mods, cts);
 			}
@@ -43,6 +49,7 @@ namespace DivinityModManager.ModUpdater
 			{
 				await Github.Update(mods, cts);
 			}
+			IsRefreshing = false;
 			return false;
 		}
 
