@@ -1,7 +1,7 @@
 ﻿using DivinityModManager.Models;
 using DivinityModManager.Models.NexusMods;
 using DivinityModManager.Models.Updates;
-using DivinityModManager.ModUpdater.NexusMods;
+//using DivinityModManager.ModUpdater.NexusMods;
 
 using NexusModsNET;
 using NexusModsNET.DataModels;
