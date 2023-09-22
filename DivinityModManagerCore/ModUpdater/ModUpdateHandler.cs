@@ -1,6 +1,7 @@
 ﻿using DivinityModManager.Models;
-using DivinityModManager.Models.Cache;
 using DivinityModManager.ModUpdater.Cache;
+using DivinityModManager.Util;
+
 using Newtonsoft.Json;
 
 using ReactiveUI;
@@ -9,7 +10,8 @@ using ReactiveUI.Fody.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
+using System.Reactive;
+using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -53,7 +55,7 @@ namespace DivinityModManager.ModUpdater
 			return false;
 		}
 
-		public async Task<bool> LoadAsync(string currentAppVersion, CancellationToken cts)
+		public async Task<bool> LoadAsync(IEnumerable<DivinityModData> mods, string currentAppVersion, CancellationToken cts)
 		{
 			if(Workshop.IsEnabled)
 			{
@@ -84,6 +86,47 @@ namespace DivinityModManager.ModUpdater
 			{
 				await Github.LoadCacheAsync(currentAppVersion, cts);
 			}
+
+			await Observable.Start(() =>
+			{
+				foreach(var mod in mods)
+				{
+					if (Workshop.IsEnabled)
+					{
+						if (Workshop.CacheData.Mods.TryGetValue(mod.UUID, out var workshopData))
+						{
+							if (string.IsNullOrEmpty(mod.WorkshopData.ID) || mod.WorkshopData.ID == workshopData.WorkshopID)
+							{
+								mod.WorkshopData.ID = workshopData.WorkshopID;
+								mod.WorkshopData.CreatedDate = DateUtils.UnixTimeStampToDateTime(workshopData.Created);
+								mod.WorkshopData.UpdatedDate = DateUtils.UnixTimeStampToDateTime(workshopData.LastUpdated);
+								mod.WorkshopData.Tags = workshopData.Tags;
+								mod.AddTags(workshopData.Tags);
+								if (workshopData.LastUpdated > 0)
+								{
+									mod.LastUpdated = mod.WorkshopData.UpdatedDate;
+								}
+							}
+						}
+					}
+					if (Nexus.IsEnabled)
+					{
+						if(Nexus.CacheData.Mods.TryGetValue(mod.UUID, out var nexusData))
+						{
+							mod.NexusModsData.Update(nexusData);
+						}
+					}
+					if (Github.IsEnabled)
+					{
+						if (Github.CacheData.Mods.TryGetValue(mod.UUID, out var githubData))
+						{
+							mod.GithubData.Update(githubData);
+						}
+					}
+				}
+				return Unit.Default;
+			}, RxApp.MainThreadScheduler);
+
 			return false;
 		}
 

@@ -39,19 +39,11 @@ namespace DivinityModManager.ModUpdater.Cache
 
 			if (NexusModsDataLoader.CanFetchData)
 			{
-				int successes = 0;
-				try
-				{
-					successes = await NexusModsDataLoader.LoadAllModsDataAsync(mods, cts);
-				}
-				catch (Exception ex)
-				{
-					DivinityApp.Log($"Error fetching NexusMods data:\n{ex}");
-				}
+				var result = await NexusModsDataLoader.LoadAllModsDataAsync(mods, cts);
 
-				if (successes > 0)
+				if (result.Success)
 				{
-					DivinityApp.Log($"Fetched NexusMods mod info for {successes} mods.");
+					DivinityApp.Log($"Fetched NexusMods mod info for {result.UpdatedMods.Count} mod(s).");
 
 					foreach (var mod in mods.Where(x => x.NexusModsData.ModId >= DivinityApp.NEXUSMODS_MOD_ID_START).Select(x => x.NexusModsData))
 					{
@@ -62,7 +54,7 @@ namespace DivinityModManager.ModUpdater.Cache
 				}
 				else
 				{
-					DivinityApp.Log($"Failed to fetch any NexusMods mod info.");
+					DivinityApp.Log($"Failed to update NexusMods mod info:\n{result.FailureMessage}");
 				}
 			}
 			else

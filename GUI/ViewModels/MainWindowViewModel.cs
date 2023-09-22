@@ -2354,26 +2354,6 @@ Directory the zip will be extracted to:
 			return String.IsNullOrEmpty(mod.WorkshopData.ID) || !UpdateHandler.Workshop.CacheData.Mods.ContainsKey(mod.UUID);
 		}
 
-		private async Task<bool> LoadAllCachedDataAsync()
-		{
-			await UpdateHandler.LoadAsync(Version, MainProgressToken.Token);
-			if(UpdateHandler.Nexus.IsEnabled)
-			{
-				foreach (var kvp in UpdateHandler.Nexus.CacheData.Mods)
-				{
-					var existing = mods.Lookup(kvp.Key);
-					if (existing.HasValue)
-					{
-						var mod = existing.Value;
-						mod.NexusModsData.Update(kvp.Value);
-						mod.NexusModsData.LastFileId = kvp.Value.LastFileId;
-					}
-				}
-			}
-
-			return true;
-		}
-
 		private void RefreshAllModUpdatesBackground()
 		{
 			IsRefreshingModUpdates = true;
@@ -2403,7 +2383,7 @@ Directory the zip will be extracted to:
 					}, RxApp.MainThreadScheduler);
 				}
 
-				await UpdateHandler.LoadAsync(Version, cts);
+				await UpdateHandler.LoadAsync(UserMods, Version, cts);
 				await UpdateHandler.UpdateAsync(UserMods, cts);
 				await UpdateHandler.SaveAsync(UserMods, Version, cts);
 

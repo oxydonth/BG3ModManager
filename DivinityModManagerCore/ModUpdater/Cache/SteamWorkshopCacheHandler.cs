@@ -45,27 +45,5 @@ namespace DivinityModManager.ModUpdater.Cache
 			}
 			return false;
 		}
-
-		public void UpdateModDataWithCachedData(List<DivinityModData> mods)
-		{
-			foreach (var mod in mods)
-			{
-				if (CacheData.Mods.TryGetValue(mod.UUID, out var cachedMod))
-				{
-					if (string.IsNullOrEmpty(mod.WorkshopData.ID) || mod.WorkshopData.ID == cachedMod.WorkshopID)
-					{
-						mod.WorkshopData.ID = cachedMod.WorkshopID;
-						mod.WorkshopData.CreatedDate = DateUtils.UnixTimeStampToDateTime(cachedMod.Created);
-						mod.WorkshopData.UpdatedDate = DateUtils.UnixTimeStampToDateTime(cachedMod.LastUpdated);
-						mod.WorkshopData.Tags = cachedMod.Tags;
-						mod.AddTags(cachedMod.Tags);
-						if (cachedMod.LastUpdated > 0)
-						{
-							mod.LastUpdated = mod.WorkshopData.UpdatedDate;
-						}
-					}
-				}
-			}
-		}
 	}
 }
