@@ -755,20 +755,25 @@
 		</xc:BusyIndicator>
 		<StatusBar Grid.Row="1" MinHeight="16">
 			<StatusBarItem HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-				<StackPanel Orientation="Horizontal">
-					<controls:BusyIndicator
-						Width="16"
-						Height="16"
-						Margin="2"
-						Visibility="{Binding StatusBarBusyIndicatorVisibility, FallbackValue=Collapsed}" />
-					<TextBlock
-						x:Name="StatusBarLoadingOperationTextBlock"
-						VerticalAlignment="Center"
-						Text="{Binding StatusBarRightText}" />
-				</StackPanel>
+				<controls:BusyIndicator
+					Grid.Column="0"
+					Width="16"
+					Height="16"
+					Margin="2"
+					Visibility="Collapsed" />
 			</StatusBarItem>
 			<StatusBarItem HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
 				<controls:AlertBar x:Name="AlertBar" Theme="Standard" />
+			</StatusBarItem>
+			<StatusBarItem
+				Padding="8,0"
+				HorizontalAlignment="Right"
+				VerticalAlignment="Stretch">
+				<TextBlock
+					x:Name="StatusBarLoadingOperationTextBlock"
+					HorizontalAlignment="Center"
+					VerticalAlignment="Center"
+					Text="{Binding StatusBarRightText}" />
 			</StatusBarItem>
 		</StatusBar>
 	</Grid>

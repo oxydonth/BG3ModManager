@@ -319,6 +319,7 @@ namespace DivinityModManager.ViewModels
 		public ReactiveCommand<object, Unit> ToggleOrderRenamingCommand { get; set; }
 		public ReactiveCommand<Unit, Unit> RefreshCommand { get; private set; }
 		public ReactiveCommand<Unit, Unit> RefreshModUpdatesCommand { get; private set; }
+		public ICommand UpdateNexusModsLimitsCommand { get; private set; }
 
 		private DivinityGameLaunchWindowAction actionOnGameLaunch = DivinityGameLaunchWindowAction.None;
 		public DivinityGameLaunchWindowAction ActionOnGameLaunch
@@ -4833,6 +4834,11 @@ Directory the zip will be extracted to:
 			}
 		}
 
+		private void OnNexusModsRateLimitsUpdated(NexusModsRateLimitsUpdatedEventArgs e)
+		{
+			StatusBarRightText = $"NexusMods Limits [Hourly ({e.Limits.HourlyRemaining}/{e.Limits.HourlyLimit}) Daily ({e.Limits.DailyRemaining}/{e.Limits.DailyLimit})]";
+		}
+
 		public MainWindowViewModel() : base()
 		{
 			MainProgressValue = 0d;
@@ -4863,6 +4869,13 @@ Directory the zip will be extracted to:
 			{
 				if (!disposables.Contains(this.Disposables)) disposables.Add(this.Disposables);
 			});
+
+			UpdateNexusModsLimitsCommand = ReactiveCommand.Create<NexusModsRateLimitsUpdatedEventArgs>(OnNexusModsRateLimitsUpdated, outputScheduler:RxApp.MainThreadScheduler);
+
+			NexusModsDataLoader.RateLimitsUpdated += (sender, e) =>
+			{
+				UpdateNexusModsLimitsCommand.Execute(e);
+			};
 
 			_isLocked = this.WhenAnyValue(x => x.IsDragging, x => x.IsRefreshing, x => x.IsLoadingOrder, (b1, b2, b3) => b1 || b2 || b3).StartWith(false).ToProperty(this, nameof(IsLocked));
 			_allowDrop = this.WhenAnyValue(x => x.IsLoadingOrder, x => x.IsRefreshing, x => x.IsInitialized, (b1, b2, b3) => !b1 && !b2 && b3).StartWith(true).ToProperty(this, nameof(AllowDrop));

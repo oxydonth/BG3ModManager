@@ -1,18 +1,33 @@
 ﻿using DivinityModManager.Models;
 using DivinityModManager.Models.NexusMods;
 using DivinityModManager.Models.Updates;
+using DivinityModManager.ModUpdater.NexusMods;
 
 using NexusModsNET;
+using NexusModsNET.DataModels;
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace DivinityModManager.Util
 {
+	public class NexusModsRateLimitsUpdatedEventArgs : EventArgs
+	{
+		public NexusApiLimits Limits { get; set; }
+
+		public NexusModsRateLimitsUpdatedEventArgs(NexusApiLimits limits)
+		{
+			Limits = limits;
+		}
+	}
+
+	public delegate void NexusModsRateLimitsUpdatedEventHandler(object sender, NexusModsRateLimitsUpdatedEventArgs e);
+
 	public static class NexusModsDataLoader
 	{
 		private static INexusModsClient _client;
@@ -20,6 +35,10 @@ namespace DivinityModManager.Util
 		private static bool _pendingDispose = false;
 
 		private static string _lastApiKey = "";
+
+		public static INexusModsClient Client => _client;
+
+		public static event NexusModsRateLimitsUpdatedEventHandler RateLimitsUpdated;
 
 		public static void Init(string apiKey, string appName, string appVersion)
 		{
@@ -29,8 +48,15 @@ namespace DivinityModManager.Util
 				{
 					_lastApiKey = apiKey;
 					_client = NexusModsClient.Create(apiKey, appName, appVersion);
+					//_client = new NexusModsCustomClient(apiKey, appName, appVersion);
+					//RateLimitsUpdated ?.Invoke(_client, new NexusModsRateLimitsUpdatedEventArgs(_client.RateLimitsManagement.APILimits));
 				}
 			}
+		}
+
+		public static void EmitLimitsChanged(NexusApiLimits limits)
+		{
+			RateLimitsUpdated?.Invoke(_client, new NexusModsRateLimitsUpdatedEventArgs(limits));
 		}
 
 		public static bool Dispose()
