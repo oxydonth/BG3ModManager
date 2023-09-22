@@ -2002,12 +2002,9 @@ Directory the zip will be extracted to:
 						await AddModFromFile(result, f, MainProgressToken.Token, toActiveList);
 					}
 
-					if (result.Mods.Count > 0 && result.Mods.Any(x => x.NexusModsData.ModId >= DivinityApp.NEXUSMODS_MOD_ID_START))
+					if (UpdateHandler.Nexus.IsEnabled && result.Mods.Count > 0 && result.Mods.Any(x => x.NexusModsData.ModId >= DivinityApp.NEXUSMODS_MOD_ID_START))
 					{
-						if(UpdateHandler.Nexus.IsEnabled)
-						{
-							await UpdateHandler.Nexus.Update(result.Mods, MainProgressToken.Token);
-						}
+						await UpdateHandler.Nexus.Update(result.Mods, MainProgressToken.Token);
 					}
 
 					await ctrl.Yield();
