@@ -38,6 +38,8 @@ namespace DivinityModManager.Util
 		private static readonly string[] VersionAttributes = new string[] { "Version64", "Version" };
 		public static readonly HashSet<string> IgnoreBuiltinPath = new HashSet<string>();
 
+		private static readonly ResourceLoadParameters _loadParams = ResourceLoadParameters.FromGameVersion(LSLib.LS.Enums.Game.BaldursGate3);
+
 		public static bool IgnoreMod(string modUUID)
 		{
 			return DivinityApp.IgnoredMods.Any(m => m.UUID == modUUID);
@@ -1073,7 +1075,7 @@ namespace DivinityModManager.Util
 			{
 				try
 				{
-					var resource = LSLib.LS.ResourceUtils.LoadResource(path);
+					var resource = LSLib.LS.ResourceUtils.LoadResource(path, _loadParams);
 					return resource;
 				}
 				catch (Exception ex)
@@ -1090,7 +1092,7 @@ namespace DivinityModManager.Util
 			{
 				try
 				{
-					var resource = LSLib.LS.ResourceUtils.LoadResource(path, resourceFormat);
+					var resource = LSLib.LS.ResourceUtils.LoadResource(path, resourceFormat, _loadParams);
 					return resource;
 				}
 				catch (Exception ex)
@@ -1107,7 +1109,7 @@ namespace DivinityModManager.Util
 			{
 				try
 				{
-					var resource = LSLib.LS.ResourceUtils.LoadResource(stream, resourceFormat);
+					var resource = LSLib.LS.ResourceUtils.LoadResource(stream, resourceFormat, _loadParams);
 					return resource;
 				}
 				catch (Exception ex)
@@ -1158,7 +1160,7 @@ namespace DivinityModManager.Util
 			{
 				try
 				{
-					var res = ResourceUtils.LoadResource(playerprofilesFile.FullName);
+					var res = ResourceUtils.LoadResource(playerprofilesFile.FullName, _loadParams);
 					if (res != null && res.Regions.TryGetValue("UserProfiles", out var region))
 					{
 						if (region.Attributes.TryGetValue("ActiveProfile", out var att))
