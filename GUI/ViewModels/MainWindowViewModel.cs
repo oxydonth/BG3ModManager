@@ -3224,8 +3224,9 @@ Directory the zip will be extracted to:
 					{
 						if (entry.Key.EndsWith(".pak", StringComparison.OrdinalIgnoreCase))
 						{
+							var outputName = Path.GetFileName(entry.Key);
+							var outputFilePath = Path.Combine(outputDirectory, outputName);
 							taskResult.TotalPaks++;
-							string outputFilePath = Path.Combine(outputDirectory, entry.Key);
 							var success = false;
 							using (var entryStream = entry.OpenEntryStream())
 							{
@@ -3300,8 +3301,9 @@ Directory the zip will be extracted to:
 					{
 						if (reader.Entry.Key.EndsWith(".pak", StringComparison.OrdinalIgnoreCase))
 						{
+							var outputName = Path.GetFileName(reader.Entry.Key);
+							var outputFilePath = Path.Combine(outputDirectory, outputName);
 							taskResult.TotalPaks++;
-							string outputFilePath = Path.Combine(outputDirectory, reader.Entry.Key);
 							bool success = false;
 							using (var entryStream = reader.OpenEntryStream())
 							{
