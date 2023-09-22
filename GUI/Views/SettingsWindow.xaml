@@ -115,15 +115,15 @@
 							Text="{Binding GameDataPath, UpdateSourceTrigger=PropertyChanged, FallbackValue=''}"
 							TextAlignment="Left" />
 						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="GameExecutablePath" />
-						<!--<controls:UnfocusableTextBox
+						<controls:UnfocusableTextBox
 							VerticalAlignment="Center"
 							Text="{Binding GameExecutablePath, UpdateSourceTrigger=PropertyChanged, FallbackValue=''}"
 							TextAlignment="Left" />
-						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="NexusModsAPIKey" />-->
+						<!--<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="NexusModsAPIKey" />
 						<controls:UnfocusableTextBox
 							VerticalAlignment="Center"
 							Text="{Binding NexusModsAPIKey, UpdateSourceTrigger=PropertyChanged, FallbackValue=''}"
-							TextAlignment="Left" />
+							TextAlignment="Left" />-->
 						<!--<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="WorkshopPath" />
 						<controls:UnfocusableTextBox
 							x:Name="WorkshopPathTextbox"
