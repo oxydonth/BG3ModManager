@@ -2594,7 +2594,7 @@ Directory the zip will be extracted to:
 				IsLoadingOrder = false;
 				IsInitialized = true;
 
-				//RefreshAllModUpdatesBackground();
+				RefreshAllModUpdatesBackground();
 
 				return Unit.Default;
 			}, RxApp.MainThreadScheduler);
