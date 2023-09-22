@@ -2004,7 +2004,10 @@ Directory the zip will be extracted to:
 
 					if (result.Mods.Count > 0 && result.Mods.Any(x => x.NexusModsData.ModId >= DivinityApp.NEXUSMODS_MOD_ID_START))
 					{
-						await UpdateHandler.Nexus.Update(result.Mods, MainProgressToken.Token);
+						if(UpdateHandler.Nexus.IsEnabled)
+						{
+							await UpdateHandler.Nexus.Update(result.Mods, MainProgressToken.Token);
+						}
 					}
 
 					await ctrl.Yield();
@@ -3394,6 +3397,7 @@ Directory the zip will be extracted to:
 
 					if (nexusFileInfo.Success && success)
 					{
+						//Still save cache from imported zips, even if we aren't updating
 						await UpdateHandler.Nexus.SaveCacheAsync(false, Version, MainProgressToken.Token);
 					}
 
