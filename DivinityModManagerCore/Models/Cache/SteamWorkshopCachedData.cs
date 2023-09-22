@@ -1,32 +1,27 @@
 ﻿using DivinityModManager.Models.Steam;
+
 using Newtonsoft.Json;
+
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DivinityModManager.Models
+namespace DivinityModManager.Models.Cache
 {
 	[DataContract]
-	public class DivinityModManagerCachedWorkshopData
+	public class SteamWorkshopCachedData : BaseModCacheData<DivinityModWorkshopCachedData>
 	{
-		[DataMember] public long LastUpdated { get; set; } = -1;
-		[DataMember] public string LastVersion { get; set; } = "";
-
-		[DataMember] public List<DivinityModWorkshopCachedData> Mods { get; set; } = new List<DivinityModWorkshopCachedData>();
-		[DataMember] public List<string> NonWorkshopMods { get; set; } = new List<string>();
-
-		public bool CacheUpdated { get; set; }
+		[DataMember] public List<string> NonWorkshopMods { get; set; }
 
 		public void AddOrUpdate(string uuid, IWorkshopPublishFileDetails d, List<string> tags)
 		{
 			// Mods may have the same UUID, so use the WorkshopID instead.
-			var cachedData = Mods.FirstOrDefault(x => x.WorkshopID == d.publishedfileid);
-			if(cachedData != null)
+			var cachedData = Mods.Values.FirstOrDefault(x => x.WorkshopID == d.publishedfileid);
+			if (cachedData != null)
 			{
 				cachedData.LastUpdated = d.time_updated;
 				cachedData.Created = d.time_created;
@@ -34,7 +29,7 @@ namespace DivinityModManager.Models
 			}
 			else
 			{
-				Mods.Add(new DivinityModWorkshopCachedData()
+				Mods.Add(uuid, new DivinityModWorkshopCachedData()
 				{
 					Created = d.time_created,
 					LastUpdated = d.time_updated,
@@ -49,7 +44,7 @@ namespace DivinityModManager.Models
 
 		public void AddNonWorkshopMod(string uuid)
 		{
-			if(!NonWorkshopMods.Any(x => x == uuid))
+			if (!NonWorkshopMods.Any(x => x == uuid))
 			{
 				NonWorkshopMods.Add(uuid);
 			}
@@ -76,7 +71,7 @@ namespace DivinityModManager.Models
 					writer.WritePropertyName("Mods");
 					writer.WriteStartArray();
 
-					foreach (var data in Mods)
+					foreach (var data in Mods.Values)
 					{
 						writer.WriteStartObject();
 
@@ -95,7 +90,7 @@ namespace DivinityModManager.Models
 						writer.WritePropertyName("Tags");
 						writer.WriteStartArray();
 
-						if(data.Tags != null && data.Tags.Count > 0)
+						if (data.Tags != null && data.Tags.Count > 0)
 						{
 							foreach (var tag in data.Tags)
 							{
@@ -112,7 +107,7 @@ namespace DivinityModManager.Models
 
 					writer.WritePropertyName("NonWorkshopMods");
 					writer.WriteStartArray();
-					foreach(var uuid in NonWorkshopMods)
+					foreach (var uuid in NonWorkshopMods)
 					{
 						writer.WriteValue(uuid);
 					}
@@ -120,14 +115,19 @@ namespace DivinityModManager.Models
 
 					writer.WriteEndObject();
 				}
-				catch(Exception ex)
+				catch (Exception ex)
 				{
-					DivinityApp.Log("Error serializing CachedWorkshopData:");
+					DivinityApp.Log("Error serializing cache:");
 					DivinityApp.Log(ex.ToString());
 				}
 			}
 
 			return sb.ToString();
+		}
+
+		public SteamWorkshopCachedData() : base()
+		{
+			NonWorkshopMods = new List<string>();
 		}
 	}
 }

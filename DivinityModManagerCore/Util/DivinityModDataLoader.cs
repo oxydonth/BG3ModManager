@@ -38,6 +38,8 @@ namespace DivinityModManager.Util
 		private static readonly string[] VersionAttributes = new string[] { "Version64", "Version" };
 		public static readonly HashSet<string> IgnoreBuiltinPath = new HashSet<string>();
 
+		private static readonly ResourceLoadParameters _loadParams = ResourceLoadParameters.FromGameVersion(LSLib.LS.Enums.Game.BaldursGate3);
+
 		public static bool IgnoreMod(string modUUID)
 		{
 			return DivinityApp.IgnoredMods.Any(m => m.UUID == modUUID);
@@ -341,7 +343,7 @@ namespace DivinityModManager.Util
 								if (extenderConfig != null)
 								{
 									modData.ScriptExtenderData = extenderConfig;
-									if (modData.ScriptExtenderData.RequiredExtensionVersion > -1) modData.HasScriptExtenderSettings = true;
+									if (modData.ScriptExtenderData.RequiredVersion > -1) modData.HasScriptExtenderSettings = true;
 								}
 								else
 								{
@@ -453,6 +455,7 @@ namespace DivinityModManager.Util
 				var hasOsirisScripts = DivinityOsirisModStatus.NONE;
 				var builtinModOverrides = new Dictionary<string, DivinityModData>();
 				var files = new HashSet<string>();
+				var baseGameFiles = new HashSet<string>();
 
 				AbstractFileInfo extenderConfigPath = null;
 
@@ -486,19 +489,48 @@ namespace DivinityModManager.Util
 									if(f.Name.Contains("ForceRecompile.txt"))
 									{
 										hasOsirisScripts = DivinityOsirisModStatus.MODFIXER;
+										continue;
+									}
+									else
+									{
+										using (var stream = f.MakeStream())
+										{
+											using (var sr = new System.IO.StreamReader(stream))
+											{
+												string text = await sr.ReadToEndAsync();
+												if(text.Contains("NRD_KillStory") || text.Contains("NRD_BadCall"))
+												{
+													hasOsirisScripts = DivinityOsirisModStatus.MODFIXER;
+													continue;
+												}
+											}
+										}
 									}
 								}
 								if (builtinMods.TryGetValue(modFolder, out var builtinMod))
 								{
 									hasBuiltinDirectory = true;
-									if (!builtinModOverrides.ContainsKey(modFolder))
+									if (!IgnoreBuiltinPath.Any(x => f.Name.Contains(x)))
 									{
-										builtinModOverrides[builtinMod.Folder] = builtinMod;
-										if (!IgnoreBuiltinPath.Any(x => f.Name.Contains(x)))
+										isOverridingBuiltinDirectory = true;
+										
+										if (f.Size() > 0)
 										{
-											isOverridingBuiltinDirectory = true;
+											if (modFolder == "Game" && f.Name.Contains("GUI"))
+											{
+												if (f.Name.EndsWith(".xaml")) baseGameFiles.Add(f.Name);
+											}
+											else
+											{
+												baseGameFiles.Add(f.Name);
+											}
 										}
-										DivinityApp.Log($"Found a mod with a builtin directory. Pak({pakName}) Folder({modFolder}) File({f.Name}");
+
+										if (!builtinModOverrides.ContainsKey(modFolder))
+										{
+											builtinModOverrides[builtinMod.Folder] = builtinMod;
+											DivinityApp.Log($"Found a mod with a builtin directory. Pak({pakName}) Folder({modFolder}) File({f.Name}");
+										}
 									}
 								}
 								else
@@ -585,7 +617,14 @@ namespace DivinityModManager.Util
 					modData.Files = files;
 					if (isOverridingBuiltinDirectory)
 					{
-						modData.BuiltinOverrideModsText = String.Join(Environment.NewLine, builtinModOverrides.Values.OrderBy(x => x.Name).Select(x => $"{x.Folder} ({x.Name})"));
+						if(baseGameFiles.Count < DivinityApp.MAX_FILE_OVERRIDE_DISPLAY)
+						{
+							modData.BuiltinOverrideModsText = String.Join(Environment.NewLine, baseGameFiles.OrderBy(x => x));
+						}
+						else
+						{
+							modData.BuiltinOverrideModsText = String.Join(Environment.NewLine, builtinModOverrides.Values.OrderBy(x => x.Name).Select(x => $"{x.Folder} ({x.Name})"));
+						}
 						modData.IsForceLoaded = true;
 					}
 					modData.FilePath = pakPath;
@@ -607,7 +646,7 @@ namespace DivinityModManager.Util
 						if (extenderConfig != null)
 						{
 							modData.ScriptExtenderData = extenderConfig;
-							if (modData.ScriptExtenderData.RequiredExtensionVersion > -1) modData.HasScriptExtenderSettings = true;
+							if (modData.ScriptExtenderData.RequiredVersion > -1) modData.HasScriptExtenderSettings = true;
 						}
 						else
 						{
@@ -1036,7 +1075,7 @@ namespace DivinityModManager.Util
 			{
 				try
 				{
-					var resource = LSLib.LS.ResourceUtils.LoadResource(path);
+					var resource = LSLib.LS.ResourceUtils.LoadResource(path, _loadParams);
 					return resource;
 				}
 				catch (Exception ex)
@@ -1053,7 +1092,7 @@ namespace DivinityModManager.Util
 			{
 				try
 				{
-					var resource = LSLib.LS.ResourceUtils.LoadResource(path, resourceFormat);
+					var resource = LSLib.LS.ResourceUtils.LoadResource(path, resourceFormat, _loadParams);
 					return resource;
 				}
 				catch (Exception ex)
@@ -1070,7 +1109,7 @@ namespace DivinityModManager.Util
 			{
 				try
 				{
-					var resource = LSLib.LS.ResourceUtils.LoadResource(stream, resourceFormat);
+					var resource = LSLib.LS.ResourceUtils.LoadResource(stream, resourceFormat, _loadParams);
 					return resource;
 				}
 				catch (Exception ex)
@@ -1121,7 +1160,7 @@ namespace DivinityModManager.Util
 			{
 				try
 				{
-					var res = ResourceUtils.LoadResource(playerprofilesFile.FullName);
+					var res = ResourceUtils.LoadResource(playerprofilesFile.FullName, _loadParams);
 					if (res != null && res.Regions.TryGetValue("UserProfiles", out var region))
 					{
 						if (region.Attributes.TryGetValue("ActiveProfile", out var att))
@@ -1774,6 +1813,8 @@ namespace DivinityModManager.Util
 			return null;
 		}
 
+		private static List<string> _fallbackFeatureFlags = new List<string>();
+
 		private static async Task<DivinityModScriptExtenderConfig> LoadScriptExtenderConfigAsync(string configFile)
 		{
 			try
@@ -1790,14 +1831,15 @@ namespace DivinityModManager.Util
 						}
 						else
 						{
+							DivinityApp.Log($"Error reading '{configFile}'. Trying to manually read json text.");
 							var jsonObj = JObject.Parse(text);
 							if (jsonObj != null)
 							{
 								config = new DivinityModScriptExtenderConfig
 								{
-									RequiredExtensionVersion = jsonObj.GetValue<int>("RequiredExtensionVersion", -1),
-									FeatureFlags = jsonObj.GetValue<List<string>>("FeatureFlags", null)
+									RequiredVersion = jsonObj.GetValue("RequiredExtensionVersion", -1)
 								};
+								config.FeatureFlags.AddRange(jsonObj.GetValue("FeatureFlags", _fallbackFeatureFlags));
 								return config;
 							}
 						}
@@ -1829,14 +1871,15 @@ namespace DivinityModManager.Util
 							}
 							else
 							{
+								DivinityApp.Log($"Error reading Config.json. Trying to manually read json text.");
 								var jsonObj = JObject.Parse(text);
 								if (jsonObj != null)
 								{
 									config = new DivinityModScriptExtenderConfig
 									{
-										RequiredExtensionVersion = jsonObj.GetValue<int>("RequiredExtensionVersion", -1),
-										FeatureFlags = jsonObj.GetValue<List<string>>("FeatureFlags", null)
+										RequiredVersion = jsonObj.GetValue("RequiredExtensionVersion", -1)
 									};
+									config.FeatureFlags.AddRange(jsonObj.GetValue("FeatureFlags", _fallbackFeatureFlags));
 									return config;
 								}
 							}

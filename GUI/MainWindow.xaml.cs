@@ -163,7 +163,7 @@ namespace DivinityModManager.Views
 			self = this;
 
 			_logsDir = DivinityApp.GetAppDirectory("_Logs");
-			string sysFormat = CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern.Replace("/", "-");
+			var sysFormat = CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern.Replace("/", "-");
 #if DEBUG
 			_logFileName = Path.Combine(_logsDir, "debug_" + DateTime.Now.ToString(sysFormat + "_HH-mm-ss") + ".log");
 #else

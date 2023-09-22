@@ -17,10 +17,10 @@ namespace DivinityModManager.Models.Extender
 		[SettingsEntry("UpdateChannel", "Use a specific update channel (Release or Devel)")]
 		[Reactive]
 		[DataMember]
-		[DefaultValue("")]
+		[DefaultValue("Release")]
 		public string UpdateChannel { get; set; }
 
-		[SettingsEntry("TargetVersion", "Update to a specific version of the script extender (ex. '57.0.0.0')")]
+		[SettingsEntry("TargetVersion", "Update to a specific version of the script extender (ex. '4.0.0.0')")]
 		[Reactive]
 		[DataMember]
 		[DefaultValue("")]
@@ -37,5 +37,35 @@ namespace DivinityModManager.Models.Extender
 		[DataMember]
 		[DefaultValue(false)]
 		public bool Debug { get; set; }
+
+		[SettingsEntry("ManifestURL", "", true)]
+		[Reactive]
+		[DataMember]
+		[DefaultValue("")]
+		public string ManifestURL { get; set; }
+
+		[SettingsEntry("ManifestName", "", true)]
+		[Reactive]
+		[DataMember]
+		[DefaultValue("")]
+		public string ManifestName { get; set; }
+
+		[SettingsEntry("TargetResourceDigest", "", true)]
+		[Reactive]
+		[DataMember]
+		[DefaultValue("")]
+		public string TargetResourceDigest { get; set; }
+
+		[SettingsEntry("CachePath", "", true)]
+		[Reactive]
+		[DataMember]
+		[DefaultValue("")]
+		public string CachePath { get; set; }
+
+		[SettingsEntry("ValidateSignature", "", true)]
+		[Reactive]
+		[DataMember]
+		[DefaultValue(false)]
+		public bool ValidateSignature { get; set; }
 	}
 }

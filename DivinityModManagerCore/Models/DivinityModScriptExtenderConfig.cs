@@ -1,27 +1,42 @@
-﻿using Newtonsoft.Json;
+﻿using DynamicData;
+using DynamicData.Binding;
+
+using Newtonsoft.Json;
+
+using ReactiveUI;
+using ReactiveUI.Fody.Helpers;
+
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Reactive.Linq;
+using System.Runtime.Serialization;
 
 namespace DivinityModManager.Models
 {
-	[JsonObject(MemberSerialization.OptIn)]
-	public class DivinityModScriptExtenderConfig
+	[DataContract]
+	public class DivinityModScriptExtenderConfig : ReactiveObject
 	{
-		[JsonProperty("RequiredExtensionVersion")]
-		public int RequiredExtensionVersion { get; set; } = -1;
+		[DataMember] [Reactive] public int RequiredVersion { get; set; }
+		[DataMember] [Reactive] public string ModTable { get; set; }
 
-		[JsonProperty("FeatureFlags")]
-		public List<string> FeatureFlags { get; set; } = new List<string>();
+		[DataMember] public ObservableCollectionExtended<string> FeatureFlags { get; set; }
 
-		public bool HasAnySettings
+		private ObservableAsPropertyHelper<int> _totalFeatureFlags;
+		public int TotalFeatureFlags => _totalFeatureFlags.Value;
+
+		private ObservableAsPropertyHelper<bool> _hasAnySettings;
+		public bool HasAnySettings => _hasAnySettings.Value;
+
+		public bool Lua => TotalFeatureFlags > 0 && FeatureFlags.Contains("Lua");
+
+		public DivinityModScriptExtenderConfig()
 		{
-			get
-			{
-				return RequiredExtensionVersion > -1 || FeatureFlags?.Count > 0;
-			}
+			RequiredVersion = -1;
+			FeatureFlags = new ObservableCollectionExtended<string>();
+			var featureFlagsConnection = FeatureFlags.ToObservableChangeSet();
+			_totalFeatureFlags = featureFlagsConnection.Count().StartWith(0).ToProperty(this, nameof(TotalFeatureFlags));
+			_hasAnySettings = this.WhenAnyValue(x => x.RequiredVersion, x => x.TotalFeatureFlags, x => x.ModTable)
+				.Select(x => x.Item1 > -1 || x.Item2 > 0 || !String.IsNullOrEmpty(x.Item3)).ToProperty(this, nameof(HasAnySettings));
 		}
 	}
 }

@@ -382,6 +382,24 @@ namespace DivinityModManager.Util
 			}
 		}
 
+		public static async Task<byte[]> LoadFileAsync(string path, CancellationToken cts)
+		{
+			try
+			{
+				using (var file = File.Open(path, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.Read, 4096, true))
+				{
+					var result = new byte[file.Length];
+					var totalBytesRead = await file.ReadAsync(result, 0, (int)file.Length, cts);
+					return result;
+				}
+			}
+			catch (Exception ex)
+			{
+				DivinityApp.Log($"Error writing file: {ex}");
+			}
+			return null;
+		}
+
 		public static void TryOpenPath(string path, string args = "")
 		{
 			try

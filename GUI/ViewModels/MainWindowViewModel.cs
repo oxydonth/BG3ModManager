@@ -49,6 +49,11 @@ using System.Reactive.Subjects;
 using System.Windows.Markup;
 using DivinityModManager.Models.Extender;
 using DynamicData.Kernel;
+using DivinityModManager.Models.NexusMods;
+using DivinityModManager.Models.Updates;
+using DivinityModManager.Models.Cache;
+using DivinityModManager.ModUpdater;
+using DivinityModManager.ModUpdater.Cache;
 
 namespace DivinityModManager.ViewModels
 {
@@ -56,7 +61,7 @@ namespace DivinityModManager.ViewModels
 	{
 		[Reactive] public MainWindow View { get; private set; }
 
-		public ModViewLayout Layout { get; set; }
+		public IModViewLayout Layout { get; set; }
 
 		private ModListDropHandler dropHandler;
 
@@ -142,7 +147,7 @@ namespace DivinityModManager.ViewModels
 		protected ReadOnlyObservableCollection<DivinityModData> workshopModsCollection;
 		public ReadOnlyObservableCollection<DivinityModData> WorkshopMods => workshopModsCollection;
 
-		private DivinityModManagerCachedWorkshopData CachedWorkshopData { get; set; } = new DivinityModManagerCachedWorkshopData();
+		private readonly ModUpdateHandler UpdateHandler;
 
 		public DivinityPathwayData PathwayData { get; private set; } = new DivinityPathwayData();
 
@@ -226,7 +231,7 @@ namespace DivinityModManager.ViewModels
 		[Reactive] public bool IsDragging { get; set; }
 		[Reactive] public bool AppSettingsLoaded { get; set; }
 		[Reactive] public bool IsRefreshing { get; private set; }
-		[Reactive] public bool IsRefreshingWorkshop { get; private set; }
+		[Reactive] public bool IsRefreshingModUpdates { get; private set; }
 
 		private readonly ObservableAsPropertyHelper<bool> _isLocked;
 
@@ -286,6 +291,12 @@ namespace DivinityModManager.ViewModels
 		[Reactive] public bool WorkshopSupportEnabled { get; set; }
 		[Reactive] public bool CanMoveSelectedMods { get; set; }
 
+		private readonly ObservableAsPropertyHelper<Visibility> _updatingBusyIndicatorVisibility;
+		public Visibility UpdatingBusyIndicatorVisibility => _updatingBusyIndicatorVisibility.Value;
+
+		private readonly ObservableAsPropertyHelper<Visibility> _updateCountVisibility;
+		public Visibility UpdateCountVisibility => _updateCountVisibility.Value;
+
 		public IObservable<bool> canRenameOrder;
 
 		private IObservable<bool> canOpenWorkshopFolder;
@@ -307,7 +318,8 @@ namespace DivinityModManager.ViewModels
 		public ReactiveCommand<DivinityLoadOrder, Unit> DeleteOrderCommand { get; private set; }
 		public ReactiveCommand<object, Unit> ToggleOrderRenamingCommand { get; set; }
 		public ReactiveCommand<Unit, Unit> RefreshCommand { get; private set; }
-		public ReactiveCommand<Unit, Unit> RefreshWorkshopCommand { get; private set; }
+		public ReactiveCommand<Unit, Unit> RefreshModUpdatesCommand { get; private set; }
+		public ICommand UpdateNexusModsLimitsCommand { get; private set; }
 
 		private DivinityGameLaunchWindowAction actionOnGameLaunch = DivinityGameLaunchWindowAction.None;
 		public DivinityGameLaunchWindowAction ActionOnGameLaunch
@@ -731,7 +743,7 @@ Directory the zip will be extracted to:
 				var extenderAppDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), DivinityApp.EXTENDER_APPDATA_DIRECTORY);
 				if (Directory.Exists(extenderAppDataDir))
 				{
-					var files = Directory.EnumerateFiles(extenderAppDataDir, new DirectoryEnumerationFilters()
+					var files = Directory.EnumerateFiles(extenderAppDataDir, DirectoryEnumerationOptions.Recursive | DirectoryEnumerationOptions.Files, new DirectoryEnumerationFilters()
 					{
 						CancellationToken = t,
 						InclusionFilter = (f) => f.FileName.Equals(DivinityApp.EXTENDER_APPDATA_DLL, StringComparison.OrdinalIgnoreCase)
@@ -767,6 +779,10 @@ Directory the zip will be extracted to:
 						Settings.ExtenderSettings.ExtenderIsAvailable = hasExtenderInstalled;
 						Settings.ExtenderSettings.ExtenderVersion = extenderVersion;
 					}
+				}
+				else
+				{
+					DivinityApp.Log($"Extender Local AppData folder not found at '{extenderAppDataDir}'. Skipping.");
 				}
 				return Unit.Default;
 			}, RxApp.MainThreadScheduler);
@@ -860,10 +876,25 @@ Directory the zip will be extracted to:
 
 			LoadAppConfig();
 
+			var workshopSupportEnabled = AppSettings.FeatureEnabled("Workshop");
+			var nexusModsSupportEnabled = AppSettings.FeatureEnabled("NexusMods");
+
+			if(DivinityApp.WorkshopEnabled != workshopSupportEnabled || DivinityApp.NexusModsEnabled != nexusModsSupportEnabled)
+			{
+				DivinityApp.WorkshopEnabled = workshopSupportEnabled;
+				DivinityApp.NexusModsEnabled = nexusModsSupportEnabled;
+
+				foreach (var mod in mods.Items)
+				{
+					mod.WorkshopEnabled = DivinityApp.WorkshopEnabled;
+					mod.NexusModsEnabled = DivinityApp.NexusModsEnabled;
+				}
+			}
+
 			canOpenWorkshopFolder = this.WhenAnyValue(x => x.WorkshopSupportEnabled, x => x.Settings.WorkshopPath,
 				(b, p) => (b && !String.IsNullOrEmpty(p) && Directory.Exists(p))).StartWith(false);
 
-			if (AppSettings.FeatureEnabled("Workshop"))
+			if (workshopSupportEnabled)
 			{
 				if (!String.IsNullOrWhiteSpace(Settings.WorkshopPath))
 				{
@@ -888,7 +919,6 @@ Directory the zip will be extracted to:
 					if (!String.IsNullOrEmpty(Settings.WorkshopPath) && Directory.Exists(Settings.WorkshopPath))
 					{
 						DivinityApp.Log($"Workshop path set to: '{Settings.WorkshopPath}'.");
-						SaveSettings();
 					}
 				}
 				else if (Directory.Exists(Settings.WorkshopPath))
@@ -1122,24 +1152,26 @@ Directory the zip will be extracted to:
 				}
 			});
 
-			Settings.ClearWorkshopCacheCommand = ReactiveCommand.Create(() =>
+			Settings.ClearCacheCommand = ReactiveCommand.Create(() =>
 			{
-				var filePath = DivinityApp.GetAppDirectory("Data", "workshopdata.json");
-				if (File.Exists(filePath))
-				{
-					MessageBoxResult result = Xceed.Wpf.Toolkit.MessageBox.Show(View.SettingsWindow, $"Delete local workshop cache?\nThis cannot be undone.\nRefresh to download tag data once more.", "Confirm Delete Cache",
+				MessageBoxResult result = Xceed.Wpf.Toolkit.MessageBox.Show(View.SettingsWindow, $"Delete local mod cache?\nThis cannot be undone.", "Confirm Delete Cache",
 					MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No, View.MainWindowMessageBox_OK.Style);
-					if (result == MessageBoxResult.Yes)
+				if (result == MessageBoxResult.Yes)
+				{
+					try
 					{
-						try
+						if (UpdateHandler.DeleteCache())
 						{
-							RecycleBinHelper.DeleteFile(filePath, false, true);
-							ShowAlert($"Deleted local workshop cache at '{filePath}'", AlertType.Success, 20);
+							ShowAlert($"Deleted local cache in {DivinityApp.GetAppDirectory("Data")}", AlertType.Success, 20);
 						}
-						catch (Exception ex)
+						else
 						{
-							ShowAlert($"Error deleting workshop cache:\n{ex}", AlertType.Danger);
+							ShowAlert($"No cache to delete.", AlertType.Warning, 20);
 						}
+					}
+					catch (Exception ex)
+					{
+						ShowAlert($"Error deleting workshop cache:\n{ex}", AlertType.Danger);
 					}
 				}
 			}).DisposeWith(Settings.Disposables);
@@ -1212,6 +1244,18 @@ Directory the zip will be extracted to:
 				{
 					SetGamePathways(Settings.GameDataPath, x);
 					ShowAlert($"Larian folder changed to '{PathwayData.AppDataGameFolder}' - Make sure to refresh", AlertType.Warning, 60);
+				}
+			}).DisposeWith(Settings.Disposables);
+
+			this.WhenAnyValue(x => x.Settings.NexusModsAPIKey).Subscribe((key) =>
+			{
+				if(String.IsNullOrEmpty(key))
+				{
+					NexusModsDataLoader.Dispose();
+				}
+				else
+				{
+					NexusModsDataLoader.Init(key, AutoUpdater.AppTitle, Version);
 				}
 			}).DisposeWith(Settings.Disposables);
 
@@ -1301,7 +1345,7 @@ Directory the zip will be extracted to:
 			return newWorkshopMods;
 		}
 
-		public void CheckForModUpdates(CancellationToken cts)
+		public void CheckForWorkshopModUpdates(CancellationToken cts)
 		{
 			ModUpdatesViewData.Clear();
 
@@ -1328,10 +1372,11 @@ Directory the zip will be extracted to:
 								DivinityApp.Log($"Update available for ({pakMod.FileName}): Workshop({workshopMod.LastModified}) > Local({pakMod.LastModified})");
 							}
 
-							ModUpdatesViewData.Updates.Add(new DivinityModUpdateData()
+							ModUpdatesViewData.Mods.Add(new DivinityModUpdateData()
 							{
 								LocalMod = pakMod,
-								WorkshopMod = workshopMod
+								UpdatedMod = workshopMod,
+								IsNewMod = false,
 							});
 							count++;
 						}
@@ -1344,7 +1389,11 @@ Directory the zip will be extracted to:
 				}
 				else
 				{
-					ModUpdatesViewData.NewMods.Add(workshopMod);
+					ModUpdatesViewData.Mods.Add(new DivinityModUpdateData()
+					{
+						UpdatedMod = workshopMod,
+						IsNewMod = true,
+					});
 					count++;
 				}
 			}
@@ -1354,7 +1403,7 @@ Directory the zip will be extracted to:
 				DivinityApp.Log($"'{count}' mod updates pending.");
 			}
 			ModUpdatesViewData.OnLoaded?.Invoke();
-			IsRefreshingWorkshop = false;
+			IsRefreshingModUpdates = false;
 		}
 
 		private string GetLarianStudiosAppDataFolder()
@@ -1573,28 +1622,32 @@ Directory the zip will be extracted to:
 		private void SetLoadedMods(IEnumerable<DivinityModData> loadedMods)
 		{
 			mods.Clear();
-			foreach (var m in loadedMods)
+			foreach (var mod in loadedMods)
 			{
-				if (m.IsLarianMod)
+				mod.WorkshopEnabled = DivinityApp.WorkshopEnabled;
+				mod.NexusModsEnabled = DivinityApp.NexusModsEnabled;
+
+				if (mod.IsLarianMod)
 				{
-					var existingIgnoredMod = DivinityApp.IgnoredMods.FirstOrDefault(x => x.UUID == m.UUID);
-					if (existingIgnoredMod != null && existingIgnoredMod != m)
+					var existingIgnoredMod = DivinityApp.IgnoredMods.FirstOrDefault(x => x.UUID == mod.UUID);
+					if (existingIgnoredMod != null && existingIgnoredMod != mod)
 					{
 						DivinityApp.IgnoredMods.Remove(existingIgnoredMod);
 					}
-					DivinityApp.IgnoredMods.Add(m);
+					DivinityApp.IgnoredMods.Add(mod);
 				}
-				if (TryGetMod(m.UUID, out var existingMod))
+
+				if (TryGetMod(mod.UUID, out var existingMod))
 				{
-					if (m.Version.VersionInt > existingMod.Version.VersionInt)
+					if (mod.Version.VersionInt > existingMod.Version.VersionInt)
 					{
-						mods.AddOrUpdate(m);
-						DivinityApp.Log($"Updated mod data from pak: Name({m.Name}) UUID({m.UUID}) Type({m.ModType}) Version({m.Version.VersionInt})");
+						mods.AddOrUpdate(mod);
+						DivinityApp.Log($"Updated mod data from pak: Name({mod.Name}) UUID({mod.UUID}) Type({mod.ModType}) Version({mod.Version.VersionInt})");
 					}
 				}
 				else
 				{
-					mods.AddOrUpdate(m);
+					mods.AddOrUpdate(mod);
 				}
 			}
 		}
@@ -1878,30 +1931,30 @@ Directory the zip will be extracted to:
 			}
 		}
 
-		private async Task<ImportOperationResults> AddModFromFile(string filePath, CancellationToken t, bool toActiveList = false)
+		private async Task<ImportOperationResults> AddModFromFile(ImportOperationResults taskResult, string filePath, CancellationToken cts, bool toActiveList = false)
 		{
-			var result = new ImportOperationResults();
 			if (Path.GetExtension(filePath).Equals(".pak", StringComparison.OrdinalIgnoreCase))
 			{
 				var builtinMods = DivinityApp.IgnoredMods.SafeToDictionary(x => x.Folder, x => x);
 				var outputFilePath = Path.Combine(PathwayData.AppDataModsPath, Path.GetFileName(filePath));
 				try
 				{
+					taskResult.TotalPaks++;
+
 					using (System.IO.FileStream sourceStream = File.Open(filePath, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.Read, 8192, true))
 					{
 						using (System.IO.FileStream destinationStream = File.Create(outputFilePath))
 						{
-							await sourceStream.CopyToAsync(destinationStream, 8192, t);
-							result.Success = true;
+							await sourceStream.CopyToAsync(destinationStream, 8192, cts);
 						}
 					}
 
-					if (result.Success)
+					if (File.Exists(outputFilePath))
 					{
-						var mod = await DivinityModDataLoader.LoadModDataFromPakAsync(outputFilePath, builtinMods, t);
+						var mod = await DivinityModDataLoader.LoadModDataFromPakAsync(outputFilePath, builtinMods, cts);
 						if (mod != null)
 						{
-							result.Mods.Add(mod);
+							taskResult.Mods.Add(mod);
 							await Observable.Start(() =>
 							{
 								AddImportedMod(mod, toActiveList);
@@ -1922,9 +1975,9 @@ Directory the zip will be extracted to:
 			}
 			else
 			{
-				result.Success = await ImportOrderZipFileAsync(filePath, true, t, toActiveList);
+				await ImportOrderZipFileAsync(taskResult, filePath, true, cts, toActiveList);
 			}
-			return result;
+			return taskResult;
 		}
 
 		public void ImportMods(IEnumerable<string> files, bool toActiveList = false)
@@ -1936,19 +1989,22 @@ Directory the zip will be extracted to:
 				MainProgressValue = 0d;
 				MainProgressIsActive = true;
 				IsRefreshing = true;
+				var result = new ImportOperationResults()
+				{
+					TotalFiles = files.Count()
+				};
+
 				RxApp.TaskpoolScheduler.ScheduleAsync(async (ctrl, t) =>
 				{
 					MainProgressToken = new CancellationTokenSource();
-					int successes = 0;
-					int total = 0;
 					foreach (var f in files)
 					{
-						total++;
-						var result = await AddModFromFile(f, MainProgressToken.Token, toActiveList);
-						if (result.Success)
-						{
-							successes++;
-						}
+						await AddModFromFile(result, f, MainProgressToken.Token, toActiveList);
+					}
+
+					if (result.Mods.Count > 0 && result.Mods.Any(x => x.NexusModsData.ModId >= DivinityApp.NEXUSMODS_MOD_ID_START))
+					{
+						await UpdateHandler.Nexus.Update(result.Mods, MainProgressToken.Token);
 					}
 
 					await ctrl.Yield();
@@ -1956,9 +2012,23 @@ Directory the zip will be extracted to:
 					{
 						IsRefreshing = false;
 						OnMainProgressComplete();
-						if (successes == total)
+
+						if (result.Errors.Count > 0)
 						{
-							if (total > 1)
+							var sysFormat = CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern.Replace("/", "-");
+							var errorOutputPath = DivinityApp.GetAppDirectory("_Logs", $"ImportMods_{DateTime.Now.ToString(sysFormat + "_HH-mm-ss")}_Errors.log");
+							var logsDir = Path.GetDirectoryName(errorOutputPath);
+							if (!Directory.Exists(logsDir))
+							{
+								Directory.CreateDirectory(logsDir);
+							}
+							File.WriteAllText(errorOutputPath, String.Join("\n", result.Errors.Select(x => $"File: {x.File}\nError:\n{x.Exception}")));
+						}
+
+						var total = result.Mods.Count;
+						if (result.Success)
+						{
+							if (result.Mods.Count > 1)
 							{
 								ShowAlert($"Successfully imported {total} mods", AlertType.Success, 20);
 							}
@@ -1973,13 +2043,13 @@ Directory the zip will be extracted to:
 						}
 						else
 						{
-							if(successes == 0)
+							if(total == 0)
 							{
 								ShowAlert("No mods imported. Does the file contain a .pak?", AlertType.Warning, 60);
 							}
 							else
 							{
-								ShowAlert($"Only imported {successes}/{total} mods - Check the log", AlertType.Danger, 60);
+								ShowAlert($"Only imported {total}/{result.TotalPaks} mods - Check the log", AlertType.Danger, 60);
 							}
 						}
 					});
@@ -2017,12 +2087,19 @@ Directory the zip will be extracted to:
 				ValidateNames = true,
 				ReadOnlyChecked = true,
 				Multiselect = true,
-				InitialDirectory = GetInitialStartingDirectory()
+				InitialDirectory = !String.IsNullOrEmpty(Settings.LastImportDirectoryPath) ? Settings.LastImportDirectoryPath : GetInitialStartingDirectory()
 			};
 
 			if (dialog.ShowDialog(View) == true)
 			{
-				PathwayData.LastSaveFilePath = Path.GetDirectoryName(dialog.FileName);
+				var savedDirectory = Path.GetDirectoryName(dialog.FileName);
+				if(Settings.LastImportDirectoryPath != savedDirectory)
+				{
+					Settings.LastImportDirectoryPath = savedDirectory;
+					PathwayData.LastSaveFilePath = savedDirectory;
+					SaveSettings();
+				}
+
 				ImportMods(dialog.FileNames);
 			}
 		}
@@ -2195,14 +2272,13 @@ Directory the zip will be extracted to:
 			}
 		}
 
-		private void CheckModForExtenderData(DivinityModData mod)
+		private void UpdateModExtenderStatus(DivinityModData mod)
 		{
+			mod.CurrentExtenderVersion = Settings.ExtenderSettings.ExtenderVersion;
+
 			if (mod.ScriptExtenderData != null && mod.ScriptExtenderData.HasAnySettings)
 			{
-				// Assume an Lua-only mod actually requires the extender, otherwise functionality is limited.
-				bool onlyUsesLua = mod.ScriptExtenderData.FeatureFlags.Contains("Lua") && !mod.ScriptExtenderData.FeatureFlags.Contains("Osiris");
-
-				if (!mod.ScriptExtenderData.FeatureFlags.Contains("Preprocessor") || onlyUsesLua)
+				if (mod.ScriptExtenderData.Lua)
 				{
 					if (!Settings.ExtenderSettings.EnableExtensions)
 					{
@@ -2212,7 +2288,7 @@ Directory the zip will be extracted to:
 					{
 						if (Settings.ExtenderSettings != null && Settings.ExtenderSettings.ExtenderVersion > -1 && Settings.ExtenderSettings.ExtenderUpdaterIsAvailable)
 						{
-							if (mod.ScriptExtenderData.RequiredExtensionVersion > -1 && Settings.ExtenderSettings.ExtenderVersion < mod.ScriptExtenderData.RequiredExtensionVersion)
+							if (mod.ScriptExtenderData.RequiredVersion > -1 && Settings.ExtenderSettings.ExtenderVersion < mod.ScriptExtenderData.RequiredVersion)
 							{
 								mod.ExtenderModStatus = DivinityExtenderModStatus.REQUIRED_OLD;
 							}
@@ -2242,10 +2318,9 @@ Directory the zip will be extracted to:
 		{
 			if (Settings != null && Mods.Count > 0)
 			{
-				DivinityModData.CurrentExtenderVersion = Settings.ExtenderSettings.ExtenderVersion;
 				foreach (var mod in Mods)
 				{
-					CheckModForExtenderData(mod);
+					UpdateModExtenderStatus(mod);
 				}
 			}
 		}
@@ -2264,7 +2339,7 @@ Directory the zip will be extracted to:
 		private readonly List<string> ignoredModProjectNames = new List<string> { "Test", "Debug" };
 		private bool CanFetchWorkshopData(DivinityModData mod)
 		{
-			if (CachedWorkshopData.NonWorkshopMods.Contains(mod.UUID))
+			if (UpdateHandler.Workshop.CacheData.NonWorkshopMods.Contains(mod.UUID))
 			{
 				return false;
 			}
@@ -2273,147 +2348,48 @@ Directory the zip will be extracted to:
 			{
 				return false;
 			}
-			else if (mod.Author == "Larian" || String.IsNullOrEmpty(mod.DisplayName))
+			else if (mod.IsLarianMod || String.IsNullOrEmpty(mod.DisplayName))
 			{
 				return false;
 			}
-			return String.IsNullOrEmpty(mod.WorkshopData.ID) || !CachedWorkshopData.Mods.Any(x => x.UUID == mod.UUID);
+			return String.IsNullOrEmpty(mod.WorkshopData.ID) || !UpdateHandler.Workshop.CacheData.Mods.ContainsKey(mod.UUID);
 		}
 
-		private async Task<bool> CacheAllWorkshopModsAsync()
+		private void RefreshAllModUpdatesBackground()
 		{
-			var success = await DivinityWorkshopDataLoader.GetAllWorkshopDataAsync(CachedWorkshopData, AppSettings.DefaultPathways.Steam.AppID);
-			if (success)
+			IsRefreshingModUpdates = true;
+			var disposable = RxApp.TaskpoolScheduler.ScheduleAsync(async (sch, cts) =>
 			{
-				var cachedGUIDs = CachedWorkshopData.Mods.Select(x => x.UUID).ToHashSet();
-				var nonWorkshopMods = UserMods.Where(x => !cachedGUIDs.Contains(x.UUID)).ToList();
-				if (nonWorkshopMods.Count > 0)
-				{
-					foreach (var m in nonWorkshopMods)
-					{
-						CachedWorkshopData.AddNonWorkshopMod(m.UUID);
-					}
-				}
-			}
-			return success;
-		}
+				UpdateHandler.Workshop.SteamAppID = AppSettings.DefaultPathways.Steam.AppID;
 
+				UpdateHandler.Nexus.APIKey = Settings.NexusModsAPIKey;
+				UpdateHandler.Nexus.AppName = AutoUpdater.AppTitle;
+				UpdateHandler.Nexus.AppVersion = Version;
 
-		private void UpdateModDataWithCachedData()
-		{
-			foreach (var mod in UserMods)
-			{
-				var cachedMods = CachedWorkshopData.Mods.Where(x => x.UUID == mod.UUID);
-				if (cachedMods != null)
+				UpdateHandler.Workshop.IsEnabled = WorkshopSupportEnabled && !Settings.DisableWorkshopTagCheck;
+				UpdateHandler.Nexus.IsEnabled = DivinityApp.NexusModsEnabled;
+
+				if (UpdateHandler.Workshop.IsEnabled)
 				{
-					foreach (var cachedMod in cachedMods)
+					var loadedWorkshopMods = await LoadWorkshopModsAsync(cts);
+					await Observable.Start(() =>
 					{
-						if (String.IsNullOrEmpty(mod.WorkshopData.ID) || mod.WorkshopData.ID == cachedMod.WorkshopID)
+						workshopMods.AddOrUpdate(loadedWorkshopMods);
+						DivinityApp.Log($"Loaded '{workshopMods.Count}' workshop mods from '{Settings.WorkshopPath}'.");
+						if (!workshopModLoadingCancelToken.IsCancellationRequested)
 						{
-							mod.WorkshopData.ID = cachedMod.WorkshopID;
-							mod.WorkshopData.CreatedDate = DateUtils.UnixTimeStampToDateTime(cachedMod.Created);
-							mod.WorkshopData.UpdatedDate = DateUtils.UnixTimeStampToDateTime(cachedMod.LastUpdated);
-							mod.WorkshopData.Tags = cachedMod.Tags;
-							mod.AddTags(cachedMod.Tags);
-							if (cachedMod.LastUpdated > 0)
-							{
-								mod.LastUpdated = mod.WorkshopData.UpdatedDate;
-							}
+							CheckForWorkshopModUpdates(workshopModLoadingCancelToken);
 						}
-					}
-				}
-			}
-		}
-
-		private void LoadWorkshopModDataBackground()
-		{
-			bool workshopCacheFound = false;
-			IsRefreshingWorkshop = true;
-
-			RxApp.TaskpoolScheduler.ScheduleAsync((Func<IScheduler, CancellationToken, Task>)(async (s, token) =>
-			{
-				workshopModLoadingCancelToken = token;
-				var loadedWorkshopMods = await LoadWorkshopModsAsync(workshopModLoadingCancelToken);
-				await Observable.Start(() =>
-				{
-					workshopMods.AddOrUpdate(loadedWorkshopMods);
-					DivinityApp.Log($"Loaded '{workshopMods.Count}' workshop mods from '{Settings.WorkshopPath}'.");
-					if (!workshopModLoadingCancelToken.IsCancellationRequested)
-					{
-						CheckForModUpdates(workshopModLoadingCancelToken);
-					}
-					return Unit.Default;
-				}, RxApp.MainThreadScheduler);
-
-				var filePath = DivinityApp.GetAppDirectory("Data", "workshopdata.json");
-
-				if (File.Exists(filePath))
-				{
-					DivinityModManagerCachedWorkshopData cachedData = DivinityJsonUtils.SafeDeserializeFromPath<DivinityModManagerCachedWorkshopData>(filePath);
-					if (cachedData != null)
-					{
-						CachedWorkshopData = cachedData;
-						if (String.IsNullOrEmpty(CachedWorkshopData.LastVersion) || CachedWorkshopData.LastVersion != this.Version)
-						{
-							CachedWorkshopData.LastUpdated = -1;
-						}
-						UpdateModDataWithCachedData();
-						workshopCacheFound = true;
-					}
+						return Unit.Default;
+					}, RxApp.MainThreadScheduler);
 				}
 
-				if (!Settings.DisableWorkshopTagCheck)
-				{
-					if (!workshopCacheFound || CachedWorkshopData.LastUpdated == -1 || (DateTimeOffset.Now.ToUnixTimeSeconds() - CachedWorkshopData.LastUpdated >= 3600))
-					{
-						RxApp.MainThreadScheduler.Schedule(() =>
-						{
-							StatusBarRightText = "Downloading workshop data...";
-							StatusBarBusyIndicatorVisibility = Visibility.Visible;
-						});
-						bool success = await CacheAllWorkshopModsAsync();
-						if (success)
-						{
-							UpdateModDataWithCachedData();
-							CachedWorkshopData.LastUpdated = DateTimeOffset.Now.ToUnixTimeSeconds();
-						}
-					}
-					else
-					{
-						DivinityApp.Log("Checking for mods missing workshop data.");
-						var targetMods = UserMods.Where(x => CanFetchWorkshopData(x)).ToList();
-						if (targetMods.Count > 0)
-						{
-							RxApp.MainThreadScheduler.Schedule(() =>
-							{
-								StatusBarRightText = $"Downloading workshop data for {targetMods.Count} mods...";
-								StatusBarBusyIndicatorVisibility = Visibility.Visible;
-							});
-							var totalSuccesses = await DivinityWorkshopDataLoader.FindWorkshopDataAsync(targetMods, CachedWorkshopData, AppSettings.DefaultPathways.Steam.AppID);
-							if (totalSuccesses > 0)
-							{
-								UpdateModDataWithCachedData();
-							}
-						}
-					}
+				await UpdateHandler.LoadAsync(UserMods, Version, cts);
+				await UpdateHandler.UpdateAsync(UserMods, cts);
+				await UpdateHandler.SaveAsync(UserMods, Version, cts);
 
-					CachedWorkshopData.LastVersion = this.Version;
-
-					RxApp.MainThreadScheduler.Schedule(() =>
-					{
-						StatusBarRightText = "";
-						StatusBarBusyIndicatorVisibility = Visibility.Collapsed;
-						string updateMessage = !CachedWorkshopData.CacheUpdated ? "cached " : "";
-						ShowAlert($"Loaded {updateMessage}workshop data ({CachedWorkshopData.Mods.Count} mods)", AlertType.Success, 60);
-					});
-
-					if (CachedWorkshopData.CacheUpdated)
-					{
-						await DivinityFileUtils.WriteFileAsync(filePath, CachedWorkshopData.Serialize());
-						CachedWorkshopData.CacheUpdated = false;
-					}
-				}
-			}));
+				IsRefreshingModUpdates = false;
+			});
 		}
 
 		private async Task<Unit> RefreshAsync(IScheduler ctrl, CancellationToken t)
@@ -2618,10 +2594,7 @@ Directory the zip will be extracted to:
 				IsLoadingOrder = false;
 				IsInitialized = true;
 
-				if (AppSettings.FeatureEnabled("Workshop"))
-				{
-					LoadWorkshopModDataBackground();
-				}
+				//RefreshAllModUpdatesBackground();
 
 				return Unit.Default;
 			}, RxApp.MainThreadScheduler);
@@ -3112,7 +3085,7 @@ Directory the zip will be extracted to:
 				CheckFileExists = true,
 				CheckPathExists = true,
 				DefaultExt = ".zip",
-				Filter = "Archive file (*.zip;*.7z)|*.zip;*.7z;*.7zip;*.tar;*.bzip2;*.gzip;*.lzip|All files (*.*)|*.*",
+				Filter = "Archive file (*.zip;*.7z;*.rar)|*.zip;*.7z;*.7zip;*.tar;*.bzip2;*.gzip;*.lzip;*.rar|All files (*.*)|*.*",
 				Title = "Import Mods from Archive...",
 				ValidateNames = true,
 				ReadOnlyChecked = true,
@@ -3131,17 +3104,54 @@ Directory the zip will be extracted to:
 				MainProgressWorkText = "";
 				MainProgressValue = 0d;
 				MainProgressIsActive = true;
+				var result = new ImportOperationResults()
+				{
+					TotalFiles = 1
+				};
 				RxApp.TaskpoolScheduler.ScheduleAsync(async (ctrl, t) =>
 				{
 					MainProgressToken = new CancellationTokenSource();
-					bool success = await ImportOrderZipFileAsync(dialog.FileName, false, MainProgressToken.Token);
+					await ImportOrderZipFileAsync(result, dialog.FileName, false, MainProgressToken.Token);
+					if (result.Mods.Count > 0 && result.Mods.Any(x => x.NexusModsData.ModId >= DivinityApp.NEXUSMODS_MOD_ID_START))
+					{
+						await UpdateHandler.Nexus.Update(result.Mods, MainProgressToken.Token);
+					}
 					await ctrl.Yield();
 					RxApp.MainThreadScheduler.Schedule(_ =>
 					{
 						OnMainProgressComplete();
-						if (success)
+
+						if(result.Errors.Count > 0)
 						{
-							ShowAlert($"Successfully extracted archive", AlertType.Success, 20);
+							var sysFormat = CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern.Replace("/", "-");
+							var errorOutputPath = DivinityApp.GetAppDirectory("_Logs", $"ImportOrderFromArchive_{DateTime.Now.ToString(sysFormat + "_HH-mm-ss")}_Errors.log");
+							var logsDir = Path.GetDirectoryName(errorOutputPath);
+							if(!Directory.Exists(logsDir))
+							{
+								Directory.CreateDirectory(logsDir);
+							}
+							File.WriteAllText(errorOutputPath, String.Join("\n", result.Errors.Select(x => $"File: {x.File}\nError:\n{x.Exception}")));
+						}
+
+						var messages = new List<string>();
+						var total = result.Orders.Count + result.Mods.Count;
+
+						if(total > 0)
+						{
+							if (result.Orders.Count > 0)
+							{
+								messages.Add($"{result.Orders.Count} order(s)");
+							}
+							if (result.Mods.Count > 0)
+							{
+								messages.Add($"{result.Mods.Count} mod(s)");
+							}
+							var msg = String.Join(", ", messages);
+							ShowAlert($"Imported {msg}", AlertType.Success, 20);
+						}	
+						else
+						{
+							ShowAlert($"Successfully extracted archive, but no mods or load orders were found", AlertType.Warning, 20);
 						}
 					});
 					return Disposable.Empty;
@@ -3151,6 +3161,9 @@ Directory the zip will be extracted to:
 
 		private void AddImportedMod(DivinityModData mod, bool toActiveList = false)
 		{
+			mod.WorkshopEnabled = DivinityApp.WorkshopEnabled;
+			mod.NexusModsEnabled = DivinityApp.NexusModsEnabled;
+
 			if (mod.IsForceLoaded && !mod.IsForceLoadedMergedMod)
 			{
 				mods.AddOrUpdate(mod);
@@ -3193,28 +3206,27 @@ Directory the zip will be extracted to:
 				}
 			}
 			mods.AddOrUpdate(mod);
-			CheckModForExtenderData(mod);
+			UpdateModExtenderStatus(mod);
 			DivinityApp.Log($"Imported Mod: {mod}");
 		}
 
-		private async Task<bool> ImportSevenZipArchiveAsync(string outputDirectory, System.IO.Stream stream,
-			Dictionary<string, string> jsonFiles, CancellationToken t, bool toActiveList = false)
+		private async Task<bool> ImportSevenZipArchiveAsync(ImportOperationResults taskResult, NexusModFileVersionData info, string outputDirectory, System.IO.Stream stream,
+			Dictionary<string, string> jsonFiles, CancellationToken cts, bool toActiveList = false)
 		{
-			int successes = 0;
-			int total = 0;
 			stream.Position = 0;
 			var builtinMods = DivinityApp.IgnoredMods.SafeToDictionary(x => x.Folder, x => x);
 			using (var archiveStream = SevenZipArchive.Open(stream, _importReaderOptions))
 			{
 				foreach (var entry in archiveStream.Entries)
 				{
-					if (t.IsCancellationRequested) return false;
+					if (cts.IsCancellationRequested) return false;
 					if (!entry.IsDirectory)
 					{
 						if (entry.Key.EndsWith(".pak", StringComparison.OrdinalIgnoreCase))
 						{
-							total += 1;
-							string outputFilePath = Path.Combine(outputDirectory, entry.Key);
+							var outputName = Path.GetFileName(entry.Key);
+							var outputFilePath = Path.Combine(outputDirectory, outputName);
+							taskResult.TotalPaks++;
 							var success = false;
 							using (var entryStream = entry.OpenEntryStream())
 							{
@@ -3227,16 +3239,18 @@ Directory the zip will be extracted to:
 									}
 									catch (Exception ex)
 									{
+										taskResult.AddError(outputFilePath, ex);
 										DivinityApp.Log($"Error copying file '{entry.Key}' from archive to '{outputFilePath}':\n{ex}");
 									}
 								}
 							}
 							if (success)
 							{
-								var mod = await DivinityModDataLoader.LoadModDataFromPakAsync(outputFilePath, builtinMods, t);
+								var mod = await DivinityModDataLoader.LoadModDataFromPakAsync(outputFilePath, builtinMods, cts);
 								if (mod != null)
 								{
-									successes += 1;
+									taskResult.Mods.Add(mod);
+									mod.NexusModsData.SetModVersion(info);
 									await Observable.Start(() =>
 									{
 										AddImportedMod(mod, toActiveList);
@@ -3247,23 +3261,22 @@ Directory the zip will be extracted to:
 						}
 						else if (entry.Key.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
 						{
-							total += 1;
 							using (var entryStream = entry.OpenEntryStream())
 							{
 								try
 								{
 									int length = (int)entry.CompressedSize;
-									var result = new byte[length];
-									await entryStream.ReadAsync(result, 0, length);
-									string text = Encoding.UTF8.GetString(result);
+									var byteText = new byte[length];
+									await entryStream.ReadAsync(byteText, 0, length);
+									string text = Encoding.UTF8.GetString(byteText);
 									if (!String.IsNullOrWhiteSpace(text))
 									{
 										jsonFiles.Add(Path.GetFileNameWithoutExtension(entry.Key), text);
 									}
-									successes += 1;
 								}
 								catch (Exception ex)
 								{
+									taskResult.AddError(entry.Key, ex);
 									DivinityApp.Log($"Error reading json file '{entry.Key}' from archive:\n{ex}");
 								}
 							}
@@ -3271,27 +3284,26 @@ Directory the zip will be extracted to:
 					}
 				}
 			}
-			return successes >= total;
+			return true;
 		}
 
-		private async Task<bool> ImportGenericArchiveAsync(string outputDirectory, System.IO.Stream stream,
-			Dictionary<string, string> jsonFiles, CancellationToken t, bool toActiveList = false)
+		private async Task<bool> ImportGenericArchiveAsync(ImportOperationResults taskResult, NexusModFileVersionData info, string outputDirectory, System.IO.Stream stream,
+			Dictionary<string, string> jsonFiles, CancellationToken cts, bool toActiveList = false)
 		{
-			int successes = 0;
-			int total = 0;
 			stream.Position = 0;
 			var builtinMods = DivinityApp.IgnoredMods.SafeToDictionary(x => x.Folder, x => x);
 			using (var reader = ReaderFactory.Open(stream, _importReaderOptions))
 			{
 				while (reader.MoveToNextEntry())
 				{
-					if (t.IsCancellationRequested) return false;
+					if (cts.IsCancellationRequested) return false;
 					if (!reader.Entry.IsDirectory)
 					{
 						if (reader.Entry.Key.EndsWith(".pak", StringComparison.OrdinalIgnoreCase))
 						{
-							total += 1;
-							string outputFilePath = Path.Combine(outputDirectory, reader.Entry.Key);
+							var outputName = Path.GetFileName(reader.Entry.Key);
+							var outputFilePath = Path.Combine(outputDirectory, outputName);
+							taskResult.TotalPaks++;
 							bool success = false;
 							using (var entryStream = reader.OpenEntryStream())
 							{
@@ -3301,10 +3313,10 @@ Directory the zip will be extracted to:
 									{
 										await entryStream.CopyToAsync(fs, 4096, MainProgressToken.Token);
 										success = true;
-										successes += 1;
 									}
 									catch (Exception ex)
 									{
+										taskResult.AddError(outputFilePath, ex);
 										DivinityApp.Log($"Error copying file '{reader.Entry.Key}' from archive to '{outputFilePath}':\n{ex}");
 									}
 								}
@@ -3312,10 +3324,11 @@ Directory the zip will be extracted to:
 
 							if (success)
 							{
-								var mod = await DivinityModDataLoader.LoadModDataFromPakAsync(outputFilePath, builtinMods, t);
+								var mod = await DivinityModDataLoader.LoadModDataFromPakAsync(outputFilePath, builtinMods, cts);
 								if (mod != null)
 								{
-									successes += 1;
+									taskResult.Mods.Add(mod);
+									mod.NexusModsData.SetModVersion(info);
 									await Observable.Start(() =>
 									{
 										AddImportedMod(mod, toActiveList);
@@ -3326,7 +3339,6 @@ Directory the zip will be extracted to:
 						}
 						else if (reader.Entry.Key.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
 						{
-							total += 1;
 							using (var entryStream = reader.OpenEntryStream())
 							{
 								try
@@ -3339,10 +3351,10 @@ Directory the zip will be extracted to:
 									{
 										jsonFiles.Add(Path.GetFileNameWithoutExtension(reader.Entry.Key), text);
 									}
-									successes += 1;
 								}
 								catch (Exception ex)
 								{
+									taskResult.AddError(reader.Entry.Key, ex);
 									DivinityApp.Log($"Error reading json file '{reader.Entry.Key}' from archive:\n{ex}");
 								}
 							}
@@ -3350,10 +3362,10 @@ Directory the zip will be extracted to:
 					}
 				}
 			}
-			return successes >= total;
+			return true;
 		}
 
-		private async Task<bool> ImportOrderZipFileAsync(string archivePath, bool onlyMods, CancellationToken t, bool toActiveList = false)
+		private async Task<bool> ImportOrderZipFileAsync(ImportOperationResults taskResult, string archivePath, bool onlyMods, CancellationToken t, bool toActiveList = false)
 		{
 			System.IO.FileStream fileStream = null;
 			string outputDirectory = PathwayData.AppDataModsPath;
@@ -3365,17 +3377,24 @@ Directory the zip will be extracted to:
 				fileStream = File.Open(archivePath, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.Read, 4096, true);
 				if (fileStream != null)
 				{
+					var nexusFileInfo = NexusModFileVersionData.FromFilePath(archivePath);
+
 					await fileStream.ReadAsync(new byte[fileStream.Length], 0, (int)fileStream.Length);
 					IncreaseMainProgressValue(taskStepAmount);
 
 					var extension = Path.GetExtension(archivePath);
 					if (SevenZipArchive.IsSevenZipFile(archivePath) || extension.Equals(".7z", StringComparison.OrdinalIgnoreCase) || extension.Equals(".7zip", StringComparison.OrdinalIgnoreCase))
 					{
-						success = await ImportSevenZipArchiveAsync(outputDirectory, fileStream, jsonFiles, t, toActiveList);
+						success = await ImportSevenZipArchiveAsync(taskResult, nexusFileInfo, outputDirectory, fileStream, jsonFiles, t, toActiveList);
 					}
 					else
 					{
-						success = await ImportGenericArchiveAsync(outputDirectory, fileStream, jsonFiles, t, toActiveList);
+						success = await ImportGenericArchiveAsync(taskResult, nexusFileInfo, outputDirectory, fileStream, jsonFiles, t, toActiveList);
+					}
+
+					if (nexusFileInfo.Success && success)
+					{
+						await UpdateHandler.Nexus.SaveCacheAsync(false, Version, MainProgressToken.Token);
 					}
 
 					IncreaseMainProgressValue(taskStepAmount);
@@ -3386,6 +3405,7 @@ Directory the zip will be extracted to:
 				DivinityApp.Log($"Error extracting package: {ex}");
 				RxApp.MainThreadScheduler.Schedule(_ =>
 				{
+					taskResult.AddError(archivePath, ex);
 					ShowAlert($"Error extracting archive (check the log): {ex.Message}", AlertType.Danger, 0);
 				});
 			}
@@ -3404,6 +3424,7 @@ Directory the zip will be extracted to:
 							DivinityLoadOrder order = DivinityJsonUtils.SafeDeserialize<DivinityLoadOrder>(kvp.Value);
 							if (order != null)
 							{
+								taskResult.Orders.Add(order);
 								order.Name = kvp.Key;
 								DivinityApp.Log($"Imported mod order from archive: {String.Join(@"\n\t", order.Order.Select(x => x.Name))}");
 								AddNewModOrder(order);
@@ -3653,11 +3674,8 @@ Directory the zip will be extracted to:
 			{
 				index = "Override";
 			}
-			if (WorkshopSupportEnabled)
-			{
-				return $"{index}\t{mod.Name}\t{mod.Author}\t{mod.OutputPakName}\t{String.Join(", ", mod.Tags)}\t{String.Join(", ", mod.Dependencies.Items.Select(y => y.Name))}\t{mod.GetURL()}";
-			}
-			return $"{index}\t{mod.Name}\t{mod.Author}\t{mod.OutputPakName}\t{String.Join(", ", mod.Tags)}\t{String.Join(", ", mod.Dependencies.Items.Select(y => y.Name))}";
+			var urls = String.Join(";", mod.GetAllURLs());
+			return $"{index}\t{mod.Name}\t{mod.Author}\t{mod.OutputPakName}\t{String.Join(", ", mod.Tags)}\t{String.Join(", ", mod.Dependencies.Items.Select(y => y.Name))}\t{urls}";
 		}
 
 		private string ModToTextLine(DivinityModData mod)
@@ -3667,11 +3685,8 @@ Directory the zip will be extracted to:
 			{
 				index = "Override";
 			}
-			if (WorkshopSupportEnabled)
-			{
-				return $"{index} {mod.Name} ({mod.OutputPakName}) {mod.GetURL()}";
-			}
-			return $"{index} {mod.Name} ({mod.OutputPakName})";
+			var urls = String.Join(";", mod.GetAllURLs());
+			return $"{index} {mod.Name} ({mod.OutputPakName}) {urls}";
 		}
 
 		private void ExportLoadOrderToTextFileAs()
@@ -3717,16 +3732,8 @@ Directory the zip will be extracted to:
 					}
 					else if (fileType.Equals(".tsv", StringComparison.OrdinalIgnoreCase))
 					{
-						if (WorkshopSupportEnabled)
-						{
-							outputText = "Index\tName\tAuthor\tFileName\tTags\tDependencies\tURL\n";
-							outputText += String.Join("\n", exportMods.Select(ModToTSVLine));
-						}
-						else
-						{
-							outputText = "Index\tName\tAuthor\tFileName\tTags\tDependencies\n";
-							outputText += String.Join("\n", exportMods.Select(ModToTSVLine));
-						}
+						outputText = "Index\tName\tAuthor\tFileName\tTags\tDependencies\tURL\n";
+						outputText += String.Join("\n", exportMods.Select(ModToTSVLine));
 					}
 					else
 					{
@@ -4829,18 +4836,24 @@ Directory the zip will be extracted to:
 			}
 		}
 
+		private void OnNexusModsRateLimitsUpdated(NexusModsRateLimitsUpdatedEventArgs e)
+		{
+			StatusBarRightText = $"NexusMods Limits [Hourly ({e.Limits.HourlyRemaining}/{e.Limits.HourlyLimit}) Daily ({e.Limits.DailyRemaining}/{e.Limits.DailyLimit})]";
+		}
+
 		public MainWindowViewModel() : base()
 		{
 			MainProgressValue = 0d;
 			MainProgressIsActive = true;
 			StatusBarBusyIndicatorVisibility = Visibility.Collapsed;
+			UpdateHandler = new ModUpdateHandler();
 
 			exceptionHandler = new MainWindowExceptionHandler(this);
 			RxApp.DefaultExceptionHandler = exceptionHandler;
 
 			this.ModUpdatesViewData = new ModUpdatesViewData(this);
 
-			var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+			var assembly = Assembly.GetExecutingAssembly();
 			var productName = ((AssemblyProductAttribute)Attribute.GetCustomAttribute(assembly, typeof(AssemblyProductAttribute), false)).Product;
 			Version = assembly.GetName().Version.ToString();
 			Title = $"{productName} {this.Version}";
@@ -4859,8 +4872,19 @@ Directory the zip will be extracted to:
 				if (!disposables.Contains(this.Disposables)) disposables.Add(this.Disposables);
 			});
 
+			UpdateNexusModsLimitsCommand = ReactiveCommand.Create<NexusModsRateLimitsUpdatedEventArgs>(OnNexusModsRateLimitsUpdated, outputScheduler:RxApp.MainThreadScheduler);
+
+			NexusModsDataLoader.RateLimitsUpdated += (sender, e) =>
+			{
+				UpdateNexusModsLimitsCommand.Execute(e);
+			};
+
 			_isLocked = this.WhenAnyValue(x => x.IsDragging, x => x.IsRefreshing, x => x.IsLoadingOrder, (b1, b2, b3) => b1 || b2 || b3).StartWith(false).ToProperty(this, nameof(IsLocked));
 			_allowDrop = this.WhenAnyValue(x => x.IsLoadingOrder, x => x.IsRefreshing, x => x.IsInitialized, (b1, b2, b3) => !b1 && !b2 && b3).StartWith(true).ToProperty(this, nameof(AllowDrop));
+
+			var whenRefreshing = this.WhenAnyValue(x => x.UpdateHandler.IsRefreshing);
+			_updatingBusyIndicatorVisibility = whenRefreshing.Select(b => b ? Visibility.Visible : Visibility.Collapsed).StartWith(Visibility.Visible).ToProperty(this, nameof(UpdatingBusyIndicatorVisibility), scheduler: RxApp.MainThreadScheduler);
+			_updateCountVisibility = whenRefreshing.Select(b => b ? Visibility.Collapsed : Visibility.Visible).StartWith(Visibility.Visible).ToProperty(this, nameof(UpdateCountVisibility), scheduler: RxApp.MainThreadScheduler);
 
 			_keys = new AppKeys(this);
 
@@ -4896,17 +4920,16 @@ Directory the zip will be extracted to:
 
 			Keys.Refresh.AddAction(() => RefreshCommand.Execute(Unit.Default).Subscribe(), canRefreshObservable);
 
-			var canRefreshWorkshop = this.WhenAnyValue(x => x.IsRefreshing, x => x.IsRefreshingWorkshop, x => x.AppSettingsLoaded, (b1, b2, b3) => !b1 && !b2 && b3 && AppSettings.FeatureEnabled("Workshop")).StartWith(false);
+			var canRefreshModUpdates = this.WhenAnyValue(x => x.IsRefreshing, x => x.IsRefreshingModUpdates, x => x.AppSettingsLoaded, (b1, b2, b3) => !b1 && !b2 && b3).StartWith(false);
 
-			RefreshWorkshopCommand = ReactiveCommand.Create(() =>
+			RefreshModUpdatesCommand = ReactiveCommand.Create(() =>
 			{
 				ModUpdatesViewData?.Clear();
 				ModUpdatesViewVisible = ModUpdatesAvailable = false;
-				workshopMods.Clear();
-				LoadWorkshopModDataBackground();
-			}, canRefreshWorkshop, RxApp.MainThreadScheduler);
+				RefreshAllModUpdatesBackground();
+			}, canRefreshModUpdates, RxApp.MainThreadScheduler);
 
-			Keys.RefreshWorkshop.AddAction(() => RefreshWorkshopCommand.Execute(Unit.Default).Subscribe(), canRefreshWorkshop);
+			Keys.RefreshModUpdates.AddAction(() => RefreshModUpdatesCommand.Execute(Unit.Default).Subscribe(), canRefreshModUpdates);
 
 			IObservable<bool> canStartExport = this.WhenAny(x => x.MainProgressToken, (t) => t != null).StartWith(false);
 			Keys.ExportOrderToZip.AddAction(ExportLoadOrderToArchive_Start, canStartExport);

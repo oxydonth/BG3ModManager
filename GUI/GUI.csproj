@@ -105,6 +105,9 @@
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
+    <Reference Include="NexusModsNET, Version=1.0.5.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\NexusModsNET.1.0.5\lib\netstandard2.0\NexusModsNET.dll</HintPath>
+    </Reference>
     <Reference Include="Ookii.Dialogs.Wpf, Version=5.0.0.0, Culture=neutral, PublicKeyToken=66aa232afad40158, processorArchitecture=MSIL">
       <HintPath>..\packages\Ookii.Dialogs.Wpf.5.0.1\lib\net462\Ookii.Dialogs.Wpf.dll</HintPath>
     </Reference>
@@ -256,6 +259,7 @@
     <Compile Include="Converters\StringToLinearBrushConverter.cs" />
     <Compile Include="Converters\StringToSolidBrushConverter.cs" />
     <Compile Include="Converters\StringToUriConverter.cs" />
+    <Compile Include="Converters\UriToBitmapImageConverter.cs" />
     <Compile Include="Extensions\DependencyObjectExtensions.cs" />
     <Compile Include="MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
@@ -555,10 +559,10 @@
     <Resource Include="Resources\Icons\SaveGrey_16x.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
-	<Resource Include="Resources\Icons\Osiris_16x.png">
+    <Resource Include="Resources\Icons\Osiris_16x.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
-	<Resource Include="Resources\Icons\Osiris_ModFixer_16x.png">
+    <Resource Include="Resources\Icons\Osiris_ModFixer_16x.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
   </ItemGroup>

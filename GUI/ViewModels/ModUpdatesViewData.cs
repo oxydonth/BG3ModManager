@@ -1,18 +1,22 @@
 ﻿using Alphaleonis.Win32.Filesystem;
-using DivinityModManager.Models;
-using DivinityModManager.Util;
+
+using DivinityModManager.Models.Updates;
+using DivinityModManager.Views;
+
 using DynamicData;
 using DynamicData.Binding;
+
+using Ookii.Dialogs.Wpf;
+
 using ReactiveUI;
+using ReactiveUI.Fody.Helpers;
+
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
+using System.Collections.ObjectModel;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Reactive.Linq;
 using System.Windows.Input;
-using Ookii.Dialogs.Wpf;
-using DivinityModManager.Views;
 
 namespace DivinityModManager.ViewModels
 {
@@ -27,106 +31,60 @@ namespace DivinityModManager.ViewModels
 
 	public class ModUpdatesViewData : ReactiveObject
 	{
-		private bool unlocked = true;
+		[Reactive] public bool Unlocked { get; set; }
+		[Reactive] public bool JustUpdated { get; set; }
 
-		public bool Unlocked
-		{
-			get => unlocked;
-			set { this.RaiseAndSetIfChanged(ref unlocked, value); }
-		}
+		public SourceList<DivinityModUpdateData> Mods { get; private set; } = new SourceList<DivinityModUpdateData>();
 
-		private bool newAvailable;
+		private readonly ReadOnlyObservableCollection<DivinityModUpdateData> _newMods;
+		public ReadOnlyObservableCollection<DivinityModUpdateData> NewMods => _newMods;
 
-		public bool NewAvailable
-		{
-			get => newAvailable;
-			set { this.RaiseAndSetIfChanged(ref newAvailable, value); }
-		}
+		private readonly ReadOnlyObservableCollection<DivinityModUpdateData> _updatedMods;
+		public ReadOnlyObservableCollection<DivinityModUpdateData> UpdatedMods => _updatedMods;
 
-		private bool updatesAvailable = false;
+		readonly ObservableAsPropertyHelper<bool> _anySelected;
+		public bool AnySelected => _anySelected.Value;
 
-		public bool UpdatesAvailable
-		{
-			get => updatesAvailable;
-			set { this.RaiseAndSetIfChanged(ref updatesAvailable, value); }
-		}
+		readonly ObservableAsPropertyHelper<bool> _allNewModsSelected;
+		public bool AllNewModsSelected => _allNewModsSelected.Value;
 
-		public ObservableCollectionExtended<DivinityModData> NewMods { get; set; } = new ObservableCollectionExtended<DivinityModData>();
-		public ObservableCollectionExtended<DivinityModUpdateData> Updates { get; set; } = new ObservableCollectionExtended<DivinityModUpdateData>();
+		readonly ObservableAsPropertyHelper<bool> _allModUpdatesSelected;
+		public bool AllModUpdatesSelected => _allModUpdatesSelected.Value;
 
-		private int totalUpdates;
+		readonly ObservableAsPropertyHelper<bool> _newAvailable;
+		public bool NewAvailable => _newAvailable.Value;
 
-		public int TotalUpdates
-		{
-			get => totalUpdates;
-			set { this.RaiseAndSetIfChanged(ref totalUpdates, value); }
-		}
+		readonly ObservableAsPropertyHelper<bool> _updatesAvailable;
+		public bool UpdatesAvailable => _updatesAvailable.Value;
 
-		private bool anySelected = false;
+		readonly ObservableAsPropertyHelper<int> _totalUpdates;
+		public int TotalUpdates => _totalUpdates.Value;
 
-		public bool AnySelected
-		{
-			get => anySelected;
-			set { this.RaiseAndSetIfChanged(ref anySelected, value); }
-		}
-
-		private bool justUpdated = false;
-
-		public bool JustUpdated
-		{
-			get => justUpdated;
-			set { this.RaiseAndSetIfChanged(ref justUpdated, value); }
-		}
-
-		private bool allNewModsSelected = false;
-
-		public bool AllNewModsSelected
-		{
-			get => allNewModsSelected;
-			set { this.RaiseAndSetIfChanged(ref allNewModsSelected, value); }
-		}
-
-		private bool allModUpdatesSelected = false;
-
-		public bool AllModUpdatesSelected
-		{
-			get => allModUpdatesSelected;
-			set { this.RaiseAndSetIfChanged(ref allModUpdatesSelected, value); }
-		}
-
-		public ICommand CopySelectedModsCommand { get; set; }
-		public ICommand SelectAllNewModsCommand { get; set; }
-		public ICommand SelectAllUpdatesCommand { get; set; }
+		public ICommand CopySelectedModsCommand { get; private set; }
+		public ICommand SelectAllNewModsCommand { get; private set; }
+		public ICommand SelectAllUpdatesCommand { get; private set; }
 
 		public Action OnLoaded { get; set; }
 
 		public Action<bool> CloseView { get; set; }
 
-		private MainWindowViewModel _mainWindowViewModel;
+		private readonly MainWindowViewModel _mainWindowViewModel;
 
 		public void Clear()
 		{
-			Updates.Clear();
-			NewMods.Clear();
-
-			TotalUpdates = 0;
-			NewAvailable = UpdatesAvailable = false;
+			Mods.Clear();
 			Unlocked = true;
 		}
 
 		public void SelectAll(bool select = true)
 		{
-			foreach (var x in NewMods)
-			{
-				x.IsSelected = select;
-			}
-			foreach (var x in Updates)
+			foreach (var x in Mods.Items)
 			{
 				x.IsSelected = select;
 			}
 		}
 
-		private DirectoryEnumerationFilters IsPakFilter = new DirectoryEnumerationFilters()
+		private readonly DirectoryEnumerationFilters IsPakFilter = new DirectoryEnumerationFilters()
 		{
 			InclusionFilter = (f) =>
 			{
@@ -142,8 +100,8 @@ namespace DivinityModManager.ViewModels
 
 		private void CopySelectedMods_Run()
 		{
-			string documentsFolder = System.Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-			string modPakFolder = Path.Combine(_mainWindowViewModel.PathwayData.AppDataGameFolder, "Mods");
+			string documentsFolder = _mainWindowViewModel.PathwayData.AppDataGameFolder;
+			string modPakFolder = _mainWindowViewModel.PathwayData.AppDataModsPath;
 
 			if (Directory.Exists(modPakFolder))
 			{
@@ -151,8 +109,8 @@ namespace DivinityModManager.ViewModels
 				using (ProgressDialog dialog = new ProgressDialog()
 				{
 					WindowTitle = "Updating Mods",
-					Text = "Copying workshop mods...",
-					CancellationText = "Update Canceled",
+					Text = "Copying mods...",
+					CancellationText = "Update Cancelled",
 					MinimizeBox = false,
 					ProgressBarStyle = ProgressBarStyle.ProgressBar
 				})
@@ -164,8 +122,8 @@ namespace DivinityModManager.ViewModels
 					{
 						DocumentsFolder = documentsFolder,
 						ModPakFolder = modPakFolder,
-						NewFilesToMove = NewMods.Where(x => x.IsSelected).Select(x => GetUpdateFiles(Path.GetDirectoryName(x.FilePath))).SelectMany(x => x).ToList(),
-						UpdatesToMove = Updates.Where(x => x.IsSelected).Select(x => GetUpdateFiles(Path.GetDirectoryName(x.WorkshopMod.FilePath))).SelectMany(x => x).ToList(),
+						NewFilesToMove = NewMods.Where(x => x.IsSelected).Select(x => GetUpdateFiles(Path.GetDirectoryName(x.UpdateFilePath))).SelectMany(x => x).ToList(),
+						UpdatesToMove = UpdatedMods.Where(x => x.IsSelected).Select(x => GetUpdateFiles(Path.GetDirectoryName(x.UpdateFilePath))).SelectMany(x => x).ToList(),
 						TotalMoved = 0
 					};
 
@@ -180,41 +138,30 @@ namespace DivinityModManager.ViewModels
 
 		public void CopySelectedMods()
 		{
-			if (Updates.Where(x => x.IsSelected).Count() > 0)
+			using (var dialog = new TaskDialog()
 			{
-				using (TaskDialog dialog = new TaskDialog()
-				{
-					Buttons =
+				Buttons =
 					{
 						new TaskDialogButton(ButtonType.Yes),
 						new TaskDialogButton(ButtonType.No)
 					},
-					WindowTitle = "Update Mods?",
-					Content = "Override local mods with the latest workshop versions?",
-					MainIcon = TaskDialogIcon.Warning
-				})
-				{
-					var result = dialog.ShowDialog(MainWindow.Self);
-					if (result.ButtonType == ButtonType.Yes)
-					{
-						CopySelectedMods_Run();
-					}
-					else
-					{
-						//CloseView?.Invoke(false);
-					}
-				}
-			}
-			else
+				WindowTitle = "Update Mods?",
+				Content = "Override local mods with the selected updates?",
+				MainIcon = TaskDialogIcon.Warning
+			})
 			{
-				CopySelectedMods_Run();
+				var result = dialog.ShowDialog(MainWindow.Self);
+				if (result.ButtonType == ButtonType.Yes)
+				{
+					CopySelectedMods_Run();
+				}
 			}
 		}
 
 		private void CopyFilesProgress_RunWorkerCompleted(object sender, System.ComponentModel.RunWorkerCompletedEventArgs e)
 		{
 			Unlocked = true;
-			DivinityApp.Log("Workshop mod copying complete.");
+			DivinityApp.Log("Mod updating complete.");
 			try
 			{
 				if (e.Result is CopyModUpdatesTask args)
@@ -224,7 +171,7 @@ namespace DivinityModManager.ViewModels
 			}
 			catch(Exception ex)
 			{
-				string message = $"Error copying workshop mods: {ex}";
+				string message = $"Error copying mods: {ex}";
 				DivinityApp.Log(message);
 				MainWindow.Self.AlertBar.SetDangerAlert(message);
 			}
@@ -239,7 +186,7 @@ namespace DivinityModManager.ViewModels
 				var totalWork = args.NewFilesToMove.Count + args.UpdatesToMove.Count;
 				if (args.NewFilesToMove.Count > 0)
 				{
-					DivinityApp.Log($"Copying '{args.NewFilesToMove.Count}' new workshop mod(s) to the local mods folder.");
+					DivinityApp.Log($"Copying '{args.NewFilesToMove.Count}' new mod(s) to the local mods folder.");
 
 					foreach (string file in args.NewFilesToMove)
 					{
@@ -272,19 +219,19 @@ namespace DivinityModManager.ViewModels
 				{
 					string backupFolder = Path.Combine(_mainWindowViewModel.PathwayData.AppDataGameFolder, "Mods_Old_ModManager");
 					Directory.CreateDirectory(backupFolder);
-					DivinityApp.Log($"Copying '{args.UpdatesToMove.Count}' workshop mod update(s) to the local mods folder.");
+					DivinityApp.Log($"Copying '{args.UpdatesToMove.Count}' mod update(s) to the local mods folder.");
 					foreach (string file in args.UpdatesToMove)
 					{
 						if (e.Cancel) return;
 						string baseName = Path.GetFileName(file);
 						try
 						{
-							DivinityApp.Log($"Moving workshop mod into mods folder: '{file}'.");
+							DivinityApp.Log($"Moving mod into mods folder: '{file}'.");
 							File.Copy(file, Path.Combine(args.ModPakFolder, Path.GetFileName(file)), true);
 						}
 						catch(Exception ex)
 						{
-							DivinityApp.Log($"Error copying workshop mod:\n{ex}");
+							DivinityApp.Log($"Error copying mod:\n{ex}");
 						}
 						dialog.ReportProgress(args.TotalMoved / totalWork, $"Copying '{baseName}'...", null);
 						args.TotalMoved++;
@@ -296,73 +243,53 @@ namespace DivinityModManager.ViewModels
 
 		public ModUpdatesViewData(MainWindowViewModel mainWindowViewModel)
 		{
+			Unlocked = true;
+
 			_mainWindowViewModel = mainWindowViewModel;
 
-			NewMods.CollectionChanged += delegate
-			{
-				NewAvailable = NewMods.Count > 0;
-			};
+			var modsConnection = Mods.Connect();
 
-			Updates.CollectionChanged += delegate
-			{
-				UpdatesAvailable = Updates.Count > 0;
-			};
+			_totalUpdates = modsConnection.Count().ToProperty(this, nameof(TotalUpdates));
+
+			var splitList = modsConnection.AutoRefresh(x => x.IsNewMod);
+			var newModsConnection = splitList.Filter(x => x.IsNewMod);
+			var updatedModsConnection = splitList.Filter(x => !x.IsNewMod);
+
+			newModsConnection.Bind(out _newMods).Subscribe();
+			updatedModsConnection.Bind(out _updatedMods).Subscribe();
+
+			var hasNewMods = newModsConnection.Count().Select(x => x > 0);
+			var hasUpdatedMods = updatedModsConnection.Count().Select(x => x > 0);
+			_newAvailable = hasNewMods.ToProperty(this, nameof(NewAvailable));
+			_updatesAvailable = hasUpdatedMods.ToProperty(this, nameof(UpdatesAvailable));
+
+			var selectedMods = modsConnection.AutoRefresh(x => x.IsSelected).ToCollection();
+			_anySelected = selectedMods.Select(x => x.Any(y => y.IsSelected)).ToProperty(this, nameof(AnySelected), scheduler: RxApp.MainThreadScheduler);
+
+			var newModsChangeSet = NewMods.ToObservableChangeSet().AutoRefresh(x => x.IsSelected).ToCollection();
+			var modUpdatesChangeSet = UpdatedMods.ToObservableChangeSet().AutoRefresh(x => x.IsSelected).ToCollection();
+
+			_allNewModsSelected = splitList.Filter(x => x.IsNewMod).ToCollection().Select(x => x.All(y => y.IsSelected)).ToProperty(this, nameof(AllNewModsSelected), scheduler: RxApp.MainThreadScheduler);
+			_allModUpdatesSelected = splitList.Filter(x => !x.IsNewMod).ToCollection().Select(x => x.All(y => y.IsSelected)).ToProperty(this, nameof(AllModUpdatesSelected), scheduler: RxApp.MainThreadScheduler);
 
 			var anySelectedObservable = this.WhenAnyValue(x => x.AnySelected);
 
 			CopySelectedModsCommand = ReactiveCommand.Create(CopySelectedMods, anySelectedObservable);
+
 			SelectAllNewModsCommand = ReactiveCommand.Create<bool>((b) =>
 			{
 				foreach (var x in NewMods)
 				{
 					x.IsSelected = b;
 				}
-			});
+			}, hasNewMods);
 			SelectAllUpdatesCommand = ReactiveCommand.Create<bool>((b) =>
 			{
-				foreach(var x in Updates)
+				foreach (var x in UpdatedMods)
 				{
 					x.IsSelected = b;
 				}
-			});
-
-			//this.WhenAnyValue(x => x.NewMods.Count).Subscribe((count) =>
-			//{
-			//	NewAvailable = count > 0;
-			//});
-
-			//this.WhenAnyValue(x => x.Updates.Count).Subscribe((count) =>
-			//{
-			//	UpdatesAvailable = count > 0;
-			//});
-
-			this.WhenAnyValue(x => x.NewMods.Count, x => x.Updates.Count, (a, b) => a + b).BindTo(this, x => x.TotalUpdates);
-			NewMods.ToObservableChangeSet().AutoRefresh(x => x.IsSelected).ToCollection().Subscribe((c) =>
-			{
-				bool nextAnySelected = c.Any(x => x.IsSelected);
-				if(!nextAnySelected)
-				{
-					AnySelected = Updates.Any(x => x.IsSelected);
-				}
-				else
-				{
-					AnySelected = true;
-				}
-				AllNewModsSelected = NewMods.Count > 0 && c.All(x => x.IsSelected);
-			});
-			Updates.ToObservableChangeSet().AutoRefresh(x => x.IsSelected).ToCollection().Subscribe((c) =>
-			{
-				bool nextAnySelected = c.Any(x => x.IsSelected);
-				if (!nextAnySelected)
-				{
-					AnySelected = NewMods.Any(x => x.IsSelected);
-				}
-				else
-				{
-					AnySelected = true;
-				}
-				AllModUpdatesSelected = Updates.Count > 0 && c.All(x => x.IsSelected);
-			});
+			}, hasUpdatedMods);
 		}
 	}
 }

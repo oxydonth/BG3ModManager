@@ -21,6 +21,9 @@ using System.Windows;
 using System.Windows.Automation.Peers;
 using System.Windows.Input;
 using System.Reflection;
+using DivinityModManager.Models.NexusMods;
+using System.Globalization;
+using DivinityModManager.Models.Github;
 
 namespace DivinityModManager.Models
 {
@@ -56,9 +59,9 @@ namespace DivinityModManager.Models
 		[Reactive] public DivinityExtenderModStatus ExtenderModStatus { get; set; }
 		[Reactive] public DivinityOsirisModStatus OsirisModStatus { get; set; }
 
-		public static int CurrentExtenderVersion { get; set; } = -1;
+		[Reactive] public int CurrentExtenderVersion { get; set; }
 
-		private string ExtenderStatusToToolTipText(DivinityExtenderModStatus status, int requireVersion)
+		private string ExtenderStatusToToolTipText(DivinityExtenderModStatus status, int requiredVersion, int currentVersion)
 		{
 			var result = "";
 			switch (status)
@@ -79,9 +82,9 @@ namespace DivinityModManager.Models
 					{
 						result = "[OLD] ";
 					}
-					if (requireVersion > -1)
+					if (requiredVersion > -1)
 					{
-						result += $"Requires Script Extender v{requireVersion} or higher";
+						result += $"Requires Script Extender v{requiredVersion} or higher";
 					}
 					else
 					{
@@ -97,9 +100,9 @@ namespace DivinityModManager.Models
 					}
 					break;
 				case DivinityExtenderModStatus.SUPPORTS:
-					if (requireVersion > -1)
+					if (requiredVersion > -1)
 					{
-						result = $"Supports Script Extender v{requireVersion} or higher";
+						result = $"Supports Script Extender v{requiredVersion} or higher";
 					}
 					else
 					{
@@ -115,9 +118,9 @@ namespace DivinityModManager.Models
 			{
 				result += Environment.NewLine;
 			}
-			if (CurrentExtenderVersion > -1)
+			if (currentVersion > -1)
 			{
-				result += $"(Currently installed version is v{CurrentExtenderVersion})";
+				result += $"(Currently installed version is v{currentVersion})";
 			}
 			else
 			{
@@ -126,7 +129,7 @@ namespace DivinityModManager.Models
 			return result;
 		}
 
-		[DataMember] public DivinityModScriptExtenderConfig ScriptExtenderData { get; set; }
+		[DataMember] [Reactive] public DivinityModScriptExtenderConfig ScriptExtenderData { get; set; }
 		[DataMember] public SourceList<DivinityModDependencyData> Dependencies { get; set; } = new SourceList<DivinityModDependencyData>();
 
 		protected ReadOnlyObservableCollection<DivinityModDependencyData> displayedDependencies;
@@ -202,11 +205,17 @@ namespace DivinityModManager.Models
 		private readonly ObservableAsPropertyHelper<string> _osirisStatusToolTipText;
 		public string OsirisStatusToolTipText => _osirisStatusToolTipText.Value;
 
+		private readonly ObservableAsPropertyHelper<string> _lastModifiedDateText;
+		public string LastModifiedDateText => _lastModifiedDateText.Value;
+
 		private readonly ObservableAsPropertyHelper<Visibility> dependencyVisibility;
 		public Visibility DependencyVisibility => dependencyVisibility.Value;
 
 		private readonly ObservableAsPropertyHelper<Visibility> _openWorkshopLinkVisibility;
 		public Visibility OpenWorkshopLinkVisibility => _openWorkshopLinkVisibility.Value;
+
+		private readonly ObservableAsPropertyHelper<Visibility> _openNexusModsLinkVisibility;
+		public Visibility OpenNexusModsLinkVisibility => _openNexusModsLinkVisibility.Value;
 
 		private readonly ObservableAsPropertyHelper<Visibility> _toggleForceAllowInLoadOrderVisibility;
 		public Visibility ToggleForceAllowInLoadOrderVisibility => _toggleForceAllowInLoadOrderVisibility.Value;
@@ -217,6 +226,30 @@ namespace DivinityModManager.Models
 		private readonly ObservableAsPropertyHelper<Visibility> _osirisStatusVisibility;
 		public Visibility OsirisStatusVisibility => _osirisStatusVisibility.Value;
 
+		#region NexusMods Properties
+
+		private readonly ObservableAsPropertyHelper<bool> _canOpenNexusModsLink;
+		public bool CanOpenNexusModsLink => _canOpenNexusModsLink.Value;
+
+		private readonly ObservableAsPropertyHelper<Visibility> _nexusImageVisibility;
+		public Visibility NexusImageVisibility => _nexusImageVisibility.Value;
+
+		private readonly ObservableAsPropertyHelper<Visibility> _nexusModsInformationVisibility;
+		public Visibility NexusModsInformationVisibility => _nexusModsInformationVisibility.Value;
+
+		private readonly ObservableAsPropertyHelper<DateTime> _nexusModsCreatedDate;
+		public DateTime NexusModsCreatedDate => _nexusModsCreatedDate.Value;
+
+		private readonly ObservableAsPropertyHelper<DateTime> _nexusModsUpdatedDate;
+		public DateTime NexusModsUpdatedDate => _nexusModsUpdatedDate.Value;
+
+		private readonly ObservableAsPropertyHelper<string> _nexusModsTooltipInfo;
+		public string NexusModsTooltipInfo => _nexusModsTooltipInfo.Value;
+
+		#endregion
+
+		[Reactive] public bool WorkshopEnabled { get; set; }
+		[Reactive] public bool NexusModsEnabled { get; set; }
 		[Reactive] public bool CanDrag { get; set; }
 		[Reactive] public bool DeveloperMode { get; set; }
 		[Reactive] public bool HasColorOverride { get; set; }
@@ -225,32 +258,62 @@ namespace DivinityModManager.Models
 
 		public HashSet<string> Files { get; set; }
 
-		private DivinityModWorkshopData workshopData = new DivinityModWorkshopData();
+		[Reactive] public DivinityModWorkshopData WorkshopData { get; set; }
+		[Reactive] public NexusModsModData NexusModsData { get; set; }
+		[Reactive] public GithubModData GithubData { get; set; }
 
-		public DivinityModWorkshopData WorkshopData
+		public string GetURL(ModSourceType modSourceType, bool asProtocol = false)
 		{
-			get => workshopData;
-			set { this.RaiseAndSetIfChanged(ref workshopData, value); }
-		}
-
-		//public DivinityModWorkshopData WorkshopData { get; private set; } = new DivinityModWorkshopData();
-		public ICommand OpenWorkshopPageCommand { get; private set; }
-		public ICommand OpenWorkshopPageInSteamCommand { get; private set; }
-
-		public string GetURL(bool asSteamBrowserProtocol = false)
-		{
-			if (WorkshopData != null && WorkshopData.ID != "")
+			switch (modSourceType)
 			{
-				if (!asSteamBrowserProtocol)
-				{
-					return $"https://steamcommunity.com/sharedfiles/filedetails/?id={WorkshopData.ID}";
-				}
-				else
-				{
-					return $"steam://url/CommunityFilePage/{WorkshopData.ID}";
-				}
+				case ModSourceType.STEAM:
+					if (WorkshopData != null && WorkshopData.ID != "")
+					{
+						if (!asProtocol)
+						{
+							return $"https://steamcommunity.com/sharedfiles/filedetails/?id={WorkshopData.ID}";
+						}
+						else
+						{
+							return $"steam://url/CommunityFilePage/{WorkshopData.ID}";
+						}
+					}
+					break;
+				case ModSourceType.NEXUSMODS:
+					if (NexusModsData != null && NexusModsData.ModId >= DivinityApp.NEXUSMODS_MOD_ID_START)
+					{
+						return String.Format(DivinityApp.NEXUSMODS_MOD_URL, NexusModsData.ModId);
+					}
+					break;
+				case ModSourceType.GITHUB:
+					if (GithubData != null)
+					{
+						return $"https://github.com/{GithubData.Author}/{GithubData.Repository}";
+					}
+					break;
 			}
 			return "";
+		}
+
+		public List<string> GetAllURLs(bool asProtocol = false)
+		{
+			var urls = new List<string>();
+			var steamUrl = GetURL(ModSourceType.STEAM, asProtocol);
+			if (!String.IsNullOrEmpty(steamUrl))
+			{
+				urls.Add(steamUrl);
+			}
+			var nexusUrl = GetURL(ModSourceType.NEXUSMODS, asProtocol);
+			if (!String.IsNullOrEmpty(nexusUrl))
+			{
+				urls.Add(nexusUrl);
+			}
+			var githubUrl = GetURL(ModSourceType.GITHUB, asProtocol);
+			if (!String.IsNullOrEmpty(githubUrl))
+			{
+				urls.Add(githubUrl);
+			}
+			return urls;
 		}
 
 		public override string ToString()
@@ -299,6 +362,32 @@ namespace DivinityModManager.Models
 			}
 		}
 
+		private bool CanOpenWorkshopBoolCheck(bool enabled, bool isHidden, bool isLarianMod, string workshopID)
+		{
+			return enabled && !isHidden & !isLarianMod & !String.IsNullOrEmpty(workshopID);
+		}
+
+		private string NexusModsInfoToTooltip(DateTime createdDate, DateTime updatedDate, long endorsements)
+		{
+			var lines = new List<String>();
+
+			if (endorsements > 0)
+			{
+				lines.Add($"Endorsements: {endorsements}");
+			}
+
+			if (createdDate != DateTime.MinValue)
+			{
+				lines.Add($"Created on {createdDate.ToString(DivinityApp.DateTimeColumnFormat, CultureInfo.InstalledUICulture)}");
+			}
+
+			if(updatedDate != DateTime.MinValue)
+			{
+				lines.Add($"Last updated on {createdDate.ToString(DivinityApp.DateTimeColumnFormat, CultureInfo.InstalledUICulture)}");
+			}
+
+			return String.Join("\n", lines);
+		}
 
 		public DivinityModData(bool isBaseGameMod = false) : base()
 		{
@@ -306,18 +395,44 @@ namespace DivinityModManager.Models
 			Index = -1;
 			CanDrag = true;
 
-			_toggleForceAllowInLoadOrderVisibility = this.WhenAnyValue(x => x.IsForceLoaded, x => x.HasMetadata)
-				.Select(b => b.Item1 && b.Item2 ? Visibility.Visible : Visibility.Collapsed)
+			WorkshopData = new DivinityModWorkshopData();
+			NexusModsData = new NexusModsModData();
+			//GithubData = new GithubModData();
+
+			this.WhenAnyValue(x => x.UUID).BindTo(NexusModsData, x => x.UUID);
+
+			_nexusImageVisibility = this.WhenAnyValue(x => x.NexusModsData.PictureUrl)
+				.Select(uri => uri != null && !String.IsNullOrEmpty(uri.AbsolutePath) ? Visibility.Visible : Visibility.Collapsed)
+				.StartWith(Visibility.Collapsed)
+				.ToProperty(this, nameof(NexusImageVisibility), scheduler: RxApp.MainThreadScheduler);
+
+			_nexusModsInformationVisibility = this.WhenAnyValue(x => x.NexusModsData.IsUpdated)
+				.Select(b => b ? Visibility.Visible : Visibility.Collapsed)
+				.StartWith(Visibility.Collapsed)
+				.ToProperty(this, nameof(NexusModsInformationVisibility), scheduler: RxApp.MainThreadScheduler);
+
+			_nexusModsCreatedDate = this.WhenAnyValue(x => x.NexusModsData.CreatedTimestamp).SkipWhile(x => x <= 0).Select(x => DateUtils.UnixTimeStampToDateTime(x)).ToProperty(this, nameof(NexusModsCreatedDate));
+			_nexusModsUpdatedDate = this.WhenAnyValue(x => x.NexusModsData.UpdatedTimestamp).SkipWhile(x => x <= 0).Select(x => DateUtils.UnixTimeStampToDateTime(x)).ToProperty(this, nameof(NexusModsUpdatedDate));
+
+			_nexusModsTooltipInfo = this.WhenAnyValue(x => x.NexusModsCreatedDate, x => x.NexusModsUpdatedDate, x => x.NexusModsData.EndorsementCount)
+				.Select(x => NexusModsInfoToTooltip(x.Item1, x.Item2, x.Item3)).ToProperty(this, nameof(NexusModsTooltipInfo));
+
+			_toggleForceAllowInLoadOrderVisibility = this.WhenAnyValue(x => x.IsForceLoaded, x => x.HasMetadata, x => x.IsForceLoadedMergedMod)
+				.Select(b => b.Item1 && b.Item2 && !b.Item3 ? Visibility.Visible : Visibility.Collapsed)
 				.StartWith(Visibility.Collapsed)
 				.ToProperty(this, nameof(ToggleForceAllowInLoadOrderVisibility), scheduler: RxApp.MainThreadScheduler);
 
-			_canOpenWorkshopLink = this.WhenAnyValue(x => x.IsHidden, x => x.IsLarianMod, x => x.WorkshopData.ID,
-	(b1, b2, id) => !b1 & !b2 & !String.IsNullOrEmpty(id)).ToProperty(this, nameof(CanOpenWorkshopLink));
-
+			_canOpenWorkshopLink = this.WhenAnyValue(x => x.WorkshopEnabled, x => x.IsHidden, x => x.IsLarianMod, x => x.WorkshopData.ID, CanOpenWorkshopBoolCheck).ToProperty(this, nameof(CanOpenWorkshopLink));
 			_openWorkshopLinkVisibility = this.WhenAnyValue(x => x.CanOpenWorkshopLink)
 				.Select(b => b ? Visibility.Visible : Visibility.Collapsed)
 				.StartWith(Visibility.Collapsed)
 				.ToProperty(this, nameof(OpenWorkshopLinkVisibility), scheduler: RxApp.MainThreadScheduler);
+
+			_canOpenNexusModsLink = this.WhenAnyValue(x => x.NexusModsEnabled, x => x.NexusModsData.ModId, (b, id) => b && id >= DivinityApp.NEXUSMODS_MOD_ID_START).ToProperty(this, nameof(CanOpenNexusModsLink));
+			_openNexusModsLinkVisibility = this.WhenAnyValue(x => x.CanOpenNexusModsLink)
+				.Select(b => b ? Visibility.Visible : Visibility.Collapsed)
+				.StartWith(Visibility.Collapsed)
+				.ToProperty(this, nameof(OpenNexusModsLinkVisibility), scheduler: RxApp.MainThreadScheduler);
 
 			var connection = this.Dependencies.Connect().ObserveOn(RxApp.MainThreadScheduler);
 			connection.Bind(out displayedDependencies).DisposeMany().Subscribe();
@@ -381,7 +496,8 @@ namespace DivinityModManager.Models
 			_canAddToLoadOrder = this.WhenAnyValue(x => x.ModType, x => x.IsLarianMod, x => x.IsForceLoaded, x => x.IsForceLoadedMergedMod, x => x.ForceAllowInLoadOrder,
 				(modType, isLarianMod, isForceLoaded, isMergedMod, forceAllowInLoadOrder) => modType != "Adventure" && !isLarianMod && (!isForceLoaded || isMergedMod) || forceAllowInLoadOrder).StartWith(true).ToProperty(this, nameof(CanAddToLoadOrder));
 
-			_extenderSupportToolTipText = this.WhenAnyValue(x => x.ExtenderModStatus, x => x.ScriptExtenderData.RequiredExtensionVersion).Select(x => ExtenderStatusToToolTipText(x.Item1, x.Item2)).ToProperty(this, nameof(ScriptExtenderSupportToolTipText), scheduler: RxApp.MainThreadScheduler);
+			_extenderSupportToolTipText = this.WhenAnyValue(x => x.ExtenderModStatus, x => x.ScriptExtenderData.RequiredVersion, x => x.CurrentExtenderVersion)
+				.Select(x => ExtenderStatusToToolTipText(x.Item1, x.Item2, x.Item3)).ToProperty(this, nameof(ScriptExtenderSupportToolTipText), scheduler: RxApp.MainThreadScheduler);
 			_extenderStatusVisibility = this.WhenAnyValue(x => x.ExtenderModStatus).Select(x => x != DivinityExtenderModStatus.NONE ? Visibility.Visible : Visibility.Collapsed).ToProperty(this, nameof(ExtenderStatusVisibility), scheduler: RxApp.MainThreadScheduler);
 
 			var whenOsirisStatusChanges = this.WhenAnyValue(x => x.OsirisModStatus);
@@ -389,6 +505,11 @@ namespace DivinityModManager.Models
 			_osirisStatusToolTipText = whenOsirisStatusChanges.Select(OsirisStatusToTooltipText).ToProperty(this, nameof(OsirisStatusToolTipText), scheduler: RxApp.MainThreadScheduler);
 			ExtenderModStatus = DivinityExtenderModStatus.NONE;
 			OsirisModStatus = DivinityOsirisModStatus.NONE;
+
+			_lastModifiedDateText = this.WhenAnyValue(x => x.LastUpdated).SkipWhile(x => !x.HasValue)
+				.Select(x => $"Last Modified on {x.Value.ToString(DivinityApp.DateTimeColumnFormat, CultureInfo.InstalledUICulture)}")
+				.StartWith("")
+				.ToProperty(this, nameof(LastModifiedDateText), scheduler:RxApp.MainThreadScheduler);
 		}
 	}
 }

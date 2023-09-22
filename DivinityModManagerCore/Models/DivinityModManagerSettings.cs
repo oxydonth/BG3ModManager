@@ -31,6 +31,9 @@ namespace DivinityModManager.Models
 		[SettingsEntry("Game Executable Path", "The path to bg3.exe")]
 		[DataMember][Reactive] public string GameExecutablePath { get; set; }
 
+		[SettingsEntry("NexusMods API Key", "Your personal NexusMods API key, which will allow the mod manager to fetch mod updates/information")]
+		[DataMember][Reactive] public string NexusModsAPIKey { get; set; }
+
 		[SettingsEntry("Output Path Override", "[EXPERIMENTAL]\nOverride the default location to %LOCALAPPDATA%\\Larian Studios\\Baldur's Gate 3\nThis folder is used when exporting load orders, loading profiles, and loading mods.")]
 		[DataMember][Reactive] public string DocumentsFolderPathOverride { get; set; }
 
@@ -73,53 +76,19 @@ namespace DivinityModManager.Models
 		public bool AutomaticallyLoadGMCampaignMods => false;
 
 		[DataMember][Reactive] public long LastUpdateCheck { get; set; }
-		private string lastOrder = "";
 
-		[DataMember]
-		public string LastOrder
-		{
-			get => lastOrder;
-			set { this.RaiseAndSetIfChanged(ref lastOrder, value); }
-		}
+		[DataMember][Reactive] public string LastOrder { get; set; }
 
-		private string lastLoadedOrderFilePath = "";
+		[DataMember][Reactive] public string LastImportDirectoryPath { get; set; }
+		[DataMember][Reactive] public string LastLoadedOrderFilePath { get; set; }
+		[DataMember][Reactive] public string LastExtractOutputPath { get; set; }
 
-		[DataMember]
-		public string LastLoadedOrderFilePath
-		{
-			get => lastLoadedOrderFilePath;
-			set { this.RaiseAndSetIfChanged(ref lastLoadedOrderFilePath, value); }
-		}
-
-		private string lastExtractOutputPath = "";
-
-		[DataMember]
-		public string LastExtractOutputPath
-		{
-			get => lastExtractOutputPath;
-			set { this.RaiseAndSetIfChanged(ref lastExtractOutputPath, value); }
-		}
-
-		private bool darkThemeEnabled = true;
-
-		[DataMember]
-		public bool DarkThemeEnabled
-		{
-			get => darkThemeEnabled;
-			set { this.RaiseAndSetIfChanged(ref darkThemeEnabled, value); }
-		}
+		[DataMember][Reactive] public bool DarkThemeEnabled { get; set; }
 
 		[SettingsEntry("Shift Focus on Swap", "When moving selected mods to the opposite list with Enter, move focus to that list as well")]
 		[DataMember][Reactive] public bool ShiftListFocusOnSwap { get; set; }
 
-		private ScriptExtenderSettings extenderSettings;
-
-		[DataMember]
-		public ScriptExtenderSettings ExtenderSettings
-		{
-			get => extenderSettings;
-			set { this.RaiseAndSetIfChanged(ref extenderSettings, value); }
-		}
+		[DataMember][Reactive] public ScriptExtenderSettings ExtenderSettings { get; set; }
 
 		public string ExtenderLogDirectory
 		{
@@ -204,7 +173,7 @@ namespace DivinityModManager.Models
 		public ICommand ExportExtenderSettingsCommand { get; set; }
 		public ICommand ResetExtenderSettingsToDefaultCommand { get; set; }
 		public ICommand ResetKeybindingsCommand { get; set; }
-		public ICommand ClearWorkshopCacheCommand { get; set; }
+		public ICommand ClearCacheCommand { get; set; }
 		public ICommand AddLaunchParamCommand { get; set; }
 		public ICommand ClearLaunchParamsCommand { get; set; }
 
@@ -239,6 +208,11 @@ namespace DivinityModManager.Models
 			GameExecutablePath = "";
 			DocumentsFolderPathOverride = "";
 			WorkshopPath = "";
+			LastOrder = "";
+			LastExtractOutputPath = "";
+			LastImportDirectoryPath = "";
+			LastLoadedOrderFilePath = "";
+			DarkThemeEnabled = true;
 			LoadOrderPath = "Orders";
 			AutoAddDependenciesWhenExporting = true;
 			CheckForUpdates = true;

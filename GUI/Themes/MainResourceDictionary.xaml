@@ -14,9 +14,11 @@
 	xmlns:dd="urn:gong-wpf-dragdrop"
 	xmlns:divThemes="clr-namespace:DivinityModManager.Themes"
 	xmlns:dmcore="clr-namespace:DivinityModManager;assembly=DivinityModManagerCore"
+	xmlns:i="http://schemas.microsoft.com/expression/2010/interactivity"
 	xmlns:local="clr-namespace:DivinityModManager.Views"
 	xmlns:sys="clr-namespace:System;assembly=mscorlib"
 	xmlns:templateSelectors="clr-namespace:DivinityModManager.Controls.TemplateSelectors"
+	xmlns:updates="clr-namespace:DivinityModManager.Models.Updates;assembly=DivinityModManagerCore"
 	xmlns:vm="clr-namespace:DivinityModManager.ViewModels;assembly=DivinityModManagerCore"
 	xmlns:xc="http://schemas.xceed.com/wpf/xaml/toolkit"
 	xmlns:xconv="clr-namespace:Xceed.Wpf.Toolkit.Converters;assembly=Xceed.Wpf.Toolkit"
@@ -34,6 +36,7 @@
 	<conv:StringNotEmptyToVisibilityConverter x:Key="StringNotEmptyToVisibilityConverter" />
 	<conv:StringToSolidBrushConverter x:Key="StringToSolidBrushConverter" />
 	<conv:StringToLinearBrushConverter x:Key="StringToLinearBrushConverter" />
+	<conv:UriToBitmapImageConverter x:Key="UriToBitmapImageConverter" />
 	<xconv:ProgressBarWidthConverter x:Key="ProgressBarWidthConverter" />
 	<templateSelectors:TagTemplateSelector x:Key="TagTemplateSelector" />
 	<BitmapImage x:Key="SaveImage" UriSource="pack://application:,,,/Resources/Icons/Save_16x.png" />
@@ -231,6 +234,16 @@
 						</MenuItem.Icon>
 					</MenuItem>
 					<MenuItem
+						Command="{Binding Path=OpenNexusModsPageCommand, Source={x:Static dapp:DivinityApp.Commands}}"
+						CommandParameter="{Binding}"
+						Header="Open NexusMods Page (Browser)..."
+						IsEnabled="{Binding CanOpenNexusModsLink}"
+						Visibility="{Binding OpenNexusModsLinkVisibility}">
+						<MenuItem.Icon>
+							<Image Source="{StaticResource OpenInBrowserImage}" />
+						</MenuItem.Icon>
+					</MenuItem>
+					<MenuItem
 						Command="{Binding Path=ToggleForceAllowInLoadOrderCommand, Source={x:Static dapp:DivinityApp.Commands}}"
 						CommandParameter="{Binding}"
 						Visibility="{Binding ToggleForceAllowInLoadOrderVisibility}">
@@ -368,12 +381,22 @@
 						Command="{Binding Path=OpenInFileExplorerCommand, Source={x:Static dapp:DivinityApp.Commands}}"
 						CommandParameter="{Binding FilePath}"
 						Header="Open in File Explorer..." />
-					<MenuItem Command="{Binding OpenWorkshopPageCommand}" Header="Open Steam Workshop Page (Browser)...">
+					<MenuItem
+						Command="{Binding Path=OpenSteamWorkshopPageCommand, Source={x:Static dapp:DivinityApp.Commands}}"
+						CommandParameter="{Binding}"
+						Header="Open Steam Workshop Page (Browser)..."
+						IsEnabled="{Binding CanOpenWorkshopLink}"
+						Visibility="{Binding OpenWorkshopLinkVisibility}">
 						<MenuItem.Icon>
 							<Image Source="{StaticResource OpenInBrowserImage}" />
 						</MenuItem.Icon>
 					</MenuItem>
-					<MenuItem Command="{Binding OpenWorkshopPageInSteamCommand}" Header="Open Steam Workshop Page (Steam)...">
+					<MenuItem
+						Command="{Binding Path=OpenSteamWorkshopPageInSteamCommand, Source={x:Static dapp:DivinityApp.Commands}}"
+						CommandParameter="{Binding}"
+						Header="Open Steam Workshop Page (Steam)..."
+						IsEnabled="{Binding CanOpenWorkshopLink}"
+						Visibility="{Binding OpenWorkshopLinkVisibility}">
 						<MenuItem.Icon>
 							<Image Source="{StaticResource OpenSteamWorkshopFolderImage}" />
 						</MenuItem.Icon>
@@ -404,7 +427,7 @@
 		x:Key="DivinityModUpdateListItem"
 		BasedOn="{StaticResource DivinityModUpdateNewListItem}"
 		TargetType="{x:Type ListViewItem}">
-		<Setter Property="Tag" Value="{Binding WorkshopMod}" />
+		<Setter Property="Tag" Value="{Binding UpdatedMod}" />
 	</Style>
 	<Style BasedOn="{StaticResource {x:Type ListView}}" TargetType="controls:ModListView">
 		<Setter Property="Background" Value="{DynamicResource {x:Static adonisUI:Brushes.Layer4BackgroundBrush}}" />
@@ -555,6 +578,7 @@
 			</Style>
 		</controls:AutomationTooltip.Style>
 		<StackPanel
+			x:Name="InfoStackPanel"
 			MaxWidth="700"
 			Background="Transparent"
 			Orientation="Vertical">
@@ -605,6 +629,11 @@
 				Text="{Binding Description}"
 				TextWrapping="Wrap"
 				Visibility="{Binding DescriptionVisibility}" />
+			<StackPanel Orientation="Vertical" Visibility="{Binding NexusModsInformationVisibility}">
+				<Separator Background="{DynamicResource {x:Static adonisUI:Brushes.Layer1HighlightBorderBrush}}" />
+				<TextBlock Text="{Binding NexusModsTooltipInfo}" />
+				<Separator Background="{DynamicResource {x:Static adonisUI:Brushes.Layer1HighlightBorderBrush}}" />
+			</StackPanel>
 			<StackPanel
 				Margin="2"
 				Orientation="Vertical"
@@ -653,9 +682,7 @@
 				<TextBlock Margin="2" Visibility="{Binding HasScriptExtenderSettings, Converter={StaticResource BoolToVisibilityConverter}}">
 					<Run Foreground="Goldenrod" Text="Script Extender " /><Run Foreground="Lime" Text="v" /><Run Foreground="Lime" Text="{Binding ScriptExtenderData.RequiredExtensionVersion}" />
 				</TextBlock>
-				<TextBlock Margin="2">
-					<Run Text="Last Updated on " /><Run Text="{Binding LastUpdated, StringFormat={x:Static dapp:DivinityApp.DateTimeTooltipFormat}}" />
-				</TextBlock>
+				<TextBlock Margin="2" Text="{Binding LastModifiedDateText}" />
 			</StackPanel>
 			<StackPanel
 				Margin="2"
@@ -674,6 +701,13 @@
 				<TextBlock Foreground="OrangeRed" Text="Overwritten builtin folders:" />
 				<TextBlock Text="{Binding BuiltinOverrideModsText}" />
 			</StackPanel>
+			<Image
+				MaxWidth="256"
+				MaxHeight="256"
+				RenderOptions.BitmapScalingMode="HighQuality"
+				Source="{Binding NexusModsData.PictureUrl, Converter={StaticResource UriToBitmapImageConverter}}"
+				Stretch="UniformToFill"
+				Visibility="{Binding NexusImageVisibility}" />
 		</StackPanel>
 	</controls:AutomationTooltip>
 	<Style
@@ -944,82 +978,87 @@
 				Text="{Binding DisplayName}"
 				ToolTip="{StaticResource ModToolTip}"
 				ToolTipService.IsEnabled="{Binding HasToolTip}" />
-			<StackPanel Grid.Column="1" Orientation="Horizontal">
-				<Image
-					x:Name="OsirisStatusImage"
-					Width="16"
-					Height="16"
-					MaxWidth="16"
-					MaxHeight="16"
-					HorizontalAlignment="Center"
-					VerticalAlignment="Center"
-					DataContext="{Binding}"
-					RenderOptions.BitmapScalingMode="HighQuality"
-					Stretch="UniformToFill"
-					ToolTip="{Binding OsirisStatusToolTipText}"
-					Visibility="{Binding OsirisStatusVisibility}">
-					<Image.Style>
-						<Style TargetType="{x:Type Image}">
-							<Style.Triggers>
-								<DataTrigger Binding="{Binding Path=OsirisModStatus}" Value="{x:Static dapp:DivinityOsirisModStatus.NONE}">
-									<Setter Property="Source" Value="{x:Null}" />
-								</DataTrigger>
-								<DataTrigger Binding="{Binding Path=OsirisModStatus}" Value="{x:Static dapp:DivinityOsirisModStatus.SCRIPTS}">
-									<Setter Property="Source" Value="{StaticResource OsirisImage}" />
-									<Setter Property="Opacity" Value="1.0" />
-								</DataTrigger>
-								<DataTrigger Binding="{Binding Path=OsirisModStatus}" Value="{x:Static dapp:DivinityOsirisModStatus.MODFIXER}">
-									<Setter Property="Source" Value="{StaticResource OsirisModFixerImage}" />
-									<Setter Property="Opacity" Value="1.0" />
-								</DataTrigger>
-							</Style.Triggers>
-						</Style>
-					</Image.Style>
-				</Image>
-				<Image
-					x:Name="ExtenderStatusImage"
-					Width="16"
-					Height="16"
-					MaxWidth="16"
-					MaxHeight="16"
-					HorizontalAlignment="Center"
-					VerticalAlignment="Center"
-					DataContext="{Binding}"
-					RenderOptions.BitmapScalingMode="HighQuality"
-					Stretch="UniformToFill"
-					ToolTip="{Binding ScriptExtenderSupportToolTipText}"
-					Visibility="{Binding ExtenderStatusVisibility}">
-					<Image.Style>
-						<Style TargetType="{x:Type Image}">
-							<Style.Triggers>
-								<DataTrigger Binding="{Binding Path=ExtenderModStatus}" Value="{x:Static dapp:DivinityExtenderModStatus.NONE}">
-									<Setter Property="Source" Value="{x:Null}" />
-								</DataTrigger>
-								<DataTrigger Binding="{Binding Path=ExtenderModStatus}" Value="{x:Static dapp:DivinityExtenderModStatus.REQUIRED_MISSING}">
-									<Setter Property="Source" Value="{StaticResource AlertBar_Danger}" />
-									<Setter Property="Opacity" Value="1.0" />
-								</DataTrigger>
-								<DataTrigger Binding="{Binding Path=ExtenderModStatus}" Value="{x:Static dapp:DivinityExtenderModStatus.REQUIRED_DISABLED}">
-									<Setter Property="Source" Value="{StaticResource AlertBar_Danger}" />
-									<Setter Property="Opacity" Value="1.0" />
-								</DataTrigger>
-								<DataTrigger Binding="{Binding Path=ExtenderModStatus}" Value="{x:Static dapp:DivinityExtenderModStatus.REQUIRED_OLD}">
-									<Setter Property="Source" Value="{StaticResource AlertBar_Warning}" />
-									<Setter Property="Opacity" Value="1.0" />
-								</DataTrigger>
-								<DataTrigger Binding="{Binding Path=ExtenderModStatus}" Value="{x:Static dapp:DivinityExtenderModStatus.REQUIRED}">
-									<Setter Property="Source" Value="{StaticResource DivinityEngine2}" />
-									<Setter Property="Opacity" Value="1.0" />
-								</DataTrigger>
-								<DataTrigger Binding="{Binding Path=ExtenderModStatus}" Value="{x:Static dapp:DivinityExtenderModStatus.SUPPORTS}">
-									<Setter Property="Source" Value="{StaticResource DivinityEngine2}" />
-									<Setter Property="Opacity" Value="0.5" />
-								</DataTrigger>
-							</Style.Triggers>
-						</Style>
-					</Image.Style>
-				</Image>
-			</StackPanel>
+			<Border
+				Grid.Column="1"
+				Padding="0,0,4,0"
+				BorderThickness="0">
+				<StackPanel Orientation="Horizontal">
+					<Image
+						x:Name="OsirisStatusImage"
+						Width="16"
+						Height="16"
+						MaxWidth="16"
+						MaxHeight="16"
+						HorizontalAlignment="Center"
+						VerticalAlignment="Center"
+						DataContext="{Binding}"
+						RenderOptions.BitmapScalingMode="HighQuality"
+						Stretch="UniformToFill"
+						ToolTip="{Binding OsirisStatusToolTipText}"
+						Visibility="{Binding OsirisStatusVisibility}">
+						<Image.Style>
+							<Style TargetType="{x:Type Image}">
+								<Style.Triggers>
+									<DataTrigger Binding="{Binding Path=OsirisModStatus}" Value="{x:Static dapp:DivinityOsirisModStatus.NONE}">
+										<Setter Property="Source" Value="{x:Null}" />
+									</DataTrigger>
+									<DataTrigger Binding="{Binding Path=OsirisModStatus}" Value="{x:Static dapp:DivinityOsirisModStatus.SCRIPTS}">
+										<Setter Property="Source" Value="{StaticResource OsirisImage}" />
+										<Setter Property="Opacity" Value="1.0" />
+									</DataTrigger>
+									<DataTrigger Binding="{Binding Path=OsirisModStatus}" Value="{x:Static dapp:DivinityOsirisModStatus.MODFIXER}">
+										<Setter Property="Source" Value="{StaticResource OsirisModFixerImage}" />
+										<Setter Property="Opacity" Value="1.0" />
+									</DataTrigger>
+								</Style.Triggers>
+							</Style>
+						</Image.Style>
+					</Image>
+					<Image
+						x:Name="ExtenderStatusImage"
+						Width="16"
+						Height="16"
+						MaxWidth="16"
+						MaxHeight="16"
+						HorizontalAlignment="Center"
+						VerticalAlignment="Center"
+						DataContext="{Binding}"
+						RenderOptions.BitmapScalingMode="HighQuality"
+						Stretch="UniformToFill"
+						ToolTip="{Binding ScriptExtenderSupportToolTipText}"
+						Visibility="{Binding ExtenderStatusVisibility}">
+						<Image.Style>
+							<Style TargetType="{x:Type Image}">
+								<Style.Triggers>
+									<DataTrigger Binding="{Binding Path=ExtenderModStatus}" Value="{x:Static dapp:DivinityExtenderModStatus.NONE}">
+										<Setter Property="Source" Value="{x:Null}" />
+									</DataTrigger>
+									<DataTrigger Binding="{Binding Path=ExtenderModStatus}" Value="{x:Static dapp:DivinityExtenderModStatus.REQUIRED_MISSING}">
+										<Setter Property="Source" Value="{StaticResource AlertBar_Danger}" />
+										<Setter Property="Opacity" Value="1.0" />
+									</DataTrigger>
+									<DataTrigger Binding="{Binding Path=ExtenderModStatus}" Value="{x:Static dapp:DivinityExtenderModStatus.REQUIRED_DISABLED}">
+										<Setter Property="Source" Value="{StaticResource AlertBar_Danger}" />
+										<Setter Property="Opacity" Value="1.0" />
+									</DataTrigger>
+									<DataTrigger Binding="{Binding Path=ExtenderModStatus}" Value="{x:Static dapp:DivinityExtenderModStatus.REQUIRED_OLD}">
+										<Setter Property="Source" Value="{StaticResource AlertBar_Warning}" />
+										<Setter Property="Opacity" Value="1.0" />
+									</DataTrigger>
+									<DataTrigger Binding="{Binding Path=ExtenderModStatus}" Value="{x:Static dapp:DivinityExtenderModStatus.REQUIRED}">
+										<Setter Property="Source" Value="{StaticResource DivinityEngine2}" />
+										<Setter Property="Opacity" Value="1.0" />
+									</DataTrigger>
+									<DataTrigger Binding="{Binding Path=ExtenderModStatus}" Value="{x:Static dapp:DivinityExtenderModStatus.SUPPORTS}">
+										<Setter Property="Source" Value="{StaticResource DivinityEngine2}" />
+										<Setter Property="Opacity" Value="0.5" />
+									</DataTrigger>
+								</Style.Triggers>
+							</Style>
+						</Image.Style>
+					</Image>
+				</StackPanel>
+			</Border>
 		</controls:ModEntryGrid>
 	</DataTemplate>
 	<Style
@@ -1278,8 +1317,8 @@
 			</GridViewColumn>
 		</GridView.Columns>
 	</GridView>
-	<DataTemplate x:Key="ModUpdateNameTemplate" DataType="{x:Type data:DivinityModUpdateData}">
-		<ContentControl Content="{Binding WorkshopMod}" ContentTemplate="{StaticResource ModNameTemplate}" />
+	<DataTemplate x:Key="ModUpdateNameTemplate" DataType="{x:Type updates:DivinityModUpdateData}">
+		<ContentControl Content="{Binding UpdatedMod}" ContentTemplate="{StaticResource ModNameTemplate}" />
 	</DataTemplate>
 	<GridView
 		x:Key="ModUpdatesGridView"
@@ -1316,7 +1355,7 @@
 				HeaderTemplate="{StaticResource GridViewTextblockHeaderTemplate}">
 				<GridViewColumn.CellTemplate>
 					<DataTemplate>
-						<TextBlock Text="{Binding WorkshopMod.Author}" ToolTip="{Binding WorkshopMod.Author}" />
+						<TextBlock Text="{Binding Author}" ToolTip="{Binding Author}" />
 					</DataTemplate>
 				</GridViewColumn.CellTemplate>
 			</GridViewColumn>
@@ -1331,7 +1370,7 @@
 				</GridViewColumn.HeaderContainerStyle>
 				<GridViewColumn.CellTemplate>
 					<DataTemplate>
-						<TextBlock Text="{Binding LocalMod.Version.Version}" ToolTip="{Binding LocalMod.Version.Version}" />
+						<TextBlock Text="{Binding CurrentVersion}" ToolTip="{Binding CurrentVersion}" />
 					</DataTemplate>
 				</GridViewColumn.CellTemplate>
 			</GridViewColumn>
@@ -1341,47 +1380,49 @@
 				HeaderTemplate="{StaticResource GridViewTextblockHeaderTemplate}">
 				<GridViewColumn.HeaderContainerStyle>
 					<Style BasedOn="{StaticResource GridViewLeftContainerStyle}" TargetType="{x:Type GridViewColumnHeader}">
-						<Setter Property="Control.ToolTip" Value="Workshop Mod's Version" />
+						<Setter Property="Control.ToolTip" Value="Update Version" />
 					</Style>
 				</GridViewColumn.HeaderContainerStyle>
 				<GridViewColumn.CellTemplate>
 					<DataTemplate>
-						<TextBlock Text="{Binding WorkshopMod.Version.Version}" ToolTip="{Binding WorkshopMod.Version.Version}" />
+						<TextBlock Text="{Binding UpdateVersion}" ToolTip="{Binding UpdateVersion}" />
 					</DataTemplate>
 				</GridViewColumn.CellTemplate>
 			</GridViewColumn>
 			<GridViewColumn
 				Width="100"
-				Header="Modified Date"
+				Header="Update Date"
 				HeaderTemplate="{StaticResource GridViewTextblockHeaderTemplate}">
 				<GridViewColumn.HeaderContainerStyle>
 					<Style BasedOn="{StaticResource GridViewLeftContainerStyle}" TargetType="{x:Type GridViewColumnHeader}">
-						<Setter Property="Control.ToolTip" Value="Workshop Mod's Last Modified Date" />
+						<Setter Property="Control.ToolTip" Value="Update Date" />
 					</Style>
 				</GridViewColumn.HeaderContainerStyle>
 				<GridViewColumn.CellTemplate>
 					<DataTemplate>
-						<TextBlock Text="{Binding WorkshopMod.LastModified, StringFormat={x:Static dapp:DivinityApp.DateTimeColumnFormat}}" ToolTip="{Binding WorkshopMod.LastModified, StringFormat={x:Static dapp:DivinityApp.DateTimeTooltipFormat}}" />
+						<TextBlock Text="{Binding LastModified, StringFormat={x:Static dapp:DivinityApp.DateTimeColumnFormat}}" ToolTip="{Binding WorkshopMod.LastModified, StringFormat={x:Static dapp:DivinityApp.DateTimeTooltipFormat}}" />
 					</DataTemplate>
 				</GridViewColumn.CellTemplate>
 			</GridViewColumn>
 			<GridViewColumn
 				Width="80"
-				Header="Type"
+				Header="Source"
 				HeaderTemplate="{StaticResource GridViewTextblockHeaderTemplate}">
+				<GridViewColumn.HeaderContainerStyle>
+					<Style BasedOn="{StaticResource GridViewLeftContainerStyle}" TargetType="{x:Type GridViewColumnHeader}">
+						<Setter Property="Control.ToolTip" Value="The Update Source" />
+					</Style>
+				</GridViewColumn.HeaderContainerStyle>
 				<GridViewColumn.CellTemplate>
 					<DataTemplate>
-						<TextBlock Text="{Binding WorkshopMod.ModType}" ToolTip="{Binding WorkshopMod.ModType}" />
-					</DataTemplate>
-				</GridViewColumn.CellTemplate>
-			</GridViewColumn>
-			<GridViewColumn
-				Width="Auto"
-				Header="Modes"
-				HeaderTemplate="{StaticResource GridViewTextblockHeaderTemplate}">
-				<GridViewColumn.CellTemplate>
-					<DataTemplate>
-						<TextBlock Text="{Binding WorkshopMod.Targets}" ToolTip="{Binding WorkshopMod.Targets}" />
+						<TextBlock ToolTip="{Binding UpdateLink}">
+							<Hyperlink
+								Command="{Binding Path=OpenURLCommand, Source={x:Static dapp:DivinityApp.Commands}}"
+								CommandParameter="{Binding UpdateLink}"
+								NavigateUri="{Binding UpdateLink}">
+								<TextBlock Text="{Binding SourceText}" />
+							</Hyperlink>
+						</TextBlock>
 					</DataTemplate>
 				</GridViewColumn.CellTemplate>
 			</GridViewColumn>

@@ -41,13 +41,20 @@ namespace DivinityModManager
 		public const string MAIN_CAMPAIGN_UUID = "28ac9ce2-2aba-8cda-b3b5-6e922f71b6b8";
 		public const string GAMEMASTER_UUID = "NotYetAvailableInBG3";
 
+		public const string NEXUSMODS_GAME_DOMAIN = "baldursgate3";
+		public const long NEXUSMODS_GAME_ID = 3474;
+		public const string NEXUSMODS_MOD_URL = "https://www.nexusmods.com/baldursgate3/mods/{0}";
+		public const long NEXUSMODS_MOD_ID_START = 1;
+
 		public const string EXTENDER_REPO_URL = "Norbyte/bg3se";
 		public const string EXTENDER_LATEST_URL = "https://github.com/Norbyte/bg3se/releases/latest";
 		public const string EXTENDER_APPDATA_DIRECTORY = "BG3ScriptExtender";
 		public const string EXTENDER_APPDATA_DLL = "BG3ScriptExtender.dll";
 		public const string EXTENDER_MOD_CONFIG = "ScriptExtender/Config.json";
 		public const string EXTENDER_UPDATER_FILE = "DWrite.dll";
-		public const int EXTENDER_DEFAULT_VERSION = 1;
+		public const int EXTENDER_DEFAULT_VERSION = 2;
+
+		public const int MAX_FILE_OVERRIDE_DISPLAY = 10;
 
 		public const LSLib.LS.Enums.Game GAME = LSLib.LS.Enums.Game.BaldursGate3;
 		public const LSLib.LS.Story.Compiler.TargetGame GAME_COMPILER = LSLib.LS.Story.Compiler.TargetGame.BG3;
@@ -80,17 +87,20 @@ namespace DivinityModManager
 			}
 		}
 
-		private static bool isKeyboardNavigating = false;
+		private static bool _isKeyboardNavigating = false;
 
 		public static bool IsKeyboardNavigating
 		{
-			get => isKeyboardNavigating;
+			get => _isKeyboardNavigating;
 			set
 			{
-				isKeyboardNavigating = value;
+				_isKeyboardNavigating = value;
 				NotifyStaticPropertyChanged();
 			}
 		}
+
+		public static bool WorkshopEnabled { get; set; }
+		public static bool NexusModsEnabled { get; set; }
 
 		public static IObservable<Func<DivinityModDependencyData, bool>> DependencyFilter { get; set; }
 
