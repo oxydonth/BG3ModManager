@@ -1,5 +1,6 @@
 ﻿using DivinityModManager.Models;
 using DivinityModManager.Models.NexusMods;
+using DivinityModManager.Models.Updates;
 
 using NexusModsNET;
 
@@ -142,9 +143,23 @@ namespace DivinityModManager.Util
 			return links;
 		}
 
-		public static async Task<int> LoadAllModsDataAsync(IEnumerable<DivinityModData> mods, CancellationToken t)
+		public static async Task<UpdateResult> LoadAllModsDataAsync(IEnumerable<DivinityModData> mods, CancellationToken t)
 		{
-			if (!CanFetchData) return 0;
+			var taskResult = new UpdateResult();
+			if (!CanFetchData)
+			{
+				taskResult.Success = false;
+				if(_client == null)
+				{
+					taskResult.FailureMessage = "API Client not initialized.";
+				}
+				else
+				{
+					var rateLimits = _client.RateLimitsManagement.APILimits;
+					taskResult.FailureMessage = $"API limit exceeded. Hourly({rateLimits.HourlyRemaining}/{rateLimits.HourlyLimit}) Daily({rateLimits.DailyRemaining}/{rateLimits.DailyLimit})";
+				}
+				return taskResult;
+			} 
 			var totalLoaded = 0;
 
 			_isActive = true;
@@ -153,7 +168,12 @@ namespace DivinityModManager.Util
 			{
 				var targetMods = mods.Where(mod => mod.NexusModsData.ModId >= DivinityApp.NEXUSMODS_MOD_ID_START).ToList();
 				var total = targetMods.Count;
-				if (total == 0) return 0;
+				if (total == 0)
+				{
+					taskResult.Success = false;
+					taskResult.FailureMessage = "Skipping. No mods to check (no NexusMods ID set in the loaded mods).";
+					return taskResult;
+				}
 
 				var apiCallAmount = total; // 1 call for 1 mod
 				if (!CanDoTask(total))
@@ -162,7 +182,7 @@ namespace DivinityModManager.Util
 
 					DivinityApp.Log($"Task would exceed hourly or daily API limits. ExpectedCalls({apiCallAmount}) HourlyRemaining({apiAmounts.HourlyRemaining}/{apiAmounts.HourlyLimit}) DailyRemaining({apiAmounts.DailyRemaining}/{apiAmounts.DailyLimit})");
 					OnTaskDone();
-					return totalLoaded;
+					return taskResult;
 				}
 
 				DivinityApp.Log($"Using NexusMods API to update {total} mods");
@@ -175,6 +195,7 @@ namespace DivinityModManager.Util
 						if (result != null)
 						{
 							mod.NexusModsData.Update(result);
+							taskResult.UpdatedMods.Add(mod);
 							totalLoaded++;
 						}
 
@@ -189,7 +210,7 @@ namespace DivinityModManager.Util
 
 			OnTaskDone();
 
-			return totalLoaded;
+			return taskResult;
 		}
 	}
 }
