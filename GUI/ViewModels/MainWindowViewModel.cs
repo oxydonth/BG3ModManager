@@ -879,7 +879,7 @@ Directory the zip will be extracted to:
 			var workshopSupportEnabled = AppSettings.FeatureEnabled("Workshop");
 			var nexusModsSupportEnabled = AppSettings.FeatureEnabled("NexusMods");
 
-			if(DivinityApp.WorkshopEnabled != workshopSupportEnabled || DivinityApp.NexusModsEnabled != nexusModsSupportEnabled)
+			if (DivinityApp.WorkshopEnabled != workshopSupportEnabled || DivinityApp.NexusModsEnabled != nexusModsSupportEnabled)
 			{
 				DivinityApp.WorkshopEnabled = workshopSupportEnabled;
 				DivinityApp.NexusModsEnabled = nexusModsSupportEnabled;
@@ -1249,7 +1249,7 @@ Directory the zip will be extracted to:
 
 			this.WhenAnyValue(x => x.Settings.NexusModsAPIKey).Subscribe((key) =>
 			{
-				if(String.IsNullOrEmpty(key))
+				if (String.IsNullOrEmpty(key))
 				{
 					NexusModsDataLoader.Dispose();
 				}
@@ -1445,7 +1445,7 @@ Directory the zip will be extracted to:
 			try
 			{
 				string localAppDataFolder = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.DoNotVerify);
-				
+
 				if (String.IsNullOrWhiteSpace(AppSettings.DefaultPathways.DocumentsGameFolder))
 				{
 					AppSettings.DefaultPathways.DocumentsGameFolder = "Larian Studios\\Baldur's Gate 3";
@@ -2002,7 +2002,7 @@ Directory the zip will be extracted to:
 						await AddModFromFile(result, f, MainProgressToken.Token, toActiveList);
 					}
 
-					if (result.Mods.Count > 0 && result.Mods.Any(x => x.NexusModsData.ModId >= DivinityApp.NEXUSMODS_MOD_ID_START))
+					if (UpdateHandler.Nexus.IsEnabled && result.Mods.Count > 0 && result.Mods.Any(x => x.NexusModsData.ModId >= DivinityApp.NEXUSMODS_MOD_ID_START))
 					{
 						await UpdateHandler.Nexus.Update(result.Mods, MainProgressToken.Token);
 					}
@@ -2043,7 +2043,7 @@ Directory the zip will be extracted to:
 						}
 						else
 						{
-							if(total == 0)
+							if (total == 0)
 							{
 								ShowAlert("No mods imported. Does the file contain a .pak?", AlertType.Warning, 60);
 							}
@@ -2067,7 +2067,7 @@ Directory the zip will be extracted to:
 				directory = lastDir;
 			}
 
-			if(String.IsNullOrEmpty(directory) || !Directory.Exists(directory))
+			if (String.IsNullOrEmpty(directory) || !Directory.Exists(directory))
 			{
 				directory = DivinityApp.GetAppDirectory();
 			}
@@ -2093,7 +2093,7 @@ Directory the zip will be extracted to:
 			if (dialog.ShowDialog(View) == true)
 			{
 				var savedDirectory = Path.GetDirectoryName(dialog.FileName);
-				if(Settings.LastImportDirectoryPath != savedDirectory)
+				if (Settings.LastImportDirectoryPath != savedDirectory)
 				{
 					Settings.LastImportDirectoryPath = savedDirectory;
 					PathwayData.LastSaveFilePath = savedDirectory;
@@ -2436,7 +2436,7 @@ Directory the zip will be extracted to:
 				}
 				else
 				{
-					if((loadedProfiles == null || loadedProfiles.Count == 0))
+					if ((loadedProfiles == null || loadedProfiles.Count == 0))
 					{
 						DivinityApp.Log("No profiles found?");
 					}
@@ -3058,7 +3058,7 @@ Directory the zip will be extracted to:
 				MainProgressToken = null;
 			}
 
-			if(delay > 0)
+			if (delay > 0)
 			{
 				RxApp.MainThreadScheduler.Schedule(TimeSpan.FromMilliseconds(delay), _ =>
 				{
@@ -3121,12 +3121,12 @@ Directory the zip will be extracted to:
 					{
 						OnMainProgressComplete();
 
-						if(result.Errors.Count > 0)
+						if (result.Errors.Count > 0)
 						{
 							var sysFormat = CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern.Replace("/", "-");
 							var errorOutputPath = DivinityApp.GetAppDirectory("_Logs", $"ImportOrderFromArchive_{DateTime.Now.ToString(sysFormat + "_HH-mm-ss")}_Errors.log");
 							var logsDir = Path.GetDirectoryName(errorOutputPath);
-							if(!Directory.Exists(logsDir))
+							if (!Directory.Exists(logsDir))
 							{
 								Directory.CreateDirectory(logsDir);
 							}
@@ -3136,7 +3136,7 @@ Directory the zip will be extracted to:
 						var messages = new List<string>();
 						var total = result.Orders.Count + result.Mods.Count;
 
-						if(total > 0)
+						if (total > 0)
 						{
 							if (result.Orders.Count > 0)
 							{
@@ -3148,7 +3148,7 @@ Directory the zip will be extracted to:
 							}
 							var msg = String.Join(", ", messages);
 							ShowAlert($"Imported {msg}", AlertType.Success, 20);
-						}	
+						}
 						else
 						{
 							ShowAlert($"Successfully extracted archive, but no mods or load orders were found", AlertType.Warning, 20);
@@ -3394,6 +3394,7 @@ Directory the zip will be extracted to:
 
 					if (nexusFileInfo.Success && success)
 					{
+						//Still save cache from imported zips, even if we aren't updating
 						await UpdateHandler.Nexus.SaveCacheAsync(false, Version, MainProgressToken.Token);
 					}
 
@@ -4872,7 +4873,7 @@ Directory the zip will be extracted to:
 				if (!disposables.Contains(this.Disposables)) disposables.Add(this.Disposables);
 			});
 
-			UpdateNexusModsLimitsCommand = ReactiveCommand.Create<NexusModsRateLimitsUpdatedEventArgs>(OnNexusModsRateLimitsUpdated, outputScheduler:RxApp.MainThreadScheduler);
+			UpdateNexusModsLimitsCommand = ReactiveCommand.Create<NexusModsRateLimitsUpdatedEventArgs>(OnNexusModsRateLimitsUpdated, outputScheduler: RxApp.MainThreadScheduler);
 
 			NexusModsDataLoader.RateLimitsUpdated += (sender, e) =>
 			{
