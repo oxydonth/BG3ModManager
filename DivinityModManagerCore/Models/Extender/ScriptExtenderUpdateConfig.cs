@@ -1,4 +1,6 @@
-﻿using ReactiveUI;
+﻿using DivinityModManager.Extensions;
+
+using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
 using System;
@@ -67,5 +69,10 @@ namespace DivinityModManager.Models.Extender
 		[DataMember]
 		[DefaultValue(false)]
 		public bool ValidateSignature { get; set; }
+
+		public ScriptExtenderUpdateConfig()
+		{
+			this.SetToDefault();
+		}
 	}
 }

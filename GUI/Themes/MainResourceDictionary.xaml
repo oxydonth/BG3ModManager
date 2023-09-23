@@ -5,6 +5,7 @@
 	xmlns:adonisExtensions="clr-namespace:AdonisUI.Extensions;assembly=AdonisUI"
 	xmlns:adonisUI="clr-namespace:AdonisUI;assembly=AdonisUI"
 	xmlns:appdata="clr-namespace:DivinityModManager.Models.App;assembly=DivinityModManagerCore"
+	xmlns:autogrid="clr-namespace:WpfAutoGrid;assembly=WpfAutoGrid"
 	xmlns:behavior="clr-namespace:DivinityModManager.Controls.Behavior"
 	xmlns:chrome="clr-namespace:Xceed.Wpf.Toolkit.Chromes;assembly=Xceed.Wpf.Toolkit"
 	xmlns:controls="clr-namespace:DivinityModManager.Controls"
@@ -14,6 +15,7 @@
 	xmlns:dd="urn:gong-wpf-dragdrop"
 	xmlns:divThemes="clr-namespace:DivinityModManager.Themes"
 	xmlns:dmcore="clr-namespace:DivinityModManager;assembly=DivinityModManagerCore"
+	xmlns:extdata="clr-namespace:DivinityModManager.Models.Extender;assembly=DivinityModManagerCore"
 	xmlns:i="http://schemas.microsoft.com/expression/2010/interactivity"
 	xmlns:local="clr-namespace:DivinityModManager.Views"
 	xmlns:sys="clr-namespace:System;assembly=mscorlib"
@@ -964,6 +966,44 @@
 				<TextBlock Margin="2" Text="{Binding Folder}" />
 			</StackPanel>
 		</StackPanel>
+	</controls:AutomationTooltip>
+	<controls:AutomationTooltip x:Key="ExtenderUpdateEntryToolTip" DataContext="{Binding RelativeSource={RelativeSource Mode=Self}, Path=PlacementTarget.Tag}">
+		<controls:AutomationTooltip.Style>
+			<Style BasedOn="{StaticResource {x:Type ToolTip}}" TargetType="controls:AutomationTooltip">
+				<Setter Property="Template">
+					<Setter.Value>
+						<ControlTemplate TargetType="controls:AutomationTooltip">
+							<Border
+								Padding="8"
+								Background="{DynamicResource {x:Static adonisUI:Brushes.Layer4BackgroundBrush}}"
+								BorderBrush="{DynamicResource {x:Static adonisUI:Brushes.AccentInteractionBorderBrush}}"
+								BorderThickness="2">
+								<ContentPresenter />
+							</Border>
+						</ControlTemplate>
+					</Setter.Value>
+				</Setter>
+			</Style>
+		</controls:AutomationTooltip.Style>
+		<controls:AutomationTooltip.Resources>
+			<DataTemplate DataType="{x:Type extdata:ScriptExtenderUpdateVersion}">
+				<autogrid:AutoGrid
+					Margin="10,0"
+					ChildMargin="4"
+					ColumnCount="2"
+					Columns="auto,*"
+					RowCount="3"
+					RowHeight="*"
+					Rows="*,*,*">
+					<TextBlock Text="Game Version:" />
+					<TextBlock Text="{Binding MinGameVersion}" />
+					<TextBlock Text="Extender Version:" />
+					<TextBlock Text="{Binding Version}" />
+					<TextBlock Text="URL:" />
+					<TextBlock Text="{Binding URL}" />
+				</autogrid:AutoGrid>
+			</DataTemplate>
+		</controls:AutomationTooltip.Resources>
 	</controls:AutomationTooltip>
 	<DataTemplate x:Key="ModNameTemplate" DataType="{x:Type data:DivinityModData}">
 		<controls:ModEntryGrid>

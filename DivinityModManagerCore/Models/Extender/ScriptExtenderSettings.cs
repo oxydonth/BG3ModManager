@@ -1,4 +1,7 @@
 ﻿using DivinityModManager.Extensions;
+
+using Newtonsoft.Json;
+
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
@@ -16,29 +19,14 @@ namespace DivinityModManager.Models.Extender
     [DataContract]
     public class ScriptExtenderSettings : ReactiveObject
     {
-        private bool extenderIsAvailable = false;
+		[Reactive] public bool ExtenderIsAvailable { get; set; }
+		[Reactive] public bool ExtenderUpdaterIsAvailable { get; set; }
+		[Reactive] public int ExtenderVersion { get; set; }
 
-        public bool ExtenderIsAvailable
-        {
-            get => extenderIsAvailable;
-            set { this.RaiseAndSetIfChanged(ref extenderIsAvailable, value); }
-        }
-
-        private bool extenderUpdaterIsAvailable = false;
-
-        public bool ExtenderUpdaterIsAvailable
-        {
-            get => extenderUpdaterIsAvailable;
-            set { this.RaiseAndSetIfChanged(ref extenderUpdaterIsAvailable, value); }
-        }
-
-        private int extenderVersion = -1;
-
-        public int ExtenderVersion
-        {
-            get => extenderVersion;
-            set { this.RaiseAndSetIfChanged(ref extenderVersion, value); }
-        }
+		[DefaultValue(false)]
+		[SettingsEntry("Export Default Values", "Export all values, even if it matches a default extender value")]
+		[JsonIgnore]
+		[DataMember][Reactive] public bool ExportDefaultExtenderSettings { get; set; }
 
 		[SettingsEntry("Custom Profile", "Use a profile other than Public\nThis should be the profile folder name")]
 		[Reactive]
@@ -184,36 +172,10 @@ namespace DivinityModManager.Models.Extender
 		[DefaultValue(false)]
 		public bool ShowPerfWarnings { get; set; }
 
-		public static ScriptExtenderSettings DefaultSettings = new ScriptExtenderSettings();
-
-        public ScriptExtenderSettings()
-        {
-            SetToDefault();
+		public ScriptExtenderSettings()
+		{
+			this.SetToDefault();
+			ExtenderVersion = -1;
 		}
-
-        public void SetToDefault()
-        {
-            PropertyDescriptorCollection props = TypeDescriptor.GetProperties(GetType());
-            foreach (PropertyDescriptor pr in props)
-            {
-                if (pr.CanResetValue(this))
-                {
-                    pr.ResetValue(this);
-                }
-            }
-        }
-
-        public void Set(ScriptExtenderSettings osirisExtenderSettings)
-        {
-			PropertyDescriptorCollection props = TypeDescriptor.GetProperties(GetType());
-			foreach (PropertyDescriptor pr in props)
-			{
-                var value = pr.GetValue(osirisExtenderSettings);
-                if(value != null)
-                {
-                    pr.SetValue(this, value);
-                }
-			}
-        }
-    }
+	}
 }

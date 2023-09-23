@@ -1,29 +1,23 @@
 ﻿using Alphaleonis.Win32.Filesystem;
+
+using DivinityModManager.Models.Github;
+using DivinityModManager.Models.NexusMods;
 using DivinityModManager.Util;
+
 using DynamicData;
-using DynamicData.Binding;
 using DynamicData.Aggregation;
 
-using LSLib.LS;
-
-using Newtonsoft.Json;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Linq;
-using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Runtime.Serialization;
 using System.Windows;
-using System.Windows.Automation.Peers;
-using System.Windows.Input;
-using System.Reflection;
-using DivinityModManager.Models.NexusMods;
-using System.Globalization;
-using DivinityModManager.Models.Github;
 
 namespace DivinityModManager.Models
 {

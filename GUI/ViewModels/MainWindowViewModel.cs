@@ -147,7 +147,8 @@ namespace DivinityModManager.ViewModels
 		protected ReadOnlyObservableCollection<DivinityModData> workshopModsCollection;
 		public ReadOnlyObservableCollection<DivinityModData> WorkshopMods => workshopModsCollection;
 
-		private readonly ModUpdateHandler UpdateHandler;
+		private readonly ModUpdateHandler _updateHandler;
+		public ModUpdateHandler UpdateHandler => _updateHandler;
 
 		public DivinityPathwayData PathwayData { get; private set; } = new DivinityPathwayData();
 
@@ -876,6 +877,8 @@ Directory the zip will be extracted to:
 
 			LoadAppConfig();
 
+			Settings.DefaultExtenderLogDirectory = Path.Combine(GetLarianStudiosAppDataFolder(), "Baldur's Gate 3", "Extender Logs");
+
 			var workshopSupportEnabled = AppSettings.FeatureEnabled("Workshop");
 			var nexusModsSupportEnabled = AppSettings.FeatureEnabled("NexusMods");
 
@@ -1060,142 +1063,6 @@ Directory the zip will be extracted to:
 				}
 
 			}, canOpenGameExe);
-
-			Settings.SaveSettingsCommand = ReactiveCommand.Create(() =>
-			{
-				try
-				{
-					System.IO.FileAttributes attr = File.GetAttributes(Settings.GameExecutablePath);
-
-					if (attr.HasFlag(System.IO.FileAttributes.Directory))
-					{
-						string exeName = "";
-						if (!DivinityRegistryHelper.IsGOG)
-						{
-							exeName = Path.GetFileName(AppSettings.DefaultPathways.Steam.ExePath);
-						}
-						else
-						{
-							exeName = Path.GetFileName(AppSettings.DefaultPathways.GOG.ExePath);
-						}
-
-						var exe = Path.Combine(Settings.GameExecutablePath, exeName);
-						if (File.Exists(exe))
-						{
-							Settings.GameExecutablePath = exe;
-						}
-					}
-
-					if (Settings.SelectedTabIndex == 1)
-					{
-						// Help for people confused about needing to click the export button to save the json
-						Settings.ExportExtenderSettingsCommand?.Execute(null);
-					}
-				}
-				catch (Exception) { }
-				if (SaveSettings())
-				{
-					ShowAlert($"Saved settings to '{settingsFile}'", AlertType.Success, 10);
-				}
-			}).DisposeWith(Settings.Disposables);
-
-			Settings.OpenSettingsFolderCommand = ReactiveCommand.Create(() =>
-			{
-				DivinityFileUtils.TryOpenPath(DivinityApp.GetAppDirectory(DivinityApp.DIR_DATA));
-			}).DisposeWith(Settings.Disposables);
-
-			Settings.ExportExtenderSettingsCommand = ReactiveCommand.Create(() =>
-			{
-				string outputFile = Path.Combine(Path.GetDirectoryName(Settings.GameExecutablePath), "ScriptExtenderSettings.json");
-				try
-				{
-					var jsonSettings = new JsonSerializerSettings
-					{
-						DefaultValueHandling = DefaultValueHandling.Ignore,
-						NullValueHandling = NullValueHandling.Ignore,
-						Formatting = Formatting.Indented
-					};
-
-					if (Settings.ExportDefaultExtenderSettings)
-					{
-						jsonSettings.DefaultValueHandling = DefaultValueHandling.Include;
-					}
-					string contents = JsonConvert.SerializeObject(Settings.ExtenderSettings, jsonSettings);
-					File.WriteAllText(outputFile, contents);
-					ShowAlert($"Saved Script Extender settings to '{outputFile}'", AlertType.Success, 20);
-				}
-				catch (Exception ex)
-				{
-					ShowAlert($"Error saving Script Extender settings to '{outputFile}':\n{ex}", AlertType.Danger);
-				}
-			}).DisposeWith(Settings.Disposables);
-
-			var canResetExtenderSettingsObservable = this.WhenAny(x => x.Settings.ExtenderSettings, (extenderSettings) => extenderSettings != null).StartWith(false);
-			Settings.ResetExtenderSettingsToDefaultCommand = ReactiveCommand.Create(() =>
-			{
-				MessageBoxResult result = Xceed.Wpf.Toolkit.MessageBox.Show(View.SettingsWindow, $"Reset Extender Settings to Default?\nCurrent Extender Settings will be lost.", "Confirm Extender Settings Reset",
-					MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No, View.MainWindowMessageBox_OK.Style);
-				if (result == MessageBoxResult.Yes)
-				{
-					Settings.ExportDefaultExtenderSettings = false;
-					Settings.ExtenderSettings.SetToDefault();
-				}
-			}, canResetExtenderSettingsObservable).DisposeWith(Settings.Disposables);
-
-			Settings.ResetKeybindingsCommand = ReactiveCommand.Create(() =>
-			{
-				MessageBoxResult result = Xceed.Wpf.Toolkit.MessageBox.Show((Window)this.View.SettingsWindow, $"Reset Keybindings to Default?\nCurrent keybindings may be lost.", "Confirm Reset",
-					MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No, (Style)this.View.MainWindowMessageBox_OK.Style);
-				if (result == MessageBoxResult.Yes)
-				{
-					Keys.SetToDefault();
-				}
-			});
-
-			Settings.ClearCacheCommand = ReactiveCommand.Create(() =>
-			{
-				MessageBoxResult result = Xceed.Wpf.Toolkit.MessageBox.Show(View.SettingsWindow, $"Delete local mod cache?\nThis cannot be undone.", "Confirm Delete Cache",
-					MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No, View.MainWindowMessageBox_OK.Style);
-				if (result == MessageBoxResult.Yes)
-				{
-					try
-					{
-						if (UpdateHandler.DeleteCache())
-						{
-							ShowAlert($"Deleted local cache in {DivinityApp.GetAppDirectory("Data")}", AlertType.Success, 20);
-						}
-						else
-						{
-							ShowAlert($"No cache to delete.", AlertType.Warning, 20);
-						}
-					}
-					catch (Exception ex)
-					{
-						ShowAlert($"Error deleting workshop cache:\n{ex}", AlertType.Danger);
-					}
-				}
-			}).DisposeWith(Settings.Disposables);
-
-			Settings.AddLaunchParamCommand = ReactiveCommand.Create((string param) =>
-			{
-				if (Settings.GameLaunchParams == null) Settings.GameLaunchParams = "";
-				if (Settings.GameLaunchParams.IndexOf(param) < 0)
-				{
-					if (String.IsNullOrWhiteSpace(Settings.GameLaunchParams))
-					{
-						Settings.GameLaunchParams = param;
-					}
-					else
-					{
-						Settings.GameLaunchParams = Settings.GameLaunchParams + " " + param;
-					}
-				}
-			}).DisposeWith(Settings.Disposables);
-
-			Settings.ClearLaunchParamsCommand = ReactiveCommand.Create(() =>
-			{
-				Settings.GameLaunchParams = "";
-			}).DisposeWith(Settings.Disposables);
 
 			this.WhenAnyValue(x => x.Settings.LogEnabled).Subscribe((logEnabled) =>
 			{
@@ -4847,7 +4714,7 @@ Directory the zip will be extracted to:
 			MainProgressValue = 0d;
 			MainProgressIsActive = true;
 			StatusBarBusyIndicatorVisibility = Visibility.Collapsed;
-			UpdateHandler = new ModUpdateHandler();
+			_updateHandler = new ModUpdateHandler();
 
 			exceptionHandler = new MainWindowExceptionHandler(this);
 			RxApp.DefaultExceptionHandler = exceptionHandler;

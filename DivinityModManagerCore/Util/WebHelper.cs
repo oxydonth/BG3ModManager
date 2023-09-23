@@ -64,6 +64,22 @@ namespace DivinityModManager.Util
             }
         }
 
+        public static async Task<string> DownloadUrlAsStringAsync(string downloadUrl)
+        {
+            using (System.Net.WebClient webClient = new System.Net.WebClient())
+            {
+                try
+				{
+                    return await webClient.DownloadStringTaskAsync(downloadUrl);
+				}
+                catch(Exception ex)
+				{
+                    DivinityApp.Log($"Error downloading '{downloadUrl}' as string:\n{ex}");
+				}
+                return "";
+            }
+        }
+
         #region OLD
 
         // Get/Post sources from here: https://stackoverflow.com/a/27108442

@@ -52,6 +52,7 @@ namespace DivinityModManager
 		public const string EXTENDER_APPDATA_DLL = "BG3ScriptExtender.dll";
 		public const string EXTENDER_MOD_CONFIG = "ScriptExtender/Config.json";
 		public const string EXTENDER_UPDATER_FILE = "DWrite.dll";
+		public const string EXTENDER_MANIFESTS_URL = "https://bg3se-updates.norbyte.dev/Channels/{0}/Manifest.json";
 		public const int EXTENDER_DEFAULT_VERSION = 2;
 
 		public const int MAX_FILE_OVERRIDE_DISPLAY = 10;
