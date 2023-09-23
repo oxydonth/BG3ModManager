@@ -39,7 +39,7 @@ namespace DivinityModManager.Models.App
 		[Reactive] public string DisplayName { get; set; }
 
 		private readonly ObservableAsPropertyHelper<string> _tooltip;
-		public string Tooltip => _tooltip.Value;
+		public string ToolTip => _tooltip.Value;
 
 		[Reactive] public string DisplayBindingText { get; private set; }
 
@@ -145,7 +145,7 @@ namespace DivinityModManager.Models.App
 
 			_modifiedText = isDefaultObservable.Select(b => !b ? "*" : "").StartWith("").ToProperty(this, nameof(ModifiedText), scheduler:RxApp.MainThreadScheduler);
 
-			_tooltip = this.WhenAnyValue(x => x.DisplayName, x => x.IsDefault).Select(x => x.Item2 ? $"{x.Item1} (Modified)" : x.Item1).ToProperty(this, nameof(Tooltip), scheduler:RxApp.MainThreadScheduler);
+			_tooltip = this.WhenAnyValue(x => x.DisplayName, x => x.IsDefault).Select(x => x.Item2 ? $"{x.Item1} (Modified)" : x.Item1).ToProperty(this, nameof(ToolTip), scheduler:RxApp.MainThreadScheduler);
 
 			var canReset = isDefaultObservable.Select(b => !b).StartWith(false);
 			var canClear = this.WhenAnyValue(x => x.Key, x => x.Modifiers, (k, m) => k != Key.None).StartWith(false);

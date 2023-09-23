@@ -27,6 +27,9 @@ using DivinityModManager.Converters;
 using DivinityModManager.Models.Extender;
 using System.Reflection;
 using WpfAutoGrid;
+using DivinityModManager.Controls.Extensions;
+using System.Collections.ObjectModel;
+using DivinityModManager.Models.View;
 
 namespace DivinityModManager.Views
 {
@@ -40,15 +43,10 @@ namespace DivinityModManager.Views
 		public SettingsWindow()
 		{
 			InitializeComponent();
-
-			ViewModel = new SettingsWindowViewModel(this);
 		}
 
-		private readonly Type _settingsAttributeType = typeof(SettingsEntryAttribute);
-
-		private void CreateSettingsElements(object source, AutoGrid targetGrid, int startRow = 0)
+		private void CreateSettingsElements(object source, Type settingsModelType, AutoGrid targetGrid, int startRow = 0)
 		{
-			var settingsModelType = source.GetType();
 			var props = settingsModelType.GetProperties()
 				.Select(x => SettingsAttributeProperty.FromProperty(x))
 				.Where(x => x.Attribute != null).ToList();
@@ -69,13 +67,15 @@ namespace DivinityModManager.Views
 
 			foreach (var prop in props)
 			{
+				var targetRow = row;
+				row++;
 				var tb = new TextBlock
 				{
 					Text = prop.Attribute.DisplayName,
 					ToolTip = prop.Attribute.Tooltip
 				};
 				targetGrid.Children.Add(tb);
-				Grid.SetRow(tb, row);
+				Grid.SetRow(tb, targetRow);
 
 				if (prop.Attribute.IsDebug)
 				{
@@ -87,9 +87,36 @@ namespace DivinityModManager.Views
 					if(TryFindResource("UpdaterTargetVersionComboBox") is ComboBox cb)
 					{
 						targetGrid.Children.Add(cb);
-						Grid.SetRow(cb, row);
+						Grid.SetRow(cb, targetRow);
 						Grid.SetColumn(cb, 1);
 					}
+					continue;
+				}
+
+				if(prop.Property.PropertyType.IsEnum)
+				{
+					var combo = new ComboBox()
+					{
+						ToolTip = prop.Attribute.Tooltip,
+						DisplayMemberPath = "Description",
+						SelectedValuePath = "Value"
+					};
+					var items = new ObservableCollection<EnumEntry>();
+					var values = prop.Property.PropertyType.GetEnumValues().Cast<Enum>().Select(x => new EnumEntry(x.GetDescription(), x)).OrderBy(x => x.Description);
+					items.AddRange(values);
+					combo.SetBinding(ComboBox.ItemsSourceProperty, new Binding()
+					{
+						Source = items,
+						Mode = BindingMode.OneWay
+					});
+					combo.SetBinding(ComboBox.SelectedValueProperty, new Binding(prop.Property.Name)
+					{
+						Source = source,
+						Mode = BindingMode.OneWay
+					});
+					targetGrid.Children.Add(combo);
+					Grid.SetRow(combo, targetRow);
+					Grid.SetColumn(combo, 1);
 					continue;
 				}
 
@@ -115,7 +142,7 @@ namespace DivinityModManager.Views
 							cb.SetBinding(CheckBox.VisibilityProperty, debugModeBinding);
 						}
 						targetGrid.Children.Add(cb);
-						Grid.SetRow(cb, row);
+						Grid.SetRow(cb, targetRow);
 						Grid.SetColumn(cb, 1);
 						break;
 
@@ -138,7 +165,7 @@ namespace DivinityModManager.Views
 							utb.SetBinding(CheckBox.VisibilityProperty, debugModeBinding);
 						}
 						targetGrid.Children.Add(utb);
-						Grid.SetRow(utb, row);
+						Grid.SetRow(utb, targetRow);
 						Grid.SetColumn(utb, 1);
 						break;
 					case TypeCode.Int32:
@@ -160,11 +187,10 @@ namespace DivinityModManager.Views
 							ud.SetBinding(VisibilityProperty, debugModeBinding);
 						}
 						targetGrid.Children.Add(ud);
-						Grid.SetRow(ud, row);
+						Grid.SetRow(ud, targetRow);
 						Grid.SetColumn(ud, 1);
 						break;
 				}
-				row++;
 			}
 		}
 
@@ -180,10 +206,8 @@ namespace DivinityModManager.Views
 
 		public void Init(MainWindowViewModel main)
 		{
-			ViewModel.Main = main;
-			ViewModel.Settings = main.Settings;
-
-			DataContext = ViewModel;
+			ViewModel = new SettingsWindowViewModel(this, main);
+			main.WhenAnyValue(x => x.Settings).BindTo(ViewModel, vm => vm.Settings);
 
 			this.KeyDown += SettingsWindow_KeyDown;
 			KeybindingsListView.Loaded += (o, e) =>
@@ -200,12 +224,17 @@ namespace DivinityModManager.Views
 			};
 			KeybindingsListView.KeyUp += KeybindingsListView_KeyUp;
 
-			CreateSettingsElements(ViewModel, SettingsAutoGrid);
-			CreateSettingsElements(ViewModel.ExtenderSettings, ExtenderSettingsAutoGrid);
-			CreateSettingsElements(ViewModel.ExtenderUpdaterSettings, ExtenderUpdaterSettingsAutoGrid);
+			CreateSettingsElements(ViewModel.Settings, typeof(DivinityModManagerSettings), SettingsAutoGrid);
+			CreateSettingsElements(ViewModel.ExtenderSettings, typeof(ScriptExtenderSettings), ExtenderSettingsAutoGrid);
+			CreateSettingsElements(ViewModel.ExtenderUpdaterSettings, typeof(ScriptExtenderUpdateConfig), ExtenderUpdaterSettingsAutoGrid);
 
-			this.OneWayBind(main, vm => vm.Keys, view => view.KeybindingsListView.ItemsSource);
+			this.OneWayBind(ViewModel, vm => vm.Main.Keys.All, view => view.KeybindingsListView.ItemsSource);
 			this.Bind(ViewModel, vm => vm.SelectedHotkey, view => view.KeybindingsListView.SelectedItem);
+
+			this.Bind(ViewModel, vm => vm.Settings.DebugModeEnabled, view => view.DebugModeCheckBox.IsChecked);
+			this.Bind(ViewModel, vm => vm.Settings.LogEnabled, view => view.LogEnabledCheckBox.IsChecked);
+			this.OneWayBind(ViewModel, vm => vm.LaunchParams, view => view.GameLaunchParamsMainMenuItem.ItemsSource);
+			this.Bind(ViewModel, vm => vm.Settings.GameLaunchParams, view => view.GameLaunchParamsTextBox.Text);
 
 			this.Bind(ViewModel, vm => vm.SelectedTabIndex, view => view.PreferencesTabControl.SelectedIndex, tab => TabToIndex(tab), index => IndexToTab(index));
 			this.OneWayBind(ViewModel, vm => vm.ExtenderTabVisibility, view => view.ScriptExtenderTab.Visibility);
@@ -213,9 +242,14 @@ namespace DivinityModManager.Views
 			this.OneWayBind(ViewModel, vm => vm.ResetSettingsCommandToolTip, view => view.ResetSettingsButton.ToolTip);
 
 			this.BindCommand(ViewModel, vm => vm.SaveSettingsCommand, view => view.SaveSettingsButton);
-			this.BindCommand(ViewModel, vm => vm.SaveSettingsCommand, view => view.SaveSettingsSmallButton);
 			this.BindCommand(ViewModel, vm => vm.OpenSettingsFolderCommand, view => view.OpenSettingsFolderButton);
 			this.BindCommand(ViewModel, vm => vm.ResetSettingsCommand, view => view.ResetSettingsButton);
+			this.BindCommand(ViewModel, vm => vm.ClearLaunchParamsCommand, view => view.ClearLaunchParamsMenuItem);
+			this.BindCommand(ViewModel, vm => vm.ClearCacheCommand, view => view.ClearCacheButton);
+
+			this.Events().IsVisibleChanged.InvokeCommand(ViewModel.OnWindowShownCommand);
+
+			DataContext = ViewModel;
 		}
 
 		private bool isSettingKeybinding = false;

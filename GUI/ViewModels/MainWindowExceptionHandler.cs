@@ -20,14 +20,14 @@ namespace DivinityModManager.ViewModels
 
         public void OnNext(Exception value)
         {
-            DivinityApp.Log($"Error: ({value.GetType().ToString()}: {value.Message}\n{value.StackTrace}");
+            DivinityApp.Log($"Error: [{value.Source}]({value.GetType()}): {value.Message}\n{value.StackTrace}");
             //if (Debugger.IsAttached) Debugger.Break();
             //RxApp.MainThreadScheduler.Schedule(() => { throw value; });
         }
 
         public void OnError(Exception error)
         {
-            DivinityApp.Log($"Error: ({error.GetType().ToString()}: {error.Message}\n{error.StackTrace}");
+            DivinityApp.Log($"Error: [{error.Source}]({error.GetType()}): {error.Message}\n{error.StackTrace}");
             if (Debugger.IsAttached) Debugger.Break();
 
             RxApp.MainThreadScheduler.Schedule(() => { 

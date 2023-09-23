@@ -12,7 +12,6 @@ namespace DivinityModManager.Controls.Extensions
     {
         private Type _enumType;
 
-
         public EnumExtension(Type enumType)
         {
             if (enumType == null)

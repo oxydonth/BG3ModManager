@@ -49,6 +49,15 @@
 			<Style BasedOn="{StaticResource {x:Type CheckBox}}" TargetType="CheckBox">
 				<Setter Property="VerticalAlignment" Value="Center" />
 			</Style>
+			<Style TargetType="autogrid:AutoGrid">
+				<Setter Property="Margin" Value="10,0" />
+				<Setter Property="ChildMargin" Value="4" />
+				<Setter Property="ColumnCount" Value="2" />
+				<Setter Property="Columns" Value="*,*" />
+				<Setter Property="RowCount" Value="1" />
+				<Setter Property="RowHeight" Value="*" />
+				<Setter Property="Rows" Value="auto" />
+			</Style>
 			<ComboBox
 				x:Key="UpdaterTargetVersionComboBox"
 				DisplayMemberPath="Version"
@@ -69,7 +78,7 @@
 			HorizontalAlignment="Left"
 			Orientation="Horizontal">
 			<Button
-				x:Name="SaveSettingsSmallButton"
+				x:Name="SaveSettingsButton"
 				Style="{StaticResource IconButtonStyle}"
 				ToolTip="Save Settings (CTRL + S)">
 				<controls:AutoGrayableImage Source="{StaticResource SaveImage}" />
@@ -95,83 +104,7 @@
 		<TabControl x:Name="PreferencesTabControl" Grid.Row="1">
 			<TabItem FocusManager.FocusedElement="{Binding ElementName=SettingsAutoGrid}" Header="General">
 				<ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-					<autogrid:AutoGrid
-						x:Name="SettingsAutoGrid"
-						Margin="10,0"
-						ChildMargin="4"
-						ColumnCount="2"
-						Columns="auto,*"
-						RowCount="15"
-						RowHeight="*"
-						Rows="auto,auto,auto,auto,auto,auto,auto,auto,auto,auto,auto,auto,auto,auto,auto">
-						<autogrid:AutoGrid.Resources>
-							<Style BasedOn="{StaticResource {x:Type TextBlock}}" TargetType="TextBlock">
-								<Setter Property="DataContext" Value="{Binding}" />
-							</Style>
-						</autogrid:AutoGrid.Resources>
-						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="GameDataPath" />
-						<controls:UnfocusableTextBox
-							VerticalAlignment="Center"
-							Text="{Binding GameDataPath, UpdateSourceTrigger=PropertyChanged, FallbackValue=''}"
-							TextAlignment="Left" />
-						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="GameExecutablePath" />
-						<controls:UnfocusableTextBox
-							VerticalAlignment="Center"
-							Text="{Binding GameExecutablePath, UpdateSourceTrigger=PropertyChanged, FallbackValue=''}"
-							TextAlignment="Left" />
-						<!--<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="NexusModsAPIKey" />
-						<controls:UnfocusableTextBox
-							VerticalAlignment="Center"
-							Text="{Binding NexusModsAPIKey, UpdateSourceTrigger=PropertyChanged, FallbackValue=''}"
-							TextAlignment="Left" />-->
-						<!--<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="WorkshopPath" />
-						<controls:UnfocusableTextBox
-							x:Name="WorkshopPathTextbox"
-							VerticalAlignment="Center"
-							GotFocus="WorkshopPathTextbox_GotFocus"
-							LostFocus="WorkshopPathTextbox_LostFocus"
-							Text="{Binding WorkshopPath, UpdateSourceTrigger=PropertyChanged, FallbackValue=''}"
-							TextAlignment="Left" />-->
-						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="LoadOrderPath" />
-						<controls:UnfocusableTextBox
-							VerticalAlignment="Center"
-							Text="{Binding LoadOrderPath, UpdateSourceTrigger=PropertyChanged, FallbackValue='Load Order'}"
-							TextAlignment="Left" />
-						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="GameStoryLogEnabled" />
-						<CheckBox VerticalAlignment="Center" IsChecked="{Binding GameStoryLogEnabled, UpdateSourceTrigger=PropertyChanged}" />
-						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="DisableLauncherTelemetry" />
-						<CheckBox VerticalAlignment="Center" IsChecked="{Binding DisableLauncherTelemetry, UpdateSourceTrigger=PropertyChanged}" />
-						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="DisableLauncherModWarnings" />
-						<CheckBox VerticalAlignment="Center" IsChecked="{Binding DisableLauncherModWarnings, UpdateSourceTrigger=PropertyChanged}" />
-						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="AutoAddDependenciesWhenExporting" />
-						<CheckBox VerticalAlignment="Center" IsChecked="{Binding AutoAddDependenciesWhenExporting, UpdateSourceTrigger=PropertyChanged}" />
-						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="CheckForUpdates" />
-						<CheckBox VerticalAlignment="Center" IsChecked="{Binding CheckForUpdates, UpdateSourceTrigger=PropertyChanged}" />
-						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="DisableMissingModWarnings" />
-						<CheckBox VerticalAlignment="Center" IsChecked="{Binding DisableMissingModWarnings, UpdateSourceTrigger=PropertyChanged}" />
-						<!--<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="DisableWorkshopTagCheck" />
-						<CheckBox VerticalAlignment="Center" IsChecked="{Binding DisableWorkshopTagCheck, UpdateSourceTrigger=PropertyChanged}" />-->
-						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="ShiftListFocusOnSwap" />
-						<CheckBox VerticalAlignment="Center" IsChecked="{Binding ShiftListFocusOnSwap, UpdateSourceTrigger=PropertyChanged}" />
-						<!--<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="AutomaticallyLoadDMCampaignMods" />
-						<CheckBox VerticalAlignment="Center" IsChecked="{Binding AutomaticallyLoadDMCampaignMods, UpdateSourceTrigger=PropertyChanged}" />-->
-						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="SaveWindowLocation" />
-						<CheckBox VerticalAlignment="Center" IsChecked="{Binding SaveWindowLocation, UpdateSourceTrigger=PropertyChanged}" />
-						<TextBlock Text="On Game Launch" />
-						<ComboBox
-							DisplayMemberPath="Description"
-							ItemsSource="{Binding Source={ext:EnumExtension {x:Type dapp:DivinityGameLaunchWindowAction}}}"
-							SelectedValue="{Binding ActionOnGameLaunch, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
-							SelectedValuePath="Value"
-							ToolTip="When the game launches through the mod manager, this action will be performed" />
-
-						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="LaunchDX11" />
-						<CheckBox VerticalAlignment="Center" IsChecked="{Binding LaunchDX11, UpdateSourceTrigger=PropertyChanged}" />
-						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="SkipLauncher" />
-						<CheckBox VerticalAlignment="Center" IsChecked="{Binding SkipLauncher, UpdateSourceTrigger=PropertyChanged}" />
-						<TextBlock behavior:TextBlockSettingsEntryAttributeBehavior.Target="LaunchThroughSteam" />
-						<CheckBox VerticalAlignment="Center" IsChecked="{Binding LaunchThroughSteam, UpdateSourceTrigger=PropertyChanged}" />
-					</autogrid:AutoGrid>
+					<autogrid:AutoGrid x:Name="SettingsAutoGrid" />
 				</ScrollViewer>
 			</TabItem>
 			<TabItem
@@ -184,15 +117,7 @@
 						<RowDefinition Height="auto" />
 					</Grid.RowDefinitions>
 					<ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-						<autogrid:AutoGrid
-							x:Name="ExtenderSettingsAutoGrid"
-							Margin="10,0"
-							ChildMargin="4"
-							ColumnCount="2"
-							Columns="*,*"
-							RowCount="1"
-							RowHeight="*"
-							Rows="auto" />
+						<autogrid:AutoGrid x:Name="ExtenderSettingsAutoGrid" />
 					</ScrollViewer>
 				</Grid>
 			</TabItem>
@@ -207,15 +132,7 @@
 						<RowDefinition Height="auto" />
 					</Grid.RowDefinitions>
 					<ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-						<autogrid:AutoGrid
-							x:Name="ExtenderUpdaterSettingsAutoGrid"
-							Margin="10,0"
-							ChildMargin="4"
-							ColumnCount="2"
-							Columns="*,*"
-							RowCount="1"
-							RowHeight="*"
-							Rows="auto" />
+						<autogrid:AutoGrid x:Name="ExtenderUpdaterSettingsAutoGrid" />
 					</ScrollViewer>
 				</Grid>
 			</TabItem>
@@ -293,98 +210,90 @@
 				</ListView>
 			</TabItem>
 			<TabItem FocusManager.FocusedElement="{Binding ElementName=AdvancedSettingsAutoGrid}" Header="Advanced">
-				<ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-					<autogrid:AutoGrid
-						x:Name="AdvancedSettingsAutoGrid"
-						Margin="10,0"
-						ChildMargin="2"
-						ColumnCount="2"
-						Columns="auto,*"
-						RowCount="4"
-						RowHeight="*"
-						Rows="auto,auto,auto,auto">
-						<TextBlock
-							x:Name="DebugModeTextBlock"
-							behavior:TextBlockSettingsEntryAttributeBehavior.Target="DebugModeEnabled"
-							DataContext="{Binding}" />
-						<CheckBox
-							VerticalAlignment="Center"
-							IsChecked="{Binding DebugModeEnabled, UpdateSourceTrigger=PropertyChanged}"
-							ToolTip="{Binding ElementName=DebugModeTextBlock, Path=ToolTip}" />
-						<TextBlock Text="Enable Mod Manager Logs" ToolTip="Automatically save logs to _Logs" />
-						<CheckBox VerticalAlignment="Center" IsChecked="{Binding LogEnabled, UpdateSourceTrigger=PropertyChanged}" />
-						<Menu>
-							<Menu.Resources>
-								<Style BasedOn="{StaticResource {x:Type MenuItem}}" TargetType="MenuItem">
-									<Setter Property="Command" Value="{Binding AddLaunchParamCommand}" />
-									<Setter Property="CommandParameter" Value="{Binding Path=Header, RelativeSource={RelativeSource Self}}" />
-								</Style>
-							</Menu.Resources>
-							<MenuItem
-								Command="{x:Null}"
-								CommandParameter="{x:Null}"
-								Header="Game Launch Params"
-								ToolTip="Parameters to pass to the game executable when launching the game through the mod manager">
-								<MenuItem Header="-continueGame" ToolTip="Automatically load the last save when loading into the main menu" />
-								<MenuItem Header="-storylog 1" ToolTip="Enables the story log" />
-								<MenuItem Header="--logPath &quot;&quot;" ToolTip="A directory to write story logs to" />
-								<MenuItem Header="--cpuLimit x" ToolTip="Limit the cpu to x amount of threads (unknown if this works)" />
-								<MenuItem Header="-asserts 1" Visibility="{Binding DebugModeEnabled, Converter={StaticResource BoolToVisibilityConverter}}" />
-								<MenuItem Header="-stats 1" Visibility="{Binding DebugModeEnabled, Converter={StaticResource BoolToVisibilityConverter}}" />
-								<MenuItem Header="-dynamicStory 1" Visibility="{Binding DebugModeEnabled, Converter={StaticResource BoolToVisibilityConverter}}" />
-								<MenuItem Header="-externalcrashhandler" Visibility="{Binding DebugModeEnabled, Converter={StaticResource BoolToVisibilityConverter}}" />
-								<MenuItem Header="-nametag &quot;&quot;" Visibility="{Binding DebugModeEnabled, Converter={StaticResource BoolToVisibilityConverter}}" />
-								<MenuItem Header="-module &quot;&quot;" Visibility="{Binding DebugModeEnabled, Converter={StaticResource BoolToVisibilityConverter}}" />
-								<MenuItem Header="+connect_lobby &quot;&quot;" Visibility="{Binding DebugModeEnabled, Converter={StaticResource BoolToVisibilityConverter}}" />
-								<MenuItem Header="-locaupdater 1" Visibility="{Binding DebugModeEnabled, Converter={StaticResource BoolToVisibilityConverter}}" />
-								<MenuItem Header="-mediaPath &quot;&quot;" Visibility="{Binding DebugModeEnabled, Converter={StaticResource BoolToVisibilityConverter}}" />
+				<DockPanel HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+					<ScrollViewer
+						DockPanel.Dock="Top"
+						HorizontalScrollBarVisibility="Disabled"
+						VerticalScrollBarVisibility="Auto">
+						<autogrid:AutoGrid
+							x:Name="AdvancedSettingsAutoGrid"
+							Margin="10,0"
+							ChildMargin="4"
+							ColumnCount="2"
+							Columns="auto,*"
+							RowCount="3"
+							RowHeight="*"
+							Rows="auto,auto,auto">
+							<TextBlock
+								x:Name="DebugModeTextBlock"
+								behavior:TextBlockSettingsEntryAttributeBehavior.Target="DebugModeEnabled"
+								DataContext="{Binding Settings}" />
+							<CheckBox
+								x:Name="DebugModeCheckBox"
+								VerticalAlignment="Center"
+								ToolTip="{Binding ElementName=DebugModeTextBlock, Path=ToolTip}" />
+							<TextBlock Text="Enable Mod Manager Logs" ToolTip="Automatically save logs to _Logs" />
+							<CheckBox x:Name="LogEnabledCheckBox" VerticalAlignment="Center" />
+							<Menu HorizontalAlignment="Left" VerticalAlignment="Top">
 								<MenuItem
-									Command="{Binding ClearLaunchParamsCommand}"
-									CommandParameter="{x:Null}"
-									Header="Clear"
-									ToolTip="Clear current params" />
-							</MenuItem>
-						</Menu>
-						<TextBox
-							VerticalAlignment="Center"
-							Text="{Binding GameLaunchParams, UpdateSourceTrigger=PropertyChanged}"
-							TextWrapping="Wrap"
-							ToolTip="Parameters to pass to the game executable when launching the game through the mod manager" />
-						<TextBlock
-							x:Name="ClearCacheTextBlock"
-							Text="Clear Workshop Cache"
-							ToolTip="Delete the local workshop cache used for tag display, located at Data\workshopdata.json" />
-						<Button
-							HorizontalAlignment="Left"
-							VerticalAlignment="Center"
-							Command="{Binding ClearWorkshopCacheCommand}"
-							Content="Delete Cache"
-							ToolTip="{Binding ElementName=ClearCacheTextBlock, Path=ToolTip}" />
-					</autogrid:AutoGrid>
-				</ScrollViewer>
+									x:Name="GameLaunchParamsMainMenuItem"
+									Header="Launch Params"
+									ToolTip="Parameters to pass to the game executable when launching the game through the mod manager">
+									<!--<MenuItem.ItemTemplate>
+									<DataTemplate DataType="vm:GameLaunchParamEntry">
+										<MenuItem
+											Command="{Binding Path=DataContext.AddLaunchParamCommand, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:SettingsWindow}}}"
+											CommandParameter="{Binding Name}"
+											Header="{Binding Name}"
+											ToolTip="{Binding Description}" />
+									</DataTemplate>
+								</MenuItem.ItemTemplate>-->
+									<MenuItem.ItemTemplate>
+										<DataTemplate DataType="vm:GameLaunchParamEntry">
+											<TextBlock Text="{Binding}" />
+										</DataTemplate>
+									</MenuItem.ItemTemplate>
+									<MenuItem.ItemContainerStyle>
+										<Style TargetType="MenuItem">
+											<Setter Property="Header" Value="{Binding Name}" />
+											<Setter Property="ToolTip" Value="{Binding Description}" />
+											<Setter Property="Command" Value="{Binding Path=DataContext.AddLaunchParamCommand, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:SettingsWindow}}}" />
+											<Setter Property="CommandParameter" Value="{Binding Name}" />
+										</Style>
+									</MenuItem.ItemContainerStyle>
+								</MenuItem>
+							</Menu>
+							<Grid>
+								<Grid.ColumnDefinitions>
+									<ColumnDefinition Width="*" />
+									<ColumnDefinition Width="Auto" />
+								</Grid.ColumnDefinitions>
+								<TextBox
+									x:Name="GameLaunchParamsTextBox"
+									VerticalAlignment="Center"
+									TextWrapping="Wrap"
+									ToolTip="Parameters to pass to the game executable when launching the game through the mod manager" />
+								<Button
+									x:Name="ClearLaunchParamsMenuItem"
+									Grid.Column="1"
+									Style="{StaticResource IconButtonStyle}"
+									ToolTip="Clear current params">
+									<controls:AutoGrayableImage Source="{StaticResource AlertBar_Close}" />
+								</Button>
+							</Grid>
+						</autogrid:AutoGrid>
+					</ScrollViewer>
+					<Button
+						x:Name="ClearCacheButton"
+						Margin="10,0"
+						HorizontalAlignment="Left"
+						VerticalAlignment="Center"
+						Content="Delete Cache"
+						DockPanel.Dock="Bottom"
+						ToolTip="Delete the local mod cache, located in the mod manager's Data folder" />
+				</DockPanel>
 			</TabItem>
 		</TabControl>
-		<Grid Grid.Row="2" Margin="0,8">
-			<Grid.ColumnDefinitions>
-				<ColumnDefinition Width="*" />
-				<ColumnDefinition Width="*" />
-			</Grid.ColumnDefinitions>
-			<Grid Margin="4,0,4,0" Background="{DynamicResource {x:Static adonisUI:Brushes.Layer0BackgroundBrush}}">
-				<Button
-					x:Name="ResetKeybindingsButton"
-					HorizontalAlignment="Center"
-					Command="{Binding ResetKeybindingsCommand}"
-					Content="Reset to Default"
-					ToolTip="Reset all keybindings to their default value"
-					Visibility="{Binding KeybindingsTabIsVisible, Converter={StaticResource BoolToVisibilityConverter}, FallbackValue=Collapsed}" />
-			</Grid>
-			<Grid Grid.Column="1">
-				<Button
-					x:Name="SaveSettingsButton"
-					Padding="30,0"
-					HorizontalAlignment="Center"
-					Content="Save" />
-			</Grid>
-		</Grid>
+		<Grid Grid.Row="2" Margin="0,8" />
 	</Grid>
 </local:SettingsWindowBase>

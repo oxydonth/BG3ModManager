@@ -33,19 +33,5 @@ namespace DivinityModManager.Models.Extender
 		[Reactive] public string URL { get; set; }
 		[Reactive] public string Version { get; set; }
 		[Reactive] public string Signature { get; set; }
-
-		private ObservableAsPropertyHelper<string> _tooltip;
-
-		public string ToolTip => _tooltip.Value;
-
-		private string PropertiesToToolTip(ValueTuple<string, string, string> values)
-		{
-			return $"Version:{values.Item1}\nGame Version: {values.Item2}\nURL:";
-		}
-
-		public ScriptExtenderUpdateVersion()
-		{
-			_tooltip = this.WhenAnyValue(x => x.Version, x => x.MinGameVersion, x => x.URL).Select(PropertiesToToolTip).ToProperty(this, nameof(ToolTip), scheduler: RxApp.MainThreadScheduler);
-		}
 	}
 }

@@ -62,5 +62,14 @@ namespace DivinityModManager.Models
 			}
 			return "";
 		}
+
+		public string ScriptExtenderUpdaterConfigFile(DivinityModManagerSettings settings)
+		{
+			if(settings.GameExecutablePath.IsExistingFile())
+			{
+				return Path.Combine(Path.GetDirectoryName(settings.GameExecutablePath), "ScriptExtenderUpdaterConfig.json");
+			}
+			return "";
+		}
 	}
 }

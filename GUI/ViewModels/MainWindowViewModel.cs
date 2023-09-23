@@ -162,7 +162,8 @@ namespace DivinityModManager.ViewModels
 
 		public AppSettings AppSettings => appSettings;
 
-		[Reactive] public DivinityModManagerSettings Settings { get; set; }
+		private readonly DivinityModManagerSettings _settings;
+		public DivinityModManagerSettings Settings => _settings;
 
 		private readonly ObservableCollectionExtended<DivinityModData> _activeMods = new ObservableCollectionExtended<DivinityModData>();
 		public ObservableCollectionExtended<DivinityModData> ActiveMods => _activeMods;
@@ -321,13 +322,6 @@ namespace DivinityModManager.ViewModels
 		public ReactiveCommand<Unit, Unit> RefreshCommand { get; private set; }
 		public ReactiveCommand<Unit, Unit> RefreshModUpdatesCommand { get; private set; }
 		public ICommand UpdateNexusModsLimitsCommand { get; private set; }
-
-		private DivinityGameLaunchWindowAction actionOnGameLaunch = DivinityGameLaunchWindowAction.None;
-		public DivinityGameLaunchWindowAction ActionOnGameLaunch
-		{
-			get => actionOnGameLaunch;
-			set { this.RaiseAndSetIfChanged(ref actionOnGameLaunch, value); }
-		}
 		public EventHandler OnRefreshed { get; set; }
 
 		#region DungeonMaster Support
@@ -669,23 +663,40 @@ Directory the zip will be extracted to:
 
 			await Observable.Start(() =>
 			{
-
+				string settingsFilePath = PathwayData.ScriptExtenderSettingsFile(Settings);
+				string updaterSettingsFilePath = PathwayData.ScriptExtenderUpdaterConfigFile(Settings);
 				try
 				{
-					string extenderSettingsJson = PathwayData.ScriptExtenderSettingsFile(Settings);
-					if (extenderSettingsJson.IsExistingFile())
+					if (settingsFilePath.IsExistingFile())
 					{
-						var osirisExtenderSettings = DivinityJsonUtils.SafeDeserializeFromPath<ScriptExtenderSettings>(extenderSettingsJson);
-						if (osirisExtenderSettings != null)
+						if (DivinityJsonUtils.TrySafeDeserializeFromPath<ScriptExtenderSettings>(settingsFilePath, out var data))
 						{
-							DivinityApp.Log($"Loaded extender settings from '{extenderSettingsJson}'.");
-							Settings.ExtenderSettings.Set(osirisExtenderSettings);
+							DivinityApp.Log($"Loaded {settingsFilePath}");
+							Settings.ExtenderSettings.SetFrom(data);
+							Settings.RaisePropertyChanged("ExtenderSettings");
 						}
 					}
 				}
 				catch (Exception ex)
 				{
-					DivinityApp.Log($"Error loading extender settings: {ex}");
+					DivinityApp.Log($"Error loading '{settingsFilePath}':\n{ex}");
+				}
+
+				try
+				{
+					if (updaterSettingsFilePath.IsExistingFile())
+					{
+						if (DivinityJsonUtils.TrySafeDeserializeFromPath<ScriptExtenderUpdateConfig>(updaterSettingsFilePath, out var data))
+						{
+							DivinityApp.Log($"Loaded {updaterSettingsFilePath}");
+							Settings.ExtenderUpdaterSettings.SetFrom(data);
+							Settings.RaisePropertyChanged("ExtenderUpdaterSettings");
+						}
+					}
+				}
+				catch (Exception ex)
+				{
+					DivinityApp.Log($"Error loading '{updaterSettingsFilePath}':\n{ex}");
 				}
 
 				string extenderUpdaterPath = Path.Combine(Path.GetDirectoryName(Settings.GameExecutablePath), DivinityApp.EXTENDER_UPDATER_FILE);
@@ -845,99 +856,15 @@ Directory the zip will be extracted to:
 			if (!isLoggingEnabled) View.ToggleLogging(false);
 		}
 
-		private bool LoadSettings()
+		private void InitSettingsBindings()
 		{
-			Settings?.Dispose();
-
-			var loaded = false;
-			var settingsFile = DivinityApp.GetAppDirectory("Data", "settings.json");
-			try
-			{
-				if (File.Exists(settingsFile))
-				{
-					using (var reader = File.OpenText(settingsFile))
-					{
-						var fileText = reader.ReadToEnd();
-						Settings = DivinityJsonUtils.SafeDeserialize<DivinityModManagerSettings>(fileText);
-						loaded = Settings != null;
-					}
-				}
-			}
-			catch (Exception ex)
-			{
-				ShowAlert($"Error loading settings at '{settingsFile}': {ex}", AlertType.Danger);
-				Settings = null;
-			}
-
-			if (Settings == null)
-			{
-				Settings = new DivinityModManagerSettings();
-				SaveSettings();
-			}
-
-			LoadAppConfig();
-
-			Settings.DefaultExtenderLogDirectory = Path.Combine(GetLarianStudiosAppDataFolder(), "Baldur's Gate 3", "Extender Logs");
-
-			var workshopSupportEnabled = AppSettings.FeatureEnabled("Workshop");
-			var nexusModsSupportEnabled = AppSettings.FeatureEnabled("NexusMods");
-
-			if(DivinityApp.WorkshopEnabled != workshopSupportEnabled || DivinityApp.NexusModsEnabled != nexusModsSupportEnabled)
-			{
-				DivinityApp.WorkshopEnabled = workshopSupportEnabled;
-				DivinityApp.NexusModsEnabled = nexusModsSupportEnabled;
-
-				foreach (var mod in mods.Items)
-				{
-					mod.WorkshopEnabled = DivinityApp.WorkshopEnabled;
-					mod.NexusModsEnabled = DivinityApp.NexusModsEnabled;
-				}
-			}
+			DivinityApp.DependencyFilter = Settings.WhenAnyValue(x => x.DebugModeEnabled).Select(MakeDependencyFilter);
 
 			canOpenWorkshopFolder = this.WhenAnyValue(x => x.WorkshopSupportEnabled, x => x.Settings.WorkshopPath,
 				(b, p) => (b && !String.IsNullOrEmpty(p) && Directory.Exists(p))).StartWith(false);
 
-			if (workshopSupportEnabled)
-			{
-				if (!String.IsNullOrWhiteSpace(Settings.WorkshopPath))
-				{
-					var baseName = Path.GetFileNameWithoutExtension(Settings.WorkshopPath);
-					if (baseName == "steamapps")
-					{
-						var newFolder = Path.Combine(Settings.WorkshopPath, $"workshop/content/{AppSettings.DefaultPathways.Steam.AppID}");
-						if (Directory.Exists(newFolder))
-						{
-							Settings.WorkshopPath = newFolder;
-						}
-						else
-						{
-							Settings.WorkshopPath = "";
-						}
-					}
-				}
-
-				if (String.IsNullOrEmpty(Settings.WorkshopPath) || !Directory.Exists(Settings.WorkshopPath))
-				{
-					Settings.WorkshopPath = DivinityRegistryHelper.GetWorkshopPath(AppSettings.DefaultPathways.Steam.AppID).Replace("\\", "/");
-					if (!String.IsNullOrEmpty(Settings.WorkshopPath) && Directory.Exists(Settings.WorkshopPath))
-					{
-						DivinityApp.Log($"Workshop path set to: '{Settings.WorkshopPath}'.");
-					}
-				}
-				else if (Directory.Exists(Settings.WorkshopPath))
-				{
-					DivinityApp.Log($"Found workshop folder at: '{Settings.WorkshopPath}'.");
-				}
-				WorkshopSupportEnabled = true;
-			}
-			else
-			{
-				WorkshopSupportEnabled = false;
-				Settings.WorkshopPath = "";
-			}
-
-			canOpenGameExe = this.WhenAnyValue(x => x.Settings.GameExecutablePath, p => !String.IsNullOrEmpty(p) && File.Exists(p)).StartWith(false);
-			canOpenLogDirectory = this.WhenAnyValue(x => x.Settings.ExtenderLogDirectory, (f) => Directory.Exists(f)).StartWith(false);
+			canOpenGameExe = Settings.WhenAnyValue(x => x.GameExecutablePath, p => !String.IsNullOrEmpty(p) && File.Exists(p)).StartWith(false);
+			canOpenLogDirectory = Settings.WhenAnyValue(x => x.ExtenderLogDirectory, (f) => Directory.Exists(f)).StartWith(false);
 
 			var canDownloadScriptExtender = this.WhenAnyValue(x => x.PathwayData.ScriptExtenderLatestReleaseUrl, (p) => !String.IsNullOrEmpty(p));
 			Keys.DownloadScriptExtender.AddAction(() => AskToDownloadScriptExtender(), canDownloadScriptExtender);
@@ -948,7 +875,7 @@ Directory the zip will be extracted to:
 				DivinityFileUtils.TryOpenPath(PathwayData.AppDataModsPath);
 			}, canOpenModsFolder);
 
-			var canOpenGameFolder = this.WhenAnyValue(x => x.Settings.GameExecutablePath, (p) => !String.IsNullOrEmpty(p) && File.Exists(p));
+			var canOpenGameFolder = Settings.WhenAnyValue(x => x.GameExecutablePath, (p) => !String.IsNullOrEmpty(p) && File.Exists(p));
 			Keys.OpenGameFolder.AddAction(() =>
 			{
 				var folder = Path.GetDirectoryName(Settings.GameExecutablePath);
@@ -1054,7 +981,7 @@ Directory the zip will be extracted to:
 					switch (Settings.ActionOnGameLaunch)
 					{
 						case DivinityGameLaunchWindowAction.Minimize:
-							this.View.WindowState = WindowState.Minimized;
+							View.WindowState = WindowState.Minimized;
 							break;
 						case DivinityGameLaunchWindowAction.Close:
 							App.Current.Shutdown();
@@ -1064,33 +991,33 @@ Directory the zip will be extracted to:
 
 			}, canOpenGameExe);
 
-			this.WhenAnyValue(x => x.Settings.LogEnabled).Subscribe((logEnabled) =>
+			Settings.WhenAnyValue(x => x.LogEnabled).Subscribe((logEnabled) =>
 			{
 				View.ToggleLogging(logEnabled);
-			}).DisposeWith(Settings.Disposables);
+			});
 
-			this.WhenAnyValue(x => x.Settings.DarkThemeEnabled).ObserveOn(RxApp.MainThreadScheduler).Subscribe((b) =>
+			Settings.WhenAnyValue(x => x.DarkThemeEnabled).ObserveOn(RxApp.MainThreadScheduler).Subscribe((b) =>
 			{
 				View.UpdateColorTheme(b);
 				SaveSettings();
-			}).DisposeWith(Settings.Disposables);
+			});
 
 			// Updating extender requirement display
-			this.WhenAnyValue(x => x.Settings.ExtenderSettings.EnableExtensions).ObserveOn(RxApp.MainThreadScheduler).Subscribe((b) =>
+			Settings.WhenAnyValue(x => x.ExtenderSettings.EnableExtensions).ObserveOn(RxApp.MainThreadScheduler).Subscribe((b) =>
 			{
 				CheckExtenderData();
-			}).DisposeWith(Settings.Disposables);
+			});
 
-			ActionOnGameLaunch = Settings.ActionOnGameLaunch;
-
-			var actionLaunchChanged = this.WhenAnyValue(x => x.ActionOnGameLaunch).ObserveOn(RxApp.MainThreadScheduler);
+			var actionLaunchChanged = Settings.WhenAnyValue(x => x.ActionOnGameLaunch).Skip(1).ObserveOn(RxApp.MainThreadScheduler);
 			actionLaunchChanged.Subscribe((action) =>
 			{
-				SaveSettings();
-			}).DisposeWith(Settings.Disposables);
-			actionLaunchChanged.BindTo(this, x => x.Settings.ActionOnGameLaunch).DisposeWith(Settings.Disposables);
+				if (!View.SettingsWindow.IsVisible)
+				{
+					SaveSettings();
+				}
+			});
 
-			this.WhenAnyValue(x => x.Settings.DisplayFileNames).Subscribe((b) =>
+			Settings.WhenAnyValue(x => x.DisplayFileNames).Subscribe((b) =>
 			{
 				if (View.MenuItems.TryGetValue("ToggleFileNameDisplay", out var menuItem))
 				{
@@ -1103,20 +1030,20 @@ Directory the zip will be extracted to:
 						menuItem.Header = "Show File Names for Mods";
 					}
 				}
-			}).DisposeWith(Settings.Disposables);
+			});
 
-			this.WhenAnyValue(x => x.Settings.DocumentsFolderPathOverride).Skip(1).Subscribe((x) =>
+			Settings.WhenAnyValue(x => x.DocumentsFolderPathOverride).Skip(1).Subscribe((x) =>
 			{
 				if (!IsLocked)
 				{
 					SetGamePathways(Settings.GameDataPath, x);
-					ShowAlert($"Larian folder changed to '{PathwayData.AppDataGameFolder}' - Make sure to refresh", AlertType.Warning, 60);
+					ShowAlert($"Larian folder changed to '{x}' - Make sure to refresh", AlertType.Warning, 60);
 				}
-			}).DisposeWith(Settings.Disposables);
+			});
 
-			this.WhenAnyValue(x => x.Settings.NexusModsAPIKey).Subscribe((key) =>
+			Settings.WhenAnyValue(x => x.NexusModsAPIKey).Subscribe((key) =>
 			{
-				if(String.IsNullOrEmpty(key))
+				if (String.IsNullOrEmpty(key))
 				{
 					NexusModsDataLoader.Dispose();
 				}
@@ -1124,9 +1051,102 @@ Directory the zip will be extracted to:
 				{
 					NexusModsDataLoader.Init(key, AutoUpdater.AppTitle, Version);
 				}
-			}).DisposeWith(Settings.Disposables);
+			});
 
-			this.WhenAnyValue(x => x.Settings.SaveWindowLocation).Subscribe(View.ToggleWindowPositionSaving).DisposeWith(Settings.Disposables);
+			Settings.WhenAnyValue(x => x.SaveWindowLocation).Subscribe(View.ToggleWindowPositionSaving);
+		}
+
+		private bool LoadSettings()
+		{
+			var loaded = false;
+			var settingsFile = DivinityApp.GetAppDirectory("Data", "settings.json");
+			try
+			{
+				if (File.Exists(settingsFile))
+				{
+					using (var reader = File.OpenText(settingsFile))
+					{
+						var fileText = reader.ReadToEnd();
+						var settings = DivinityJsonUtils.SafeDeserialize<DivinityModManagerSettings>(fileText);
+						loaded = Settings != null;
+						if(settings != null)
+						{
+							Settings.SetFrom(settings);
+						}
+					}
+				}
+			}
+			catch (Exception ex)
+			{
+				ShowAlert($"Error loading settings at '{settingsFile}': {ex}", AlertType.Danger);
+			}
+
+			if (!loaded)
+			{
+				SaveSettings();
+			}
+			else
+			{
+				this.RaisePropertyChanged("Settings");
+			}
+
+			LoadAppConfig();
+
+			Settings.DefaultExtenderLogDirectory = Path.Combine(GetLarianStudiosAppDataFolder(), "Baldur's Gate 3", "Extender Logs");
+
+			var workshopSupportEnabled = AppSettings.FeatureEnabled("Workshop");
+			var nexusModsSupportEnabled = AppSettings.FeatureEnabled("NexusMods");
+
+			if (workshopSupportEnabled)
+			{
+				if (!String.IsNullOrWhiteSpace(Settings.WorkshopPath))
+				{
+					var baseName = Path.GetFileNameWithoutExtension(Settings.WorkshopPath);
+					if (baseName == "steamapps")
+					{
+						var newFolder = Path.Combine(Settings.WorkshopPath, $"workshop/content/{AppSettings.DefaultPathways.Steam.AppID}");
+						if (Directory.Exists(newFolder))
+						{
+							Settings.WorkshopPath = newFolder;
+						}
+						else
+						{
+							Settings.WorkshopPath = "";
+						}
+					}
+				}
+
+				if (String.IsNullOrEmpty(Settings.WorkshopPath) || !Directory.Exists(Settings.WorkshopPath))
+				{
+					Settings.WorkshopPath = DivinityRegistryHelper.GetWorkshopPath(AppSettings.DefaultPathways.Steam.AppID).Replace("\\", "/");
+					if (!String.IsNullOrEmpty(Settings.WorkshopPath) && Directory.Exists(Settings.WorkshopPath))
+					{
+						DivinityApp.Log($"Workshop path set to: '{Settings.WorkshopPath}'.");
+					}
+				}
+				else if (Directory.Exists(Settings.WorkshopPath))
+				{
+					DivinityApp.Log($"Found workshop folder at: '{Settings.WorkshopPath}'.");
+				}
+				WorkshopSupportEnabled = true;
+			}
+			else
+			{
+				WorkshopSupportEnabled = false;
+				Settings.WorkshopPath = "";
+			}
+
+			if (DivinityApp.WorkshopEnabled != workshopSupportEnabled || DivinityApp.NexusModsEnabled != nexusModsSupportEnabled)
+			{
+				DivinityApp.WorkshopEnabled = workshopSupportEnabled;
+				DivinityApp.NexusModsEnabled = nexusModsSupportEnabled;
+
+				foreach (var mod in mods.Items)
+				{
+					mod.WorkshopEnabled = DivinityApp.WorkshopEnabled;
+					mod.NexusModsEnabled = DivinityApp.NexusModsEnabled;
+				}
+			}
 
 			if (Settings.LogEnabled)
 			{
@@ -3920,6 +3940,8 @@ Directory the zip will be extracted to:
 			View = parentView;
 			DivinityApp.Commands.SetViewModel(this);
 
+			InitSettingsBindings();
+
 			if (DebugMode)
 			{
 				string lastMessage = "";
@@ -4716,6 +4738,8 @@ Directory the zip will be extracted to:
 			StatusBarBusyIndicatorVisibility = Visibility.Collapsed;
 			_updateHandler = new ModUpdateHandler();
 
+			_settings = new DivinityModManagerSettings();
+
 			exceptionHandler = new MainWindowExceptionHandler(this);
 			RxApp.DefaultExceptionHandler = exceptionHandler;
 
@@ -4732,8 +4756,6 @@ Directory the zip will be extracted to:
 			this.DragHandler = new ModListDragHandler(this);
 
 			Activator = new ViewModelActivator();
-
-			DivinityApp.DependencyFilter = this.WhenAnyValue(x => x.Settings.DebugModeEnabled).Select(MakeDependencyFilter);
 
 			this.WhenActivated((CompositeDisposable disposables) =>
 			{
@@ -5193,7 +5215,7 @@ Directory the zip will be extracted to:
 
 			#region DungeonMaster Support
 
-			var gmModeChanged = this.WhenAnyValue(x => x.Settings.GameMasterModeEnabled);
+			var gmModeChanged = Settings.WhenAnyValue(x => x.GameMasterModeEnabled);
 			_adventureModBoxVisibility = gmModeChanged.Select(x => !x ? Visibility.Visible : Visibility.Collapsed).StartWith(Visibility.Visible).ToProperty(this, nameof(AdventureModBoxVisibility), true, RxApp.MainThreadScheduler);
 
 			_gameMasterModeVisibility = gmModeChanged.Select(x => x ? Visibility.Visible : Visibility.Collapsed).StartWith(Visibility.Collapsed).ToProperty(this, nameof(GameMasterModeVisibility), true, RxApp.MainThreadScheduler);

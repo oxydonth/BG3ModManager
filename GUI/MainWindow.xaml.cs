@@ -181,7 +181,13 @@ namespace DivinityModManager.Views
 
 			//Wrapper = new WindowWrapper(this);
 
+			UpdateWindow = new AppUpdateWindow();
+			UpdateWindow.Hide();
+
+			ViewModel = new MainWindowViewModel();
+
 			SettingsWindow = new SettingsWindow();
+			SettingsWindow.Init(ViewModel);
 			SettingsWindow.OnWorkshopPathChanged += delegate
 			{
 				RxApp.TaskpoolScheduler.ScheduleAsync(TimeSpan.FromMilliseconds(50), async (sch, cts) => await ViewModel.LoadWorkshopModsAsync(cts));
@@ -194,11 +200,6 @@ namespace DivinityModManager.Views
 				}
 			};
 			SettingsWindow.Hide();
-
-			UpdateWindow = new AppUpdateWindow();
-			UpdateWindow.Hide();
-
-			ViewModel = new MainWindowViewModel();
 
 			if (File.Exists(Alphaleonis.Win32.Filesystem.Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "debug")))
 			{
@@ -303,9 +304,8 @@ namespace DivinityModManager.Views
 			{
 				if (switchToKeybindings == true)
 				{
-					ViewModel.Settings.SelectedTabIndex = SettingsWindow.PreferencesTabControl.Items.IndexOf(SettingsWindow.KeybindingsTabItem);
+					SettingsWindow.ViewModel.SelectedTabIndex = SettingsWindowTab.Keybindings;
 				}
-				SettingsWindow.Init(this.ViewModel);
 				SettingsWindow.Show();
 				SettingsWindow.Owner = this;
 				ViewModel.Settings.SettingsWindowIsOpen = true;

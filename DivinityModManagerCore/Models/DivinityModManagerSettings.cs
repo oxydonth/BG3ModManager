@@ -24,7 +24,7 @@ using DivinityModManager.Extensions;
 namespace DivinityModManager.Models
 {
 	[DataContract]
-	public class DivinityModManagerSettings : ReactiveObject, IDisposable
+	public class DivinityModManagerSettings : ReactiveObject
 	{
 		[SettingsEntry("Game Data Path", "The path to the Data folder, for loading editor mods.\nExample: Baldur's Gate 3/Data")]
 		[DataMember][Reactive] public string GameDataPath { get; set; }
@@ -32,11 +32,9 @@ namespace DivinityModManager.Models
 		[SettingsEntry("Game Executable Path", "The path to bg3.exe")]
 		[DataMember][Reactive] public string GameExecutablePath { get; set; }
 
+		[DefaultValue("")]
 		[SettingsEntry("NexusMods API Key", "Your personal NexusMods API key, which will allow the mod manager to fetch mod updates/information")]
 		[DataMember][Reactive] public string NexusModsAPIKey { get; set; }
-
-		[SettingsEntry("Output Path Override", "[EXPERIMENTAL]\nOverride the default location to %LOCALAPPDATA%\\Larian Studios\\Baldur's Gate 3\nThis folder is used when exporting load orders, loading profiles, and loading mods.")]
-		[DataMember][Reactive] public string DocumentsFolderPathOverride { get; set; }
 
 		[DefaultValue(false)]
 		[SettingsEntry("Enable Story Log", "When launching the game, enable the Osiris story log (osiris.log)")]
@@ -81,6 +79,10 @@ namespace DivinityModManager.Models
 		[SettingsEntry("Enable Automatic Updates", "Automatically check for updates when the program starts")]
 		[DataMember][Reactive] public bool CheckForUpdates { get; set; }
 
+		[DefaultValue("")]
+		[SettingsEntry("AppData Path Override", "[EXPERIMENTAL]\nOverride the default location to %LOCALAPPDATA%\\Larian Studios\\Baldur's Gate 3\nThis folder is used when exporting load orders, loading profiles, and loading mods.")]
+		[DataMember][Reactive] public string DocumentsFolderPathOverride { get; set; }
+
 		//[SettingsEntry("Automatically Load GM Campaign Mods", "When a GM campaign is selected, its dependency mods will automatically be loaded without needing to manually import them")]
 		//[DataMember][Reactive] public bool AutomaticallyLoadGMCampaignMods { get; set; }
 		//TODO - Waiting for DM mode
@@ -118,14 +120,10 @@ namespace DivinityModManager.Models
 			}
 		}
 
-		private DivinityGameLaunchWindowAction actionOnGameLaunch = DivinityGameLaunchWindowAction.None;
-
-		[DataMember]
-		public DivinityGameLaunchWindowAction ActionOnGameLaunch
-		{
-			get => actionOnGameLaunch;
-			set { this.RaiseAndSetIfChanged(ref actionOnGameLaunch, value); }
-		}
+		[DefaultValue(DivinityGameLaunchWindowAction.None)]
+		[SettingsEntry("On Game Launch", "When the game launches through the mod manager, this action will be performed")]
+		[DataMember][Reactive]
+		public DivinityGameLaunchWindowAction ActionOnGameLaunch { get; set; }
 
 		[DefaultValue(false)]
 		[SettingsEntry("Disable Missing Mod Warnings", "If a load order is missing mods, no warnings will be displayed")]
@@ -138,19 +136,10 @@ namespace DivinityModManager.Models
 		[DefaultValue(false)]
 		[Reactive] public bool DisplayFileNames { get; set; }
 
-		private bool debugModeEnabled = false;
-
+		[DefaultValue(false)]
 		[SettingsEntry("Enable Developer Mode", "This enables features for mod developers, such as being able to copy a mod's UUID in context menus, and additional Script Extender options")]
-		[DataMember]
-		public bool DebugModeEnabled
-		{
-			get => debugModeEnabled;
-			set
-			{
-				this.RaiseAndSetIfChanged(ref debugModeEnabled, value);
-				DivinityApp.DeveloperModeEnabled = value;
-			}
-		}
+		[Reactive][DataMember]
+		public bool DebugModeEnabled { get; set; }
 
 		[DefaultValue("")]
 		[Reactive][DataMember] public string GameLaunchParams { get; set; }
@@ -166,8 +155,6 @@ namespace DivinityModManager.Models
 
 		public bool Loaded { get; set; }
 
-		public CompositeDisposable Disposables { get; internal set; }
-
 		private bool canSaveSettings = false;
 
 		public bool CanSaveSettings
@@ -178,39 +165,14 @@ namespace DivinityModManager.Models
 
 		public bool SettingsWindowIsOpen { get; set; }
 
-		public void Dispose()
-		{
-			Disposables?.Dispose();
-			Disposables = null;
-		}
-
 		public DivinityModManagerSettings()
 		{
-			Disposables = new CompositeDisposable();
 			Loaded = false;
 			//Defaults
 			ExtenderSettings = new ScriptExtenderSettings();
 			ExtenderUpdaterSettings = new ScriptExtenderUpdateConfig();
 			Window = new WindowSettings();
 			this.SetToDefault();
-			GameDataPath = "";
-			GameExecutablePath = "";
-			DocumentsFolderPathOverride = "";
-			WorkshopPath = "";
-			LastOrder = "";
-			LastExtractOutputPath = "";
-			LastImportDirectoryPath = "";
-			LastLoadedOrderFilePath = "";
-			DarkThemeEnabled = true;
-			LoadOrderPath = "Orders";
-			AutoAddDependenciesWhenExporting = true;
-			CheckForUpdates = true;
-			LastUpdateCheck = -1;
-			SaveWindowLocation = false;
-			DisableLauncherTelemetry = false;
-			DisableLauncherModWarnings = false;
-			LaunchDX11 = false;
-			SkipLauncher = true;
 
 			var properties = typeof(DivinityModManagerSettings)
 			.GetRuntimeProperties()
@@ -221,7 +183,7 @@ namespace DivinityModManager.Models
 			this.WhenAnyPropertyChanged(properties).Subscribe((c) =>
 			{
 				if (SettingsWindowIsOpen) CanSaveSettings = true;
-			}).DisposeWith(Disposables);
+			});
 
 			var extenderProperties = typeof(ScriptExtenderSettings)
 			.GetRuntimeProperties()
@@ -233,7 +195,7 @@ namespace DivinityModManager.Models
 			{
 				if (SettingsWindowIsOpen) CanSaveSettings = true;
 				this.RaisePropertyChanged("ExtenderLogDirectory");
-			}).DisposeWith(Disposables);
+			});
 
 			var extenderUpdaterProperties = typeof(ScriptExtenderUpdateConfig)
 			.GetRuntimeProperties()
@@ -244,7 +206,9 @@ namespace DivinityModManager.Models
 			ExtenderUpdaterSettings.WhenAnyPropertyChanged(extenderUpdaterProperties).Subscribe((c) =>
 			{
 				if (SettingsWindowIsOpen) CanSaveSettings = true;
-			}).DisposeWith(Disposables);
+			});
+
+			this.WhenAnyValue(x => x.DebugModeEnabled).Subscribe(b => DivinityApp.DeveloperModeEnabled = b);
 		}
 	}
 }

@@ -528,7 +528,7 @@
 								x:Name="GameLaunchActionComboBox"
 								DisplayMemberPath="Description"
 								ItemsSource="{Binding Source={ext:EnumExtension {x:Type dapp:DivinityGameLaunchWindowAction}}}"
-								SelectedValue="{Binding ActionOnGameLaunch, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+								SelectedValue="{Binding Settings.ActionOnGameLaunch}"
 								SelectedValuePath="Value"
 								ToolTip="When the game launches through the mod manager, this action will be performed" />
 							<Rectangle />
