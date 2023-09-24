@@ -11,50 +11,71 @@ namespace DivinityModManager.Controls.Behavior
 {
 	public class TextBlockSettingsEntryAttributeBehavior
 	{
-		public static string GetTarget(DependencyObject element)
-		{
-			return (string)element.GetValue(TargetProperty);
-		}
-
-		public static void SetTarget(DependencyObject element, string value)
-		{
-			element.SetValue(TargetProperty, value);
-		}
-
-		public static readonly DependencyProperty TargetProperty =
+		public static readonly DependencyProperty PropertyProperty =
 			DependencyProperty.RegisterAttached(
-			"Target",
+			"Property",
 			typeof(string),
-			typeof(ScreenReaderHelperBehavior),
-			new UIPropertyMetadata("", OnTargetSet));
+			typeof(TextBlockSettingsEntryAttributeBehavior),
+			new UIPropertyMetadata("", OnPropertySet));
 
-		static void OnTargetSet(DependencyObject depObj, DependencyPropertyChangedEventArgs e)
+		public static readonly DependencyProperty TargetTypeProperty =
+			DependencyProperty.RegisterAttached(
+			"TargetType",
+			typeof(Type),
+			typeof(TextBlockSettingsEntryAttributeBehavior),
+			new UIPropertyMetadata(null, OnTargetTypeSet));
+
+		public static string GetProperty(DependencyObject element)
 		{
-			if (depObj is TextBlock element && e.NewValue is string propName && !String.IsNullOrEmpty(propName))
+			return (string)element.GetValue(PropertyProperty);
+		}
+
+		public static void SetProperty(DependencyObject element, string value)
+		{
+			element.SetValue(PropertyProperty, value);
+		}
+
+		public static Type GetTargetType(DependencyObject element)
+		{
+			return (Type)element.GetValue(TargetTypeProperty);
+		}
+
+		public static void SetTargetType(DependencyObject element, Type value)
+		{
+			element.SetValue(TargetTypeProperty, value);
+		}
+
+		private static void UpdateElement(TextBlock element, string propName = "", Type targetType = null)
+		{
+			if (targetType == null) targetType = GetTargetType(element);
+			if (String.IsNullOrEmpty(propName)) propName = GetProperty(element);
+			DivinityApp.Log($"[UpdateElement] targetType({targetType}) propName({propName})");
+			if (targetType != null && !String.IsNullOrEmpty(propName))
 			{
-				if(element.DataContext != null)
+				PropertyInfo prop = targetType.GetProperty(propName);
+				SettingsEntryAttribute settingsEntry = prop.GetCustomAttribute<SettingsEntryAttribute>();
+				if (settingsEntry != null)
 				{
-					PropertyInfo prop = element.DataContext.GetType().GetProperty(propName);
-					SettingsEntryAttribute settingsEntry = prop.GetCustomAttribute<SettingsEntryAttribute>();
 					element.Text = settingsEntry.DisplayName;
 					element.ToolTip = settingsEntry.Tooltip;
-				}
-				else
-				{
-					element.DataContextChanged += OnDataContextChanged;
 				}
 			}
 		}
 
-		private static void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+		static void OnPropertySet(DependencyObject sender, DependencyPropertyChangedEventArgs e)
 		{
-			if (sender is TextBlock element && e.NewValue != null)
+			if (sender is TextBlock element && e.NewValue is string propName)
 			{
-				string propName = (string)element.GetValue(TargetProperty);
-				PropertyInfo prop = element.DataContext.GetType().GetProperty(propName);
-				SettingsEntryAttribute settingsEntry = prop.GetCustomAttribute<SettingsEntryAttribute>();
-				element.Text = settingsEntry.DisplayName;
-				element.ToolTip = settingsEntry.Tooltip;
+				UpdateElement(element, propName);
+			}
+		}
+
+		static void OnTargetTypeSet(DependencyObject sender, DependencyPropertyChangedEventArgs e)
+		{
+			DivinityApp.Log($"[OnTargetTypeSet] Type({e.NewValue})[{(Type)e.NewValue}] sender({sender})");
+			if (sender is TextBlock element && e.NewValue is Type type)
+			{
+				UpdateElement(element, "", type);
 			}
 		}
 	}
