@@ -187,7 +187,6 @@ namespace DivinityModManager.Views
 			ViewModel = new MainWindowViewModel();
 
 			SettingsWindow = new SettingsWindow();
-			SettingsWindow.Init(ViewModel);
 			SettingsWindow.OnWorkshopPathChanged += delegate
 			{
 				RxApp.TaskpoolScheduler.ScheduleAsync(TimeSpan.FromMilliseconds(50), async (sch, cts) => await ViewModel.LoadWorkshopModsAsync(cts));
@@ -300,6 +299,10 @@ namespace DivinityModManager.Views
 
 		public void OpenPreferences(bool switchToKeybindings = false, bool forceOpen = false)
 		{
+			if(SettingsWindow.ViewModel == null)
+			{
+				SettingsWindow.Init(ViewModel);
+			}
 			if (!SettingsWindow.IsVisible)
 			{
 				if (switchToKeybindings == true)
