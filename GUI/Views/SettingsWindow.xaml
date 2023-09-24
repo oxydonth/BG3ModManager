@@ -14,6 +14,8 @@
 	xmlns:data="clr-namespace:DivinityModManager.Models;assembly=DivinityModManagerCore"
 	xmlns:dd="urn:gong-wpf-dragdrop"
 	xmlns:ext="clr-namespace:DivinityModManager.Controls.Extensions"
+	xmlns:extdata="clr-namespace:DivinityModManager.Models.Extender;assembly=DivinityModManagerCore"
+	xmlns:extenum="clr-namespace:DivinityModManager.Enums.Extender;assembly=DivinityModManagerCore"
 	xmlns:local="clr-namespace:DivinityModManager.Views"
 	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
 	xmlns:reactiveui="http://reactiveui.net"
@@ -58,13 +60,6 @@
 				<Setter Property="RowHeight" Value="*" />
 				<Setter Property="Rows" Value="auto" />
 			</Style>
-			<ComboBox
-				x:Key="UpdaterTargetVersionComboBox"
-				DisplayMemberPath="DisplayName"
-				ItemsSource="{Binding ScriptExtenderUpdates}"
-				SelectedItem="{Binding TargetVersion}"
-				Tag="{Binding TargetVersion}"
-				ToolTip="{StaticResource ExtenderUpdateEntryToolTip}" />
 		</ResourceDictionary>
 	</Window.Resources>
 	<Grid>
@@ -125,18 +120,40 @@
 					</ScrollViewer>
 				</Grid>
 			</TabItem>
-			<TabItem
-				x:Name="ScriptExtenderUpdaterTab"
-				FocusManager.FocusedElement="{Binding ElementName=ExtenderSettingsAutoGrid}"
-				Header="Updater"
-				ToolTip="Script Extender Updater Settings (ScriptExtenderUpdaterConfig.json)">
+			<TabItem x:Name="ScriptExtenderUpdaterTab" FocusManager.FocusedElement="{Binding ElementName=ExtenderUpdaterSettingsAutoGrid}">
+				<TabItem.Header>
+					<TextBlock Text="Updater" ToolTip="Script Extender Updater Settings (ScriptExtenderUpdaterConfig.json)" />
+				</TabItem.Header>
 				<Grid>
 					<Grid.RowDefinitions>
 						<RowDefinition Height="*" />
 						<RowDefinition Height="auto" />
 					</Grid.RowDefinitions>
 					<ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-						<autogrid:AutoGrid x:Name="ExtenderUpdaterSettingsAutoGrid" />
+						<autogrid:AutoGrid x:Name="ExtenderUpdaterSettingsAutoGrid">
+							<TextBlock
+								x:Name="UpdateChannelTextBlock"
+								Grid.Column="0"
+								behavior:TextBlockSettingsEntryAttributeBehavior.Property="UpdateChannel"
+								behavior:TextBlockSettingsEntryAttributeBehavior.TargetType="{x:Type extdata:ScriptExtenderUpdateConfig}"
+								Text="Update Channel" />
+							<ComboBox
+								x:Name="UpdateChannelComboBox"
+								DisplayMemberPath="Description"
+								ItemsSource="{Binding Source={ext:EnumExtension {x:Type extenum:ExtenderUpdateChannel}}}"
+								SelectedValuePath="Value"
+								ToolTip="{Binding ElementName=UpdateChannelTextBlock, Path=ToolTip}" />
+							<TextBlock
+								x:Name="SelectVersionTextBlock"
+								Grid.Column="0"
+								Text="Select Version"
+								ToolTip="Select a version to automatically set the Target Version and Target Digest&#x0a;This list is automatically populated from the online extender manifest data, using the selected Update Channel" />
+							<ComboBox
+								x:Name="UpdaterTargetVersionComboBox"
+								Grid.Column="1"
+								DisplayMemberPath="DisplayName"
+								ToolTip="{StaticResource ExtenderUpdateEntryToolTip}" />
+						</autogrid:AutoGrid>
 					</ScrollViewer>
 				</Grid>
 			</TabItem>
@@ -230,8 +247,8 @@
 							Rows="auto,auto,auto">
 							<TextBlock
 								x:Name="DebugModeTextBlock"
-								behavior:TextBlockSettingsEntryAttributeBehavior.Target="DebugModeEnabled"
-								DataContext="{Binding Settings}" />
+								behavior:TextBlockSettingsEntryAttributeBehavior.Property="DebugModeEnabled"
+								behavior:TextBlockSettingsEntryAttributeBehavior.TargetType="{x:Type data:DivinityModManagerSettings}" />
 							<CheckBox
 								x:Name="DebugModeCheckBox"
 								VerticalAlignment="Center"

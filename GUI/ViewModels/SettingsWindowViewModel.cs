@@ -105,6 +105,8 @@ namespace DivinityModManager.ViewModels
 		public ICommand ClearLaunchParamsCommand { get; private set; }
 		public ReactiveCommand<DependencyPropertyChangedEventArgs, Unit> OnWindowShownCommand { get; private set; }
 
+		private readonly ScriptExtenderUpdateVersion _emptyVersion = new ScriptExtenderUpdateVersion();
+
 		private string SelectedTabToResetTooltip(SettingsWindowTab tab)
 		{
 			var name = TabToName(tab);
@@ -128,12 +130,21 @@ namespace DivinityModManager.ViewModels
 					var res = data.Resources.FirstOrDefault();
 					if(res != null)
 					{
-						var lastVersion = ExtenderUpdaterSettings.TargetVersion;
+						var lastVersion = TargetVersion != _emptyVersion ? TargetVersion?.BuildDate : null;
 						await Observable.Start(() =>
 						{
 							ScriptExtenderUpdates.Clear();
-							ScriptExtenderUpdates.AddRange(res.Versions);
-							TargetVersion = ScriptExtenderUpdates.FirstOrDefault(x => x.Version == lastVersion) ?? ScriptExtenderUpdates.LastOrDefault();
+							ScriptExtenderUpdates.Add(_emptyVersion);
+							ScriptExtenderUpdates.AddRange(res.Versions.OrderByDescending(x => x.BuildDate));
+							if(lastVersion != null)
+							{
+								TargetVersion = ScriptExtenderUpdates.FirstOrDefault(x => x.BuildDate == lastVersion) ?? ScriptExtenderUpdates.LastOrDefault();
+							}
+							else
+							{
+								TargetVersion = _emptyVersion;
+								//TargetVersion = ScriptExtenderUpdates.LastOrDefault();
+							}
 						}, RxApp.MainThreadScheduler);
 					}
 				}
@@ -172,16 +183,37 @@ namespace DivinityModManager.ViewModels
 		public ScriptExtenderSettings ExtenderSettings { get; private set; }
 		public ScriptExtenderUpdateConfig ExtenderUpdaterSettings { get; private set; }
 
+		public void OnTargetVersionSelected(ScriptExtenderUpdateVersion entry)
+		{
+			if (entry != _emptyVersion)
+			{
+				ExtenderUpdaterSettings.TargetVersion = entry.Version;
+				ExtenderUpdaterSettings.TargetResourceDigest = entry.Digest;
+			}
+			else
+			{
+				ExtenderUpdaterSettings.TargetVersion = "";
+				ExtenderUpdaterSettings.TargetResourceDigest = "";
+			}
+		}
+
+		public void OnTargetVersionSelected(object entry)
+		{
+			OnTargetVersionSelected((ScriptExtenderUpdateVersion)entry);
+		}
+
 		public SettingsWindowViewModel(SettingsWindow view, MainWindowViewModel main)
 		{
 			_main = main;
 			View = view;
 
+			TargetVersion = _emptyVersion;
+
 			Main.WhenAnyValue(x => x.Settings).BindTo(this, x => x.Settings);
 			Main.WhenAnyValue(x => x.Settings.ExtenderSettings).BindTo(this, x => x.ExtenderSettings);
 			Main.WhenAnyValue(x => x.Settings.ExtenderUpdaterSettings).BindTo(this, x => x.ExtenderUpdaterSettings);
 
-			ScriptExtenderUpdates = new ObservableCollectionExtended<ScriptExtenderUpdateVersion>();
+			ScriptExtenderUpdates = new ObservableCollectionExtended<ScriptExtenderUpdateVersion>() { _emptyVersion };
 			LaunchParams = new ObservableCollectionExtended<GameLaunchParamEntry>()
 			{
 				new GameLaunchParamEntry("-continueGame", "Automatically load the last save when loading into the main menu"),
@@ -204,7 +236,7 @@ namespace DivinityModManager.ViewModels
 			whenTab.Select(x => x == SettingsWindowTab.Keybindings).ToProperty(this, nameof(KeybindingsTabIsVisible));
 
 			this.WhenAnyValue(x => x.Settings.SkipLauncher, x => x.KeybindingsTabIsVisible);
-			this.WhenAnyValue(x => x.TargetVersion).WhereNotNull().Select(x => x.Version).BindTo(this, x => x.ExtenderUpdaterSettings.TargetVersion);
+			this.WhenAnyValue(x => x.TargetVersion).Skip(1).WhereNotNull().ObserveOn(RxApp.MainThreadScheduler).Subscribe(OnTargetVersionSelected);
 
 			_resetSettingsCommandToolTip = this.WhenAnyValue(x => x.SelectedTabIndex).Select(SelectedTabToResetTooltip).ToProperty(this, nameof(ResetSettingsCommandToolTip), scheduler: RxApp.MainThreadScheduler);
 

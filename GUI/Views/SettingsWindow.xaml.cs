@@ -41,16 +41,14 @@ namespace DivinityModManager.Views
 			InitializeComponent();
 		}
 
-		private void CreateSettingsElements(ReactiveObject source, Type settingsModelType, AutoGrid targetGrid, int startRow = 0)
+		private void CreateSettingsElements(ReactiveObject source, Type settingsModelType, AutoGrid targetGrid)
 		{
 			var props = settingsModelType.GetProperties()
 				.Select(x => SettingsAttributeProperty.FromProperty(x))
-				.Where(x => x.Attribute != null && !x.Attribute.IsAdvanced).ToList();
+				.Where(x => x.Attribute != null && !x.Attribute.HideFromUI).ToList();
 
-			int count = props.Count + 1;
-			int row = startRow;
-
-			targetGrid.Children.Clear();
+			int count = props.Count + targetGrid.Children.Count + 1;
+			int row = targetGrid.Children.Count;
 
 			targetGrid.RowCount = count;
 			targetGrid.Rows = String.Join(",", Enumerable.Repeat("auto", count));
@@ -76,17 +74,6 @@ namespace DivinityModManager.Views
 				if (prop.Attribute.IsDebug)
 				{
 					tb.SetBinding(TextBlock.VisibilityProperty, debugModeBinding);
-				}
-
-				if(settingsModelType.Name == "ScriptExtenderUpdateConfig" && prop.Property.Name == "TargetVersion")
-				{
-					if(TryFindResource("UpdaterTargetVersionComboBox") is ComboBox cb)
-					{
-						targetGrid.Children.Add(cb);
-						Grid.SetRow(cb, targetRow);
-						Grid.SetColumn(cb, 1);
-					}
-					continue;
 				}
 
 				if(prop.Property.PropertyType.IsEnum)
@@ -227,6 +214,13 @@ namespace DivinityModManager.Views
 			this.Bind(ViewModel, vm => vm.Settings.LogEnabled, view => view.LogEnabledCheckBox.IsChecked);
 			this.OneWayBind(ViewModel, vm => vm.LaunchParams, view => view.GameLaunchParamsMainMenuItem.ItemsSource);
 			this.Bind(ViewModel, vm => vm.Settings.GameLaunchParams, view => view.GameLaunchParamsTextBox.Text);
+
+			this.Bind(ViewModel, vm => vm.ExtenderUpdaterSettings.UpdateChannel, view => view.UpdateChannelComboBox.SelectedValue);
+			this.OneWayBind(ViewModel, vm => vm.ScriptExtenderUpdates, view => view.UpdaterTargetVersionComboBox.ItemsSource);
+			this.OneWayBind(ViewModel, vm => vm.TargetVersion, view => view.UpdaterTargetVersionComboBox.Tag);
+			this.Bind(ViewModel, vm => vm.TargetVersion, view => view.UpdaterTargetVersionComboBox.SelectedItem);
+
+			//this.WhenAnyValue(x => x.UpdaterTargetVersionComboBox.SelectedItem).Subscribe(ViewModel.OnTargetVersionSelected);
 
 			this.Bind(ViewModel, vm => vm.SelectedTabIndex, view => view.PreferencesTabControl.SelectedIndex, tab => TabToIndex(tab), index => IndexToTab(index));
 			this.OneWayBind(ViewModel, vm => vm.ExtenderTabVisibility, view => view.ScriptExtenderTab.Visibility);
