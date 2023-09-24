@@ -985,25 +985,23 @@
 				</Setter>
 			</Style>
 		</controls:AutomationTooltip.Style>
-		<controls:AutomationTooltip.Resources>
-			<DataTemplate DataType="{x:Type extdata:ScriptExtenderUpdateVersion}">
-				<autogrid:AutoGrid
-					Margin="10,0"
-					ChildMargin="4"
-					ColumnCount="2"
-					Columns="auto,*"
-					RowCount="3"
-					RowHeight="*"
-					Rows="*,*,*">
-					<TextBlock Text="Game Version:" />
-					<TextBlock Text="{Binding MinGameVersion}" />
-					<TextBlock Text="Extender Version:" />
-					<TextBlock Text="{Binding Version}" />
-					<TextBlock Text="URL:" />
-					<TextBlock Text="{Binding URL}" />
-				</autogrid:AutoGrid>
-			</DataTemplate>
-		</controls:AutomationTooltip.Resources>
+		<autogrid:AutoGrid
+			Margin="10,0"
+			ChildMargin="4"
+			ColumnCount="2"
+			Columns="auto,*"
+			RowCount="4"
+			RowHeight="*"
+			Rows="auto,auto,auto,auto">
+			<TextBlock Text="Build Date:" />
+			<TextBlock Text="{Binding BuildDateDisplayString}" />
+			<TextBlock Text="Game Version:" />
+			<TextBlock Text="{Binding MinGameVersion}" />
+			<TextBlock Text="Extender Version:" />
+			<TextBlock Text="{Binding Version}" />
+			<TextBlock Text="URL:" />
+			<TextBlock Text="{Binding URL}" />
+		</autogrid:AutoGrid>
 	</controls:AutomationTooltip>
 	<DataTemplate x:Key="ModNameTemplate" DataType="{x:Type data:DivinityModData}">
 		<controls:ModEntryGrid>

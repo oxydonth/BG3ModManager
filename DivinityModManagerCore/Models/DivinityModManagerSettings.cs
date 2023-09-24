@@ -172,7 +172,6 @@ namespace DivinityModManager.Models
 			ExtenderSettings = new ScriptExtenderSettings();
 			ExtenderUpdaterSettings = new ScriptExtenderUpdateConfig();
 			Window = new WindowSettings();
-			this.SetToDefault();
 
 			var properties = typeof(DivinityModManagerSettings)
 			.GetRuntimeProperties()
@@ -209,6 +208,8 @@ namespace DivinityModManager.Models
 			});
 
 			this.WhenAnyValue(x => x.DebugModeEnabled).Subscribe(b => DivinityApp.DeveloperModeEnabled = b);
+
+			this.SetToDefault();
 		}
 	}
 }

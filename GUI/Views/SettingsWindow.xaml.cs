@@ -99,20 +99,14 @@ namespace DivinityModManager.Views
 					{
 						ToolTip = prop.Attribute.Tooltip,
 						DisplayMemberPath = "Description",
-						SelectedValuePath = "Value"
+						SelectedValuePath = "Value",
+						ItemsSource = prop.Property.PropertyType.GetEnumValues().Cast<Enum>().Select(x => new EnumEntry(x.GetDescription(), x))
 					};
-					var items = new ObservableCollection<EnumEntry>();
-					var values = prop.Property.PropertyType.GetEnumValues().Cast<Enum>().Select(x => new EnumEntry(x.GetDescription(), x)).OrderBy(x => x.Description);
-					items.AddRange(values);
-					combo.SetBinding(ComboBox.ItemsSourceProperty, new Binding()
-					{
-						Source = items,
-						Mode = BindingMode.OneWay
-					});
 					combo.SetBinding(ComboBox.SelectedValueProperty, new Binding(prop.Property.Name)
 					{
 						Source = source,
-						Mode = BindingMode.OneWay
+						Mode = BindingMode.TwoWay,
+						UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
 					});
 					targetGrid.Children.Add(combo);
 					Grid.SetRow(combo, targetRow);
@@ -207,7 +201,7 @@ namespace DivinityModManager.Views
 		public void Init(MainWindowViewModel main)
 		{
 			ViewModel = new SettingsWindowViewModel(this, main);
-			main.WhenAnyValue(x => x.Settings).BindTo(ViewModel, vm => vm.Settings);
+			//main.WhenAnyValue(x => x.Settings).BindTo(ViewModel, vm => vm.Settings);
 
 			this.KeyDown += SettingsWindow_KeyDown;
 			KeybindingsListView.Loaded += (o, e) =>

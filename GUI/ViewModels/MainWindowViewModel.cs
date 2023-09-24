@@ -162,7 +162,7 @@ namespace DivinityModManager.ViewModels
 
 		public AppSettings AppSettings => appSettings;
 
-		private readonly DivinityModManagerSettings _settings;
+		private readonly DivinityModManagerSettings _settings = new DivinityModManagerSettings();
 		public DivinityModManagerSettings Settings => _settings;
 
 		private readonly ObservableCollectionExtended<DivinityModData> _activeMods = new ObservableCollectionExtended<DivinityModData>();
@@ -4737,8 +4737,6 @@ Directory the zip will be extracted to:
 			MainProgressIsActive = true;
 			StatusBarBusyIndicatorVisibility = Visibility.Collapsed;
 			_updateHandler = new ModUpdateHandler();
-
-			_settings = new DivinityModManagerSettings();
 
 			exceptionHandler = new MainWindowExceptionHandler(this);
 			RxApp.DefaultExceptionHandler = exceptionHandler;

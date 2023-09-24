@@ -28,6 +28,7 @@ using System.Threading;
 using DynamicData.Binding;
 using System.ComponentModel;
 using System.Reactive.Concurrency;
+using DivinityModManager.Enums.Extender;
 
 namespace DivinityModManager.ViewModels
 {
@@ -70,10 +71,14 @@ namespace DivinityModManager.ViewModels
 		[Reactive] public ScriptExtenderUpdateVersion TargetVersion { get; set; }
 		public ObservableCollectionExtended<GameLaunchParamEntry> LaunchParams { get; private set; }
 
-		[Reactive] public bool ExtenderTabIsVisible { get; set; }
-		[Reactive] public bool KeybindingsTabIsVisible { get; set; }
 		[Reactive] public SettingsWindowTab SelectedTabIndex { get; set; }
 		[Reactive] public Hotkey SelectedHotkey { get; set; }
+
+		private readonly ObservableAsPropertyHelper<bool> _extenderTabIsVisible;
+		public bool ExtenderTabIsVisible => _extenderTabIsVisible.Value;
+
+		private readonly ObservableAsPropertyHelper<bool> _keybindingsTabIsVisible;
+		public bool KeybindingsTabIsVisible => _keybindingsTabIsVisible.Value;
 
 		private readonly ObservableAsPropertyHelper<Visibility> _developerModeVisibility;
 		public Visibility DeveloperModeVisibility => _developerModeVisibility.Value;
@@ -117,12 +122,14 @@ namespace DivinityModManager.ViewModels
 
 		private string TabToName(SettingsWindowTab tab) => tab.GetDescription();
 
-		private readonly ScriptExtenderUpdateVersion _defaultUnsetVersion = new ScriptExtenderUpdateVersion();
-
-		public async Task<Unit> GetExtenderUpdatesAsync(string channel = "Release")
+		public async Task<Unit> GetExtenderUpdatesAsync(ExtenderUpdateChannel channel = ExtenderUpdateChannel.Release)
 		{
-			var url = String.Format(DivinityApp.EXTENDER_MANIFESTS_URL, channel);
+			var url = String.Format(DivinityApp.EXTENDER_MANIFESTS_URL, channel.GetDescription());
+			DivinityApp.Log($"Checking for script extender manifest info at '{url}'");
 			var text = await WebHelper.DownloadUrlAsStringAsync(url);
+//#if DEBUG
+//			DivinityApp.Log($"Manifest info:\n{text}");
+//#endif
 			if (!String.IsNullOrEmpty(text))
 			{
 				if(DivinityJsonUtils.TrySafeDeserialize<ScriptExtenderUpdateData>(text, out var data))
@@ -131,11 +138,12 @@ namespace DivinityModManager.ViewModels
 					if(res != null)
 					{
 						var lastVersion = ExtenderUpdaterSettings.TargetVersion;
-						ScriptExtenderUpdates.Clear();
-						ScriptExtenderUpdates.Add(_defaultUnsetVersion);
-						ScriptExtenderUpdates.AddRange(res.Versions);
-
-						TargetVersion = ScriptExtenderUpdates.FirstOrDefault(x => x.Version == lastVersion) ?? _defaultUnsetVersion;
+						await Observable.Start(() =>
+						{
+							ScriptExtenderUpdates.Clear();
+							ScriptExtenderUpdates.AddRange(res.Versions);
+							TargetVersion = ScriptExtenderUpdates.FirstOrDefault(x => x.Version == lastVersion) ?? ScriptExtenderUpdates.LastOrDefault();
+						}, RxApp.MainThreadScheduler);
 					}
 				}
 			}
@@ -147,14 +155,25 @@ namespace DivinityModManager.ViewModels
 
 		private bool CanCheckManifest => _lastManifestCheck == -1 || DateTimeOffset.Now.ToUnixTimeSeconds() - _lastManifestCheck >= 3000;
 
+		private void FetchLatestManifestData(ExtenderUpdateChannel channel, bool force = false)
+		{
+			if (force || CanCheckManifest)
+			{
+				_manifestFetchingTask?.Dispose();
+
+				_lastManifestCheck = DateTimeOffset.Now.ToUnixTimeSeconds();
+				_manifestFetchingTask = RxApp.TaskpoolScheduler.ScheduleAsync(async (sch, cts) => await GetExtenderUpdatesAsync(channel));
+			}
+		}
+
 		private void OnWindowVisibilityChanged(DependencyPropertyChangedEventArgs e)
 		{
 			_manifestFetchingTask?.Dispose();
 
-			if (e.NewValue is Visibility visibility && visibility == Visibility.Visible && CanCheckManifest)
+			if ((bool)e.NewValue == true)
 			{
-				_lastManifestCheck = DateTimeOffset.Now.ToUnixTimeSeconds();
-				_manifestFetchingTask = RxApp.TaskpoolScheduler.ScheduleAsync(async (sch, cts) => await GetExtenderUpdatesAsync());
+				_manifestFetchingTask = RxApp.TaskpoolScheduler.ScheduleAsync(TimeSpan.FromMilliseconds(100), async (sch, cts) => await GetExtenderUpdatesAsync(ExtenderUpdaterSettings.UpdateChannel));
+				//FetchLatestManifestData(ExtenderUpdaterSettings.UpdateChannel);
 			}
 		}
 
@@ -164,6 +183,8 @@ namespace DivinityModManager.ViewModels
 			View = view;
 
 			_settings = Main.WhenAnyValue(x => x.Settings).ToProperty(this, nameof(Settings));
+			_extenderSettings = Settings.WhenAnyValue(x => x.ExtenderSettings).ToProperty(this, nameof(ExtenderSettings));
+			_extenderUpdaterSettings = Settings.WhenAnyValue(x => x.ExtenderUpdaterSettings).ToProperty(this, nameof(ExtenderUpdaterSettings));
 
 			ScriptExtenderUpdates = new ObservableCollectionExtended<ScriptExtenderUpdateVersion>();
 			LaunchParams = new ObservableCollectionExtended<GameLaunchParamEntry>()
@@ -183,18 +204,15 @@ namespace DivinityModManager.ViewModels
 				new GameLaunchParamEntry(@"-mediaPath """, "", true),
 			};
 
-			_extenderSettings = this.WhenAnyValue(x => x.Settings.ExtenderSettings).ToProperty(this, nameof(ExtenderSettings));
-			_extenderUpdaterSettings = this.WhenAnyValue(x => x.Settings.ExtenderUpdaterSettings).ToProperty(this, nameof(ExtenderUpdaterSettings));
-
-			this.WhenAnyValue(x => x.SelectedTabIndex, (index) => index == SettingsWindowTab.Extender).BindTo(this, x => x.ExtenderTabIsVisible);
-			this.WhenAnyValue(x => x.SelectedTabIndex, (index) => index == SettingsWindowTab.Keybindings).BindTo(this, x => x.KeybindingsTabIsVisible);
+			this.WhenAnyValue(x => x.SelectedTabIndex, (index) => index == SettingsWindowTab.Extender).ToProperty(this, nameof(ExtenderTabIsVisible));
+			this.WhenAnyValue(x => x.SelectedTabIndex, (index) => index == SettingsWindowTab.Keybindings).ToProperty(this, nameof(KeybindingsTabIsVisible));
 
 			this.WhenAnyValue(x => x.Settings.SkipLauncher, x => x.KeybindingsTabIsVisible);
 			this.WhenAnyValue(x => x.TargetVersion, x => x.ExtenderUpdaterSettings).Where(x => x.Item1 != null && x.Item2 != null).Select(x => x.Item1.Version).BindTo(this, x => x.ExtenderUpdaterSettings.TargetVersion);
 
 			_resetSettingsCommandToolTip = this.WhenAnyValue(x => x.SelectedTabIndex).Select(SelectedTabToResetTooltip).ToProperty(this, nameof(ResetSettingsCommandToolTip), scheduler: RxApp.MainThreadScheduler);
 
-			_developerModeVisibility = this.WhenAnyValue(x => x.Settings.DebugModeEnabled).Select(BoolToVisibility).ToProperty(this, nameof(DeveloperModeVisibility), scheduler: RxApp.MainThreadScheduler);
+			_developerModeVisibility = Settings.WhenAnyValue(x => x.DebugModeEnabled).Select(BoolToVisibility).ToProperty(this, nameof(DeveloperModeVisibility), scheduler: RxApp.MainThreadScheduler);
 
 			_extenderTabVisibility = this.WhenAnyValue(x => x.ExtenderSettings.ExtenderUpdaterIsAvailable)
 				.Select(BoolToVisibility).ToProperty(this, nameof(ExtenderTabVisibility), scheduler: RxApp.MainThreadScheduler);
@@ -202,6 +220,13 @@ namespace DivinityModManager.ViewModels
 			_extenderUpdaterVisibility = this.WhenAnyValue(x => x.ExtenderSettings.ExtenderUpdaterIsAvailable, x => x.Settings.DebugModeEnabled)
 				.Select(BoolToVisibility2).ToProperty(this, nameof(ExtenderUpdaterVisibility), scheduler:RxApp.MainThreadScheduler);
 
+			ExtenderUpdaterSettings.WhenAnyValue(x => x.UpdateChannel).Subscribe((channel) =>
+			{
+				if(View.IsVisible)
+				{
+					FetchLatestManifestData(channel, true);
+				}
+			});
 
 			SaveSettingsCommand = ReactiveCommand.Create(() =>
 			{
@@ -291,7 +316,6 @@ namespace DivinityModManager.ViewModels
 				}
 			});
 
-			var canResetExtenderSettingsObservable = this.WhenAny(x => x.Settings.ExtenderSettings, (extenderSettings) => extenderSettings != null).StartWith(false);
 			ResetSettingsCommand = ReactiveCommand.Create(() =>
 			{
 				var tabName = TabToName(SelectedTabIndex);
@@ -315,7 +339,7 @@ namespace DivinityModManager.ViewModels
 							break;
 					}
 				}
-			}, canResetExtenderSettingsObservable);
+			});
 
 			ClearCacheCommand = ReactiveCommand.Create(() =>
 			{

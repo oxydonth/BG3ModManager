@@ -1,4 +1,8 @@
-﻿using DivinityModManager.Extensions;
+﻿using DivinityModManager.Enums.Extender;
+using DivinityModManager.Extensions;
+
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
@@ -16,17 +20,24 @@ namespace DivinityModManager.Models.Extender
 	[DataContract]
 	public class ScriptExtenderUpdateConfig : ReactiveObject
 	{
-		[SettingsEntry("UpdateChannel", "Use a specific update channel (Release or Devel)")]
+		[SettingsEntry("Update Channel", "Use a specific update channel")]
 		[Reactive]
 		[DataMember]
-		[DefaultValue("Release")]
-		public string UpdateChannel { get; set; }
+		[DefaultValue(ExtenderUpdateChannel.Release)]
+		[JsonConverter(typeof(StringEnumConverter))]
+		public ExtenderUpdateChannel UpdateChannel { get; set; }
 
-		[SettingsEntry("TargetVersion", "Update to a specific version of the script extender (ex. '4.0.0.0')")]
+		[SettingsEntry("Target Version", "Update to a specific version of the script extender (ex. '5.0.0.0')")]
 		[Reactive]
 		[DataMember]
 		[DefaultValue("")]
 		public string TargetVersion { get; set; }
+
+		[SettingsEntry("Target Resource Digest", "Use a specific Digest for the target update", true)]
+		[Reactive]
+		[DataMember]
+		[DefaultValue("")]
+		public string TargetResourceDigest { get; set; }
 
 		[SettingsEntry("Disable Updates", "Disable automatic updating to the latest extender version")]
 		[Reactive]
@@ -34,29 +45,29 @@ namespace DivinityModManager.Models.Extender
 		[DefaultValue(false)]
 		public bool DisableUpdates { get; set; }
 
+		[SettingsEntry("IPv4Only", "Use only IPv4 when fetching the latest update")]
+		[Reactive]
+		[DataMember]
+		[DefaultValue(false)]
+		public bool IPv4Only { get; set; }
+
 		[SettingsEntry("Debug", "Enable debug mode, which prints more messages to the console window")]
 		[Reactive]
 		[DataMember]
 		[DefaultValue(false)]
 		public bool Debug { get; set; }
 
-		[SettingsEntry("ManifestURL", "", true)]
+		[SettingsEntry("Manifest URL", "", true)]
 		[Reactive]
 		[DataMember]
 		[DefaultValue("")]
 		public string ManifestURL { get; set; }
 
-		[SettingsEntry("ManifestName", "", true)]
+		[SettingsEntry("Manifest Name", "", true)]
 		[Reactive]
 		[DataMember]
 		[DefaultValue("")]
 		public string ManifestName { get; set; }
-
-		[SettingsEntry("TargetResourceDigest", "", true)]
-		[Reactive]
-		[DataMember]
-		[DefaultValue("")]
-		public string TargetResourceDigest { get; set; }
 
 		[SettingsEntry("CachePath", "", true)]
 		[Reactive]
@@ -64,7 +75,7 @@ namespace DivinityModManager.Models.Extender
 		[DefaultValue("")]
 		public string CachePath { get; set; }
 
-		[SettingsEntry("ValidateSignature", "", true)]
+		[SettingsEntry("Validate Signature", "", true)]
 		[Reactive]
 		[DataMember]
 		[DefaultValue(false)]

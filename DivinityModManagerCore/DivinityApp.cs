@@ -107,6 +107,7 @@ namespace DivinityModManager
 
 		public static string DateTimeColumnFormat { get; set; } = "MM/dd/yyyy";
 		public static string DateTimeTooltipFormat { get; set; } = "MMMM dd, yyyy";
+		public static string DateTimeExtenderBuildFormat { get; set; } = "MM/dd/yyyy hh:mm tt";
 
 		public static void Log(string msg, [CallerMemberName] string mName = "", [CallerFilePath] string path = "", [CallerLineNumber] int line = 0)
 		{

@@ -60,7 +60,7 @@
 			</Style>
 			<ComboBox
 				x:Key="UpdaterTargetVersionComboBox"
-				DisplayMemberPath="Version"
+				DisplayMemberPath="DisplayName"
 				ItemsSource="{Binding ScriptExtenderUpdates}"
 				SelectedItem="{Binding TargetVersion}"
 				Tag="{Binding TargetVersion}"
