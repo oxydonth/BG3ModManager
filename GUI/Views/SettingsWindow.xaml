@@ -73,34 +73,38 @@
 			<RowDefinition Height="*" />
 			<RowDefinition Height="Auto" />
 		</Grid.RowDefinitions>
-		<StackPanel
-			Margin="4"
-			HorizontalAlignment="Left"
-			Orientation="Horizontal">
+		<Grid Margin="4">
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="2*" />
+				<ColumnDefinition Width="1*" />
+			</Grid.ColumnDefinitions>
+			<StackPanel
+				Margin="0"
+				HorizontalAlignment="Left"
+				Orientation="Horizontal">
+				<Button
+					x:Name="SaveSettingsButton"
+					Style="{StaticResource IconButtonStyle}"
+					ToolTip="Save Settings (CTRL + S)">
+					<controls:AutoGrayableImage Source="{StaticResource SaveImage}" />
+				</Button>
+				<Rectangle Margin="2,0" Style="{StaticResource VerticalSeparator}" />
+				<Button
+					x:Name="OpenSettingsFolderButton"
+					Style="{StaticResource IconButtonStyle}"
+					ToolTip="Open Settings Folder">
+					<controls:AutoGrayableImage Source="{StaticResource OpenFolderImage}" />
+				</Button>
+			</StackPanel>
 			<Button
-				x:Name="SaveSettingsButton"
-				Style="{StaticResource IconButtonStyle}"
-				ToolTip="Save Settings (CTRL + S)">
-				<controls:AutoGrayableImage Source="{StaticResource SaveImage}" />
-			</Button>
-			<Rectangle
-				Grid.Column="1"
-				Margin="2,0"
-				Style="{StaticResource VerticalSeparator}" />
-			<Button
-				x:Name="OpenSettingsFolderButton"
-				Style="{StaticResource IconButtonStyle}"
-				ToolTip="Open Settings Folder">
-				<controls:AutoGrayableImage Source="{StaticResource OpenFolderImage}" />
-			</Button>
-			<Rectangle
-				Grid.Column="1"
-				Margin="2,0"
-				Style="{StaticResource VerticalSeparator}" />
-			<Button x:Name="ResetSettingsButton" Style="{StaticResource IconButtonStyle}">
+				x:Name="ResetSettingsButton"
+				Grid.Column="2"
+				HorizontalAlignment="Right"
+				Style="{StaticResource IconButtonStyle}">
 				<controls:AutoGrayableImage Source="{StaticResource DefaultIcon}" />
 			</Button>
-		</StackPanel>
+		</Grid>
+
 		<TabControl x:Name="PreferencesTabControl" Grid.Row="1">
 			<TabItem FocusManager.FocusedElement="{Binding ElementName=SettingsAutoGrid}" Header="General">
 				<ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
