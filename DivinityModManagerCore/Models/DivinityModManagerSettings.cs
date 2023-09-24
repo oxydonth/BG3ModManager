@@ -68,7 +68,7 @@ namespace DivinityModManager.Models
 		[DataMember][Reactive] public string LoadOrderPath { get; set; }
 
 		[DefaultValue(false)]
-		[SettingsEntry("Enable Internal Log", "Enable the log for the mod manager", IsAdvanced = true)]
+		[SettingsEntry("Enable Internal Log", "Enable the log for the mod manager", HideFromUI = true)]
 		[DataMember][Reactive] public bool LogEnabled { get; set; }
 
 		[DefaultValue(true)]
@@ -137,7 +137,7 @@ namespace DivinityModManager.Models
 		[Reactive] public bool DisplayFileNames { get; set; }
 
 		[DefaultValue(false)]
-		[SettingsEntry("Enable Developer Mode", "This enables features for mod developers, such as being able to copy a mod's UUID in context menus, and additional Script Extender options", IsAdvanced = true)]
+		[SettingsEntry("Enable Developer Mode", "This enables features for mod developers, such as being able to copy a mod's UUID in context menus, and additional Script Extender options", HideFromUI = true)]
 		[Reactive][DataMember]
 		public bool DebugModeEnabled { get; set; }
 

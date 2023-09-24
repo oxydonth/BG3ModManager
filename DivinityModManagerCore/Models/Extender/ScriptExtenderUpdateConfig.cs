@@ -20,7 +20,7 @@ namespace DivinityModManager.Models.Extender
 	[DataContract]
 	public class ScriptExtenderUpdateConfig : ReactiveObject
 	{
-		[SettingsEntry("Update Channel", "Use a specific update channel")]
+		[SettingsEntry("Update Channel", "Use a specific update channel", HideFromUI = true)]
 		[Reactive]
 		[DataMember]
 		[DefaultValue(ExtenderUpdateChannel.Release)]

@@ -9,7 +9,7 @@ namespace DivinityModManager
 		public string DisplayName { get; set; }
 		public string Tooltip { get; set; }
 		public bool IsDebug { get; set; }
-		public bool IsAdvanced { get; set; }
+		public bool HideFromUI { get; set; }
 		public SettingsEntryAttribute(string displayName = "", string tooltip = "", bool isDebug = false)
 		{
 			DisplayName = displayName;
