@@ -89,15 +89,6 @@ namespace DivinityModManager.ViewModels
 		private readonly ObservableAsPropertyHelper<Visibility> _extenderUpdaterVisibility;
 		public Visibility ExtenderUpdaterVisibility => _extenderUpdaterVisibility.Value;
 
-		private readonly ObservableAsPropertyHelper<DivinityModManagerSettings> _settings;
-		public DivinityModManagerSettings Settings => _settings.Value;
-
-		private readonly ObservableAsPropertyHelper<ScriptExtenderSettings> _extenderSettings;
-		public ScriptExtenderSettings ExtenderSettings => _extenderSettings.Value;
-
-		private readonly ObservableAsPropertyHelper<ScriptExtenderUpdateConfig> _extenderUpdaterSettings;
-		public ScriptExtenderUpdateConfig ExtenderUpdaterSettings => _extenderUpdaterSettings.Value;
-
 		private readonly ObservableAsPropertyHelper<string> _resetSettingsCommandToolTip;
 		public string ResetSettingsCommandToolTip => _resetSettingsCommandToolTip.Value;
 
@@ -177,14 +168,18 @@ namespace DivinityModManager.ViewModels
 			}
 		}
 
+		public DivinityModManagerSettings Settings { get; private set; }
+		public ScriptExtenderSettings ExtenderSettings { get; private set; }
+		public ScriptExtenderUpdateConfig ExtenderUpdaterSettings { get; private set; }
+
 		public SettingsWindowViewModel(SettingsWindow view, MainWindowViewModel main)
 		{
 			_main = main;
 			View = view;
 
-			_settings = Main.WhenAnyValue(x => x.Settings).ToProperty(this, nameof(Settings));
-			_extenderSettings = Settings.WhenAnyValue(x => x.ExtenderSettings).ToProperty(this, nameof(ExtenderSettings));
-			_extenderUpdaterSettings = Settings.WhenAnyValue(x => x.ExtenderUpdaterSettings).ToProperty(this, nameof(ExtenderUpdaterSettings));
+			Main.WhenAnyValue(x => x.Settings).BindTo(this, x => x.Settings);
+			Main.WhenAnyValue(x => x.Settings.ExtenderSettings).BindTo(this, x => x.ExtenderSettings);
+			Main.WhenAnyValue(x => x.Settings.ExtenderUpdaterSettings).BindTo(this, x => x.ExtenderUpdaterSettings);
 
 			ScriptExtenderUpdates = new ObservableCollectionExtended<ScriptExtenderUpdateVersion>();
 			LaunchParams = new ObservableCollectionExtended<GameLaunchParamEntry>()
@@ -204,21 +199,22 @@ namespace DivinityModManager.ViewModels
 				new GameLaunchParamEntry(@"-mediaPath """, "", true),
 			};
 
-			this.WhenAnyValue(x => x.SelectedTabIndex, (index) => index == SettingsWindowTab.Extender).ToProperty(this, nameof(ExtenderTabIsVisible));
-			this.WhenAnyValue(x => x.SelectedTabIndex, (index) => index == SettingsWindowTab.Keybindings).ToProperty(this, nameof(KeybindingsTabIsVisible));
+			var whenTab = this.WhenAnyValue(x => x.SelectedTabIndex);
+			whenTab.Select(x => x == SettingsWindowTab.Extender).ToProperty(this, nameof(ExtenderTabIsVisible));
+			whenTab.Select(x => x == SettingsWindowTab.Keybindings).ToProperty(this, nameof(KeybindingsTabIsVisible));
 
 			this.WhenAnyValue(x => x.Settings.SkipLauncher, x => x.KeybindingsTabIsVisible);
-			this.WhenAnyValue(x => x.TargetVersion, x => x.ExtenderUpdaterSettings).Where(x => x.Item1 != null && x.Item2 != null).Select(x => x.Item1.Version).BindTo(this, x => x.ExtenderUpdaterSettings.TargetVersion);
+			this.WhenAnyValue(x => x.TargetVersion).WhereNotNull().Select(x => x.Version).BindTo(this, x => x.ExtenderUpdaterSettings.TargetVersion);
 
 			_resetSettingsCommandToolTip = this.WhenAnyValue(x => x.SelectedTabIndex).Select(SelectedTabToResetTooltip).ToProperty(this, nameof(ResetSettingsCommandToolTip), scheduler: RxApp.MainThreadScheduler);
 
 			_developerModeVisibility = Settings.WhenAnyValue(x => x.DebugModeEnabled).Select(BoolToVisibility).ToProperty(this, nameof(DeveloperModeVisibility), scheduler: RxApp.MainThreadScheduler);
 
 			_extenderTabVisibility = this.WhenAnyValue(x => x.ExtenderSettings.ExtenderUpdaterIsAvailable)
-				.Select(BoolToVisibility).ToProperty(this, nameof(ExtenderTabVisibility), scheduler: RxApp.MainThreadScheduler);
+				.Select(BoolToVisibility).ToProperty(this, nameof(ExtenderTabVisibility), true, RxApp.MainThreadScheduler);
 
 			_extenderUpdaterVisibility = this.WhenAnyValue(x => x.ExtenderSettings.ExtenderUpdaterIsAvailable, x => x.Settings.DebugModeEnabled)
-				.Select(BoolToVisibility2).ToProperty(this, nameof(ExtenderUpdaterVisibility), scheduler:RxApp.MainThreadScheduler);
+				.Select(BoolToVisibility2).ToProperty(this, nameof(ExtenderUpdaterVisibility), true, RxApp.MainThreadScheduler);
 
 			ExtenderUpdaterSettings.WhenAnyValue(x => x.UpdateChannel).Subscribe((channel) =>
 			{

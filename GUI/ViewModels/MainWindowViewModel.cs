@@ -673,7 +673,6 @@ Directory the zip will be extracted to:
 						{
 							DivinityApp.Log($"Loaded {settingsFilePath}");
 							Settings.ExtenderSettings.SetFrom(data);
-							Settings.RaisePropertyChanged("ExtenderSettings");
 						}
 					}
 				}
@@ -690,7 +689,6 @@ Directory the zip will be extracted to:
 						{
 							DivinityApp.Log($"Loaded {updaterSettingsFilePath}");
 							Settings.ExtenderUpdaterSettings.SetFrom(data);
-							Settings.RaisePropertyChanged("ExtenderUpdaterSettings");
 						}
 					}
 				}
