@@ -773,7 +773,6 @@ Directory the zip will be extracted to:
 								{
 									if (intVersion > extenderVersion)
 									{
-										DivinityApp.Log($"Script Extender version found: '{Settings.ExtenderSettings.ExtenderVersion}'.");
 										extenderVersion = intVersion;
 									}
 								}
@@ -786,6 +785,7 @@ Directory the zip will be extracted to:
 					}
 					if (extenderVersion > -1)
 					{
+						DivinityApp.Log($"Script Extender version found ({extenderVersion})");
 						Settings.ExtenderSettings.ExtenderIsAvailable = hasExtenderInstalled;
 						Settings.ExtenderSettings.ExtenderVersion = extenderVersion;
 					}
