@@ -1,12 +1,19 @@
-﻿using DivinityModManager.Models;
+﻿using DivinityModManager.Controls;
+using DivinityModManager.Extensions;
+using DivinityModManager.Models;
+using DivinityModManager.Models.Extender;
+using DivinityModManager.Models.View;
 using DivinityModManager.Util;
 using DivinityModManager.ViewModels;
+
+using DynamicData;
+using DynamicData.Binding;
+
 using ReactiveUI;
+
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Linq.Expressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -15,21 +22,10 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
-using System.Windows.Shapes;
-using System.Reactive.Disposables;
-using DynamicData;
-using DynamicData.Binding;
-using System.Diagnostics;
-using System.Globalization;
-using DivinityModManager.Controls;
-using Xceed.Wpf.Toolkit;
-using DivinityModManager.Converters;
-using DivinityModManager.Models.Extender;
-using System.Reflection;
+
 using WpfAutoGrid;
-using DivinityModManager.Controls.Extensions;
-using System.Collections.ObjectModel;
-using DivinityModManager.Models.View;
+
+using Xceed.Wpf.Toolkit;
 
 namespace DivinityModManager.Views
 {
@@ -45,11 +41,11 @@ namespace DivinityModManager.Views
 			InitializeComponent();
 		}
 
-		private void CreateSettingsElements(object source, Type settingsModelType, AutoGrid targetGrid, int startRow = 0)
+		private void CreateSettingsElements(ReactiveObject source, Type settingsModelType, AutoGrid targetGrid, int startRow = 0)
 		{
 			var props = settingsModelType.GetProperties()
 				.Select(x => SettingsAttributeProperty.FromProperty(x))
-				.Where(x => x.Attribute != null).ToList();
+				.Where(x => x.Attribute != null && !x.Attribute.IsAdvanced).ToList();
 
 			int count = props.Count + 1;
 			int row = startRow;
@@ -164,12 +160,14 @@ namespace DivinityModManager.Views
 						break;
 					case TypeCode.Int32:
 					case TypeCode.Int64:
-						var ud = new IntegerUpDown();
-						ud.ToolTip = prop.Attribute.Tooltip;
-						ud.VerticalAlignment = VerticalAlignment.Center;
-						ud.HorizontalAlignment = HorizontalAlignment.Left;
-						ud.Padding = new Thickness(4, 2, 4, 2);
-						ud.AllowTextInput = true;
+						var ud = new IntegerUpDown
+						{
+							ToolTip = prop.Attribute.Tooltip,
+							VerticalAlignment = VerticalAlignment.Center,
+							HorizontalAlignment = HorizontalAlignment.Left,
+							Padding = new Thickness(4, 2, 4, 2),
+							AllowTextInput = true
+						};
 						ud.SetBinding(IntegerUpDown.ValueProperty, new Binding(prop.Property.Name)
 						{
 							Source = ViewModel.ExtenderSettings,

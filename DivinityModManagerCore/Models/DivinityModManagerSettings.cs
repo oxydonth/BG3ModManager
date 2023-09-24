@@ -60,7 +60,7 @@ namespace DivinityModManager.Models
 		[SettingsEntry("Launch Through Steam", "Launch the game through steam, instead of by the exe directly")]
 		[DataMember][Reactive] public bool LaunchThroughSteam { get; set; }
 
-		[SettingsEntry("Workshop Path", "The Steam Workshop folder for Baldur's Gate 3\nUsed for detecting mod updates and new mods to be copied into the local mods folder\nExample: Steam/steamapps/workshop/content/1086940")]
+		//[SettingsEntry("Workshop Path", "The Steam Workshop folder for Baldur's Gate 3\nUsed for detecting mod updates and new mods to be copied into the local mods folder\nExample: Steam/steamapps/workshop/content/1086940")]
 		[DataMember][Reactive] public string WorkshopPath { get; set; }
 
 		[DefaultValue("Orders")]
@@ -68,7 +68,7 @@ namespace DivinityModManager.Models
 		[DataMember][Reactive] public string LoadOrderPath { get; set; }
 
 		[DefaultValue(false)]
-		[SettingsEntry("Enable Internal Log", "Enable the log for the mod manager")]
+		[SettingsEntry("Enable Internal Log", "Enable the log for the mod manager", IsAdvanced = true)]
 		[DataMember][Reactive] public bool LogEnabled { get; set; }
 
 		[DefaultValue(true)]
@@ -103,8 +103,8 @@ namespace DivinityModManager.Models
 		[SettingsEntry("Shift Focus on Swap", "When moving selected mods to the opposite list with Enter, move focus to that list as well")]
 		[DataMember][Reactive] public bool ShiftListFocusOnSwap { get; set; }
 
-		[DataMember][Reactive] public ScriptExtenderSettings ExtenderSettings { get; set; }
-		[DataMember][Reactive] public ScriptExtenderUpdateConfig ExtenderUpdaterSettings { get; set; }
+		[DataMember] public ScriptExtenderSettings ExtenderSettings { get; set; }
+		[DataMember] public ScriptExtenderUpdateConfig ExtenderUpdaterSettings { get; set; }
 
 		public string DefaultExtenderLogDirectory { get; set; }
 
@@ -137,7 +137,7 @@ namespace DivinityModManager.Models
 		[Reactive] public bool DisplayFileNames { get; set; }
 
 		[DefaultValue(false)]
-		[SettingsEntry("Enable Developer Mode", "This enables features for mod developers, such as being able to copy a mod's UUID in context menus, and additional Script Extender options")]
+		[SettingsEntry("Enable Developer Mode", "This enables features for mod developers, such as being able to copy a mod's UUID in context menus, and additional Script Extender options", IsAdvanced = true)]
 		[Reactive][DataMember]
 		public bool DebugModeEnabled { get; set; }
 
