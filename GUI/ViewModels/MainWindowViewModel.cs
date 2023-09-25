@@ -1180,7 +1180,15 @@ Directory the zip will be extracted to:
 				string contents = JsonConvert.SerializeObject(Settings, Formatting.Indented);
 				File.WriteAllText(settingsFile, contents);
 				Settings.CanSaveSettings = false;
-				Keys.SaveKeybindings(this);
+				var success = Keys.SaveKeybindings(out var msg);
+				if (!success)
+				{
+					ShowAlert(msg, AlertType.Danger);
+				}
+				else if(!String.IsNullOrEmpty(msg))
+				{
+					ShowAlert(msg, AlertType.Success, 10); 
+				}
 				return true;
 			}
 			catch (Exception ex)
@@ -4148,6 +4156,7 @@ Directory the zip will be extracted to:
 
 		public void ShowAlert(string message, AlertType alertType = AlertType.Info, int timeout = 0)
 		{
+			DivinityApp.Log(message);
 			RxApp.MainThreadScheduler.Schedule(() =>
 			{
 				if (timeout < 0) timeout = 0;

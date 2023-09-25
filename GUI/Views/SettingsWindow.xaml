@@ -315,6 +315,10 @@
 				</DockPanel>
 			</TabItem>
 		</TabControl>
-		<Grid Grid.Row="2" Margin="0,8" />
+		<StatusBar Grid.Row="2" MinHeight="16">
+			<StatusBarItem HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+				<controls:AlertBar x:Name="AlertBar" Theme="Standard" />
+			</StatusBarItem>
+		</StatusBar>
 	</Grid>
 </local:SettingsWindowBase>

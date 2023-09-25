@@ -756,6 +756,7 @@
 		<StatusBar Grid.Row="1" MinHeight="16">
 			<StatusBarItem HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
 				<controls:BusyIndicator
+					x:Name="StatusBarBusyIndicator"
 					Grid.Column="0"
 					Width="16"
 					Height="16"

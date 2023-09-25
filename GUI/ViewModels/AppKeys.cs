@@ -174,8 +174,9 @@ namespace DivinityModManager.ViewModels
 			}
 		}
 
-		public bool SaveKeybindings(MainWindowViewModel vm)
+		public bool SaveKeybindings(out string result)
 		{
+			result = "";
 			var filePath = DivinityApp.GetAppDirectory("Data", "keybindings.json");
 			try
 			{
@@ -194,11 +195,12 @@ namespace DivinityModManager.ViewModels
 				}
 				string contents = JsonConvert.SerializeObject(keyMapDict, Newtonsoft.Json.Formatting.Indented);
 				File.WriteAllText(filePath, contents);
+				result = $"Saved keybindings to '{filePath}'";
 				return true;
 			}
 			catch (Exception ex)
 			{
-				vm.ShowAlert($"Error saving keybindings at '{filePath}': {ex}", AlertType.Danger);
+				result = $"Error saving keybindings at '{filePath}': {ex}";
 			}
 			return false;
 		}

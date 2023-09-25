@@ -107,6 +107,38 @@ namespace DivinityModManager.ViewModels
 
 		private readonly ScriptExtenderUpdateVersion _emptyVersion = new ScriptExtenderUpdateVersion();
 
+		private readonly JsonSerializerSettings _jsonConfigExportSettings = new JsonSerializerSettings
+		{
+			DefaultValueHandling = DefaultValueHandling.Ignore,
+			NullValueHandling = NullValueHandling.Ignore,
+			Formatting = Formatting.Indented
+		};
+
+		public void ShowAlert(string message, AlertType alertType = AlertType.Info, int timeout = 0)
+		{
+			DivinityApp.Log(message);
+			RxApp.MainThreadScheduler.Schedule(() =>
+			{
+				if (timeout < 0) timeout = 0;
+				switch (alertType)
+				{
+					case AlertType.Danger:
+						View.AlertBar.SetDangerAlert(message, timeout);
+						break;
+					case AlertType.Warning:
+						View.AlertBar.SetWarningAlert(message, timeout);
+						break;
+					case AlertType.Success:
+						View.AlertBar.SetSuccessAlert(message, timeout);
+						break;
+					case AlertType.Info:
+					default:
+						View.AlertBar.SetInformationAlert(message, timeout);
+						break;
+				}
+			});
+		}
+
 		private string SelectedTabToResetTooltip(SettingsWindowTab tab)
 		{
 			var name = TabToName(tab);
@@ -202,6 +234,104 @@ namespace DivinityModManager.ViewModels
 			OnTargetVersionSelected((ScriptExtenderUpdateVersion)entry);
 		}
 
+		public bool ExportExtenderSettings()
+		{
+			string outputFile = Path.Combine(Path.GetDirectoryName(Settings.GameExecutablePath), "ScriptExtenderSettings.json");
+			try
+			{
+				_jsonConfigExportSettings.DefaultValueHandling = ExtenderSettings.ExportDefaultExtenderSettings ? DefaultValueHandling.Include : DefaultValueHandling.Ignore;
+				string contents = JsonConvert.SerializeObject(Settings.ExtenderSettings, _jsonConfigExportSettings);
+				File.WriteAllText(outputFile, contents);
+				Main.ShowAlert($"Saved Script Extender settings to '{outputFile}'", AlertType.Success, 20);
+				return true;
+			}
+			catch (Exception ex)
+			{
+				Main.ShowAlert($"Error saving Script Extender settings to '{outputFile}':\n{ex}", AlertType.Danger);
+			}
+			return false;
+		}
+
+		public bool ExportExtenderUpdaterSettings()
+		{
+			string outputFile = Path.Combine(Path.GetDirectoryName(Settings.GameExecutablePath), "ScriptExtenderUpdaterConfig.json");
+			try
+			{
+				_jsonConfigExportSettings.DefaultValueHandling = ExtenderSettings.ExportDefaultExtenderSettings ? DefaultValueHandling.Include : DefaultValueHandling.Ignore;
+				string contents = JsonConvert.SerializeObject(Settings.ExtenderUpdaterSettings, _jsonConfigExportSettings);
+				File.WriteAllText(outputFile, contents);
+				Main.ShowAlert($"Saved Script Extender Updater settings to '{outputFile}'", AlertType.Success, 20);
+				return true;
+			}
+			catch (Exception ex)
+			{
+				Main.ShowAlert($"Error saving Script Extender Updater settings to '{outputFile}':\n{ex}", AlertType.Danger);
+			}
+			return false;
+		}
+
+		public void SaveSettings()
+		{
+			try
+			{
+				var attr = File.GetAttributes(Settings.GameExecutablePath);
+				if (attr.HasFlag(System.IO.FileAttributes.Directory))
+				{
+					string exeName = "";
+					if (!DivinityRegistryHelper.IsGOG)
+					{
+						exeName = Path.GetFileName(Main.AppSettings.DefaultPathways.Steam.ExePath);
+					}
+					else
+					{
+						exeName = Path.GetFileName(Main.AppSettings.DefaultPathways.GOG.ExePath);
+					}
+
+					var exe = Path.Combine(Settings.GameExecutablePath, exeName);
+					if (File.Exists(exe))
+					{
+						Settings.GameExecutablePath = exe;
+					}
+				}
+			}
+			catch (Exception) { }
+
+			var savedMainSettings = Main.SaveSettings();
+
+			if (View.IsVisible)
+			{
+				switch (SelectedTabIndex)
+				{
+					case SettingsWindowTab.Default:
+					case SettingsWindowTab.Advanced:
+						//Handled in Main.SaveSettings
+						if (savedMainSettings) ShowAlert($"Saved settings.", AlertType.Success, 10);
+						break;
+					case SettingsWindowTab.Extender:
+						ExportExtenderSettings();
+						break;
+					case SettingsWindowTab.ExtenderUpdater:
+						ExportExtenderUpdaterSettings();
+						break;
+					case SettingsWindowTab.Keybindings:
+						var success = Main.Keys.SaveKeybindings(out var msg);
+						if (!success)
+						{
+							ShowAlert(msg, AlertType.Danger);
+						}
+						else if (!String.IsNullOrEmpty(msg))
+						{
+							ShowAlert(msg, AlertType.Success, 10);
+						}
+						break;
+				}
+			}
+			else
+			{
+				Main.SaveSettings();
+			}
+		}
+
 		public SettingsWindowViewModel(SettingsWindow view, MainWindowViewModel main)
 		{
 			_main = main;
@@ -256,92 +386,11 @@ namespace DivinityModManager.ViewModels
 				}
 			});
 
-			SaveSettingsCommand = ReactiveCommand.Create(() =>
-			{
-				var settingsFile = DivinityApp.GetAppDirectory("Data", "settings.json");
-				try
-				{
-
-					System.IO.FileAttributes attr = File.GetAttributes(Settings.GameExecutablePath);
-
-					if (attr.HasFlag(System.IO.FileAttributes.Directory))
-					{
-						string exeName = "";
-						if (!DivinityRegistryHelper.IsGOG)
-						{
-							exeName = Path.GetFileName(Main.AppSettings.DefaultPathways.Steam.ExePath);
-						}
-						else
-						{
-							exeName = Path.GetFileName(Main.AppSettings.DefaultPathways.GOG.ExePath);
-						}
-
-						var exe = Path.Combine(Settings.GameExecutablePath, exeName);
-						if (File.Exists(exe))
-						{
-							Settings.GameExecutablePath = exe;
-						}
-					}
-
-					// Help for people confused about needing to click the export button to save the json
-					if (SelectedTabIndex == SettingsWindowTab.Extender)
-					{
-						ExportExtenderSettingsCommand?.Execute(null);
-					}
-					else if (SelectedTabIndex == SettingsWindowTab.ExtenderUpdater)
-					{
-						ExportExtenderUpdaterSettingsCommand?.Execute(null);
-					}
-				}
-				catch (Exception) { }
-				if (Main.SaveSettings())
-				{
-					Main.ShowAlert($"Saved settings to '{settingsFile}'", AlertType.Success, 10);
-				}
-			});
+			SaveSettingsCommand = ReactiveCommand.Create(SaveSettings);
 
 			OpenSettingsFolderCommand = ReactiveCommand.Create(() =>
 			{
 				DivinityFileUtils.TryOpenPath(DivinityApp.GetAppDirectory(DivinityApp.DIR_DATA));
-			});
-
-			var _jsonConfigExportSettings = new JsonSerializerSettings
-			{
-				DefaultValueHandling = DefaultValueHandling.Ignore,
-				NullValueHandling = NullValueHandling.Ignore,
-				Formatting = Formatting.Indented
-			};
-
-			ExportExtenderSettingsCommand = ReactiveCommand.Create(() =>
-			{
-				string outputFile = Path.Combine(Path.GetDirectoryName(Settings.GameExecutablePath), "ScriptExtenderSettings.json");
-				try
-				{
-					_jsonConfigExportSettings.DefaultValueHandling = ExtenderSettings.ExportDefaultExtenderSettings ? DefaultValueHandling.Include : DefaultValueHandling.Ignore;
-					string contents = JsonConvert.SerializeObject(Settings.ExtenderSettings, _jsonConfigExportSettings);
-					File.WriteAllText(outputFile, contents);
-					Main.ShowAlert($"Saved Script Extender settings to '{outputFile}'", AlertType.Success, 20);
-				}
-				catch (Exception ex)
-				{
-					Main.ShowAlert($"Error saving Script Extender settings to '{outputFile}':\n{ex}", AlertType.Danger);
-				}
-			});
-
-			ExportExtenderUpdaterSettingsCommand = ReactiveCommand.Create(() =>
-			{
-				string outputFile = Path.Combine(Path.GetDirectoryName(Settings.GameExecutablePath), "ScriptExtenderUpdaterConfig.json");
-				try
-				{
-					_jsonConfigExportSettings.DefaultValueHandling = ExtenderSettings.ExportDefaultExtenderSettings ? DefaultValueHandling.Include : DefaultValueHandling.Ignore;
-					string contents = JsonConvert.SerializeObject(Settings.ExtenderUpdaterSettings, _jsonConfigExportSettings);
-					File.WriteAllText(outputFile, contents);
-					Main.ShowAlert($"Saved Script Extender Updater settings to '{outputFile}'", AlertType.Success, 20);
-				}
-				catch (Exception ex)
-				{
-					Main.ShowAlert($"Error saving Script Extender Updater settings to '{outputFile}':\n{ex}", AlertType.Danger);
-				}
 			});
 
 			ResetSettingsCommand = ReactiveCommand.Create(() =>
@@ -364,6 +413,11 @@ namespace DivinityModManager.ViewModels
 							break;
 						case SettingsWindowTab.Keybindings:
 							Main.Keys.SetToDefault();
+							break;
+						case SettingsWindowTab.Advanced:
+							Settings.DebugModeEnabled = false;
+							Settings.LogEnabled = false;
+							Settings.GameLaunchParams = "";
 							break;
 					}
 				}
