@@ -242,12 +242,12 @@ namespace DivinityModManager.ViewModels
 				_jsonConfigExportSettings.DefaultValueHandling = ExtenderSettings.ExportDefaultExtenderSettings ? DefaultValueHandling.Include : DefaultValueHandling.Ignore;
 				string contents = JsonConvert.SerializeObject(Settings.ExtenderSettings, _jsonConfigExportSettings);
 				File.WriteAllText(outputFile, contents);
-				Main.ShowAlert($"Saved Script Extender settings to '{outputFile}'", AlertType.Success, 20);
+				ShowAlert($"Saved Script Extender settings to '{outputFile}'", AlertType.Success, 20);
 				return true;
 			}
 			catch (Exception ex)
 			{
-				Main.ShowAlert($"Error saving Script Extender settings to '{outputFile}':\n{ex}", AlertType.Danger);
+				ShowAlert($"Error saving Script Extender settings to '{outputFile}':\n{ex}", AlertType.Danger);
 			}
 			return false;
 		}
@@ -260,12 +260,12 @@ namespace DivinityModManager.ViewModels
 				_jsonConfigExportSettings.DefaultValueHandling = ExtenderSettings.ExportDefaultExtenderSettings ? DefaultValueHandling.Include : DefaultValueHandling.Ignore;
 				string contents = JsonConvert.SerializeObject(Settings.ExtenderUpdaterSettings, _jsonConfigExportSettings);
 				File.WriteAllText(outputFile, contents);
-				Main.ShowAlert($"Saved Script Extender Updater settings to '{outputFile}'", AlertType.Success, 20);
+				ShowAlert($"Saved Script Extender Updater settings to '{outputFile}'", AlertType.Success, 20);
 				return true;
 			}
 			catch (Exception ex)
 			{
-				Main.ShowAlert($"Error saving Script Extender Updater settings to '{outputFile}':\n{ex}", AlertType.Danger);
+				ShowAlert($"Error saving Script Extender Updater settings to '{outputFile}':\n{ex}", AlertType.Danger);
 			}
 			return false;
 		}
@@ -433,16 +433,16 @@ namespace DivinityModManager.ViewModels
 					{
 						if (Main.UpdateHandler.DeleteCache())
 						{
-							Main.ShowAlert($"Deleted local cache in {DivinityApp.GetAppDirectory("Data")}", AlertType.Success, 20);
+							ShowAlert($"Deleted local cache in {DivinityApp.GetAppDirectory("Data")}", AlertType.Success, 20);
 						}
 						else
 						{
-							Main.ShowAlert($"No cache to delete.", AlertType.Warning, 20);
+							ShowAlert($"No cache to delete.", AlertType.Warning, 20);
 						}
 					}
 					catch (Exception ex)
 					{
-						Main.ShowAlert($"Error deleting workshop cache:\n{ex}", AlertType.Danger);
+						ShowAlert($"Error deleting workshop cache:\n{ex}", AlertType.Danger);
 					}
 				}
 			});

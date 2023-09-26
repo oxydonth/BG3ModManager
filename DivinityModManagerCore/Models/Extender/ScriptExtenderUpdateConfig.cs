@@ -51,7 +51,7 @@ namespace DivinityModManager.Models.Extender
 		[DefaultValue(false)]
 		public bool IPv4Only { get; set; }
 
-		[SettingsEntry("Debug", "Enable debug mode, which prints more messages to the console window")]
+		[SettingsEntry("Debug", "Enable debug mode in the extender updater, which prints more messages to the console window")]
 		[Reactive]
 		[DataMember]
 		[DefaultValue(false)]
