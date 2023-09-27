@@ -74,6 +74,9 @@ namespace DivinityModManager.ViewModels
 		[Reactive] public SettingsWindowTab SelectedTabIndex { get; set; }
 		[Reactive] public Hotkey SelectedHotkey { get; set; }
 
+		private readonly ObservableAsPropertyHelper<bool> _isVisible;
+		public bool IsVisible => _isVisible.Value;
+
 		private readonly ObservableAsPropertyHelper<bool> _extenderTabIsVisible;
 		public bool ExtenderTabIsVisible => _extenderTabIsVisible.Value;
 
@@ -337,6 +340,8 @@ namespace DivinityModManager.ViewModels
 			_main = main;
 			View = view;
 
+			_isVisible = this.WhenAnyValue(x => x.View.IsVisible).ToProperty(this, nameof(IsVisible));
+
 			TargetVersion = _emptyVersion;
 
 			Main.WhenAnyValue(x => x.Settings).BindTo(this, x => x.Settings);
@@ -380,13 +385,29 @@ namespace DivinityModManager.ViewModels
 
 			ExtenderUpdaterSettings.WhenAnyValue(x => x.UpdateChannel).Subscribe((channel) =>
 			{
-				if(View.IsVisible)
+				if(IsVisible)
 				{
 					FetchLatestManifestData(channel, true);
 				}
 			});
 
-			SaveSettingsCommand = ReactiveCommand.Create(SaveSettings);
+			var settingsProperties = new HashSet<string>();
+			settingsProperties.UnionWith(Settings.GetSettingsAttributes().Select(x => x.Property.Name));
+			settingsProperties.UnionWith(ExtenderSettings.GetSettingsAttributes().Select(x => x.Property.Name));
+			settingsProperties.UnionWith(ExtenderUpdaterSettings.GetSettingsAttributes().Select(x => x.Property.Name));
+
+			var whenVisible = this.WhenAnyValue(x => x.IsVisible, (b) => b == true);
+			var propertyChanged = nameof(ReactiveObject.PropertyChanged);
+			var whenSettings = Observable.FromEventPattern<PropertyChangedEventArgs>(Settings, propertyChanged);
+			var whenExtenderSettings = Observable.FromEventPattern<PropertyChangedEventArgs>(ExtenderSettings, propertyChanged);
+			var whenExtenderUpdaterSettings = Observable.FromEventPattern<PropertyChangedEventArgs>(ExtenderUpdaterSettings, propertyChanged);
+
+			SaveSettingsCommand = ReactiveCommand.Create(SaveSettings, whenVisible);
+			Observable.Merge(whenSettings, whenExtenderSettings, whenExtenderUpdaterSettings)
+				.Where(e => settingsProperties.Contains(e.EventArgs.PropertyName))
+				.Select(x => Unit.Default)
+				.Throttle(TimeSpan.FromMilliseconds(100))
+				.InvokeCommand(SaveSettingsCommand);
 
 			OpenSettingsFolderCommand = ReactiveCommand.Create(() =>
 			{

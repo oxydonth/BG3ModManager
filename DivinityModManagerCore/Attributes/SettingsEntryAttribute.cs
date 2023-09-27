@@ -1,4 +1,10 @@
-﻿using System;
+﻿using DynamicData.Binding;
+
+using ReactiveUI;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices.WindowsRuntime;
 
@@ -15,6 +21,25 @@ namespace DivinityModManager
 			DisplayName = displayName;
 			Tooltip = tooltip;
 			IsDebug = isDebug;
+		}
+	}
+
+	public static class SettingsEntryAttributeExtensions
+	{
+		public static List<SettingsAttributeProperty> GetSettingsAttributes(this ReactiveObject model)
+		{
+			var props = model.GetType().GetProperties()
+				.Select(x => SettingsAttributeProperty.FromProperty(x))
+				.Where(x => x.Attribute != null).ToList();
+			return props;
+		}
+
+		public static IObservable<ReactiveObject> WhenAnySettingsChange(this ReactiveObject model)
+		{
+			var props = model.GetType().GetProperties()
+				.Select(x => SettingsAttributeProperty.FromProperty(x))
+				.Where(x => x.Attribute != null).Select(x => x.Property.Name).ToArray();
+			return model.WhenAnyPropertyChanged(props);
 		}
 	}
 
