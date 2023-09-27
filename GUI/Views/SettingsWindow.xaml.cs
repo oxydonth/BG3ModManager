@@ -1,5 +1,4 @@
 ﻿using DivinityModManager.Controls;
-using DivinityModManager.Extensions;
 using DivinityModManager.Models;
 using DivinityModManager.Models.Extender;
 using DivinityModManager.Models.View;
@@ -7,13 +6,11 @@ using DivinityModManager.Util;
 using DivinityModManager.ViewModels;
 
 using DynamicData;
-using DynamicData.Binding;
 
 using ReactiveUI;
 
 using System;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -102,7 +99,7 @@ namespace DivinityModManager.Views
 				switch (propType)
 				{
 					case TypeCode.Boolean:
-						CheckBox cb = new CheckBox
+						var cb = new CheckBox
 						{
 							ToolTip = prop.Attribute.Tooltip,
 							VerticalAlignment = VerticalAlignment.Center
@@ -124,7 +121,7 @@ namespace DivinityModManager.Views
 						break;
 
 					case TypeCode.String:
-						UnfocusableTextBox utb = new UnfocusableTextBox
+						var utb = new UnfocusableTextBox
 						{
 							ToolTip = prop.Attribute.Tooltip,
 							VerticalAlignment = VerticalAlignment.Center,
@@ -147,7 +144,7 @@ namespace DivinityModManager.Views
 						break;
 					case TypeCode.Int32:
 					case TypeCode.Int64:
-						var ud = new IntegerUpDown
+						var ud = new Xceed.Wpf.Toolkit.IntegerUpDown
 						{
 							ToolTip = prop.Attribute.Tooltip,
 							VerticalAlignment = VerticalAlignment.Center,
