@@ -58,12 +58,13 @@ namespace DivinityModManager.Views
 
 			foreach (var prop in props)
 			{
+				var isBlankTooltip = String.IsNullOrEmpty(prop.Attribute.Tooltip);
 				var targetRow = row;
 				row++;
 				var tb = new TextBlock
 				{
 					Text = prop.Attribute.DisplayName,
-					ToolTip = prop.Attribute.Tooltip
+					ToolTip = !isBlankTooltip ? prop.Attribute.Tooltip : null,
 				};
 				targetGrid.Children.Add(tb);
 				Grid.SetRow(tb, targetRow);
@@ -77,7 +78,7 @@ namespace DivinityModManager.Views
 				{
 					var combo = new ComboBox()
 					{
-						ToolTip = prop.Attribute.Tooltip,
+						ToolTip = !isBlankTooltip ? prop.Attribute.Tooltip : null,
 						DisplayMemberPath = "Description",
 						SelectedValuePath = "Value",
 						ItemsSource = prop.Property.PropertyType.GetEnumValues().Cast<Enum>().Select(x => new EnumEntry(x.GetDescription(), x))
@@ -101,7 +102,7 @@ namespace DivinityModManager.Views
 					case TypeCode.Boolean:
 						var cb = new CheckBox
 						{
-							ToolTip = prop.Attribute.Tooltip,
+							ToolTip = !isBlankTooltip ? prop.Attribute.Tooltip : null,
 							VerticalAlignment = VerticalAlignment.Center
 						};
 						//cb.HorizontalAlignment = HorizontalAlignment.Right;
@@ -123,7 +124,7 @@ namespace DivinityModManager.Views
 					case TypeCode.String:
 						var utb = new UnfocusableTextBox
 						{
-							ToolTip = prop.Attribute.Tooltip,
+							ToolTip = !isBlankTooltip ? prop.Attribute.Tooltip : null,
 							VerticalAlignment = VerticalAlignment.Center,
 							//utb.HorizontalAlignment = HorizontalAlignment.Stretch;
 							TextAlignment = TextAlignment.Left
@@ -146,7 +147,7 @@ namespace DivinityModManager.Views
 					case TypeCode.Int64:
 						var ud = new Xceed.Wpf.Toolkit.IntegerUpDown
 						{
-							ToolTip = prop.Attribute.Tooltip,
+							ToolTip = !isBlankTooltip ? prop.Attribute.Tooltip : null,
 							VerticalAlignment = VerticalAlignment.Center,
 							HorizontalAlignment = HorizontalAlignment.Left,
 							Padding = new Thickness(4, 2, 4, 2),
