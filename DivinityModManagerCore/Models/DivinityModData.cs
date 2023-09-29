@@ -78,7 +78,7 @@ namespace DivinityModManager.Models
 					}
 					if (requiredVersion > -1)
 					{
-						result += $"Requires Script Extender v{requiredVersion} or higher";
+						result += $"Requires Script Extender v{requiredVersion} or Higher";
 					}
 					else
 					{
@@ -96,11 +96,11 @@ namespace DivinityModManager.Models
 				case DivinityExtenderModStatus.SUPPORTS:
 					if (requiredVersion > -1)
 					{
-						result = $"Supports Script Extender v{requiredVersion} or higher";
+						result = $"Uses Script Extender v{requiredVersion} or Higher (Optional)";
 					}
 					else
 					{
-						result = "Supports the Script Extender";
+						result = "Uses the Script Extender (Optional)";
 					}
 					break;
 				case DivinityExtenderModStatus.NONE:
@@ -490,13 +490,13 @@ namespace DivinityModManager.Models
 			_canAddToLoadOrder = this.WhenAnyValue(x => x.ModType, x => x.IsLarianMod, x => x.IsForceLoaded, x => x.IsForceLoadedMergedMod, x => x.ForceAllowInLoadOrder,
 				(modType, isLarianMod, isForceLoaded, isMergedMod, forceAllowInLoadOrder) => modType != "Adventure" && !isLarianMod && (!isForceLoaded || isMergedMod) || forceAllowInLoadOrder).StartWith(true).ToProperty(this, nameof(CanAddToLoadOrder));
 
-			_extenderSupportToolTipText = this.WhenAnyValue(x => x.ExtenderModStatus, x => x.ScriptExtenderData.RequiredVersion, x => x.CurrentExtenderVersion)
-				.Select(x => ExtenderStatusToToolTipText(x.Item1, x.Item2, x.Item3)).ToProperty(this, nameof(ScriptExtenderSupportToolTipText), scheduler: RxApp.MainThreadScheduler);
-			_extenderStatusVisibility = this.WhenAnyValue(x => x.ExtenderModStatus).Select(x => x != DivinityExtenderModStatus.NONE ? Visibility.Visible : Visibility.Collapsed).ToProperty(this, nameof(ExtenderStatusVisibility), scheduler: RxApp.MainThreadScheduler);
+			var whenExtenderProp = this.WhenAnyValue(x => x.ExtenderModStatus, x => x.ScriptExtenderData.RequiredVersion, x => x.CurrentExtenderVersion);
+			_extenderSupportToolTipText = whenExtenderProp.Select(x => ExtenderStatusToToolTipText(x.Item1, x.Item2, x.Item3)).ToProperty(this, nameof(ScriptExtenderSupportToolTipText), true, RxApp.MainThreadScheduler);
+			_extenderStatusVisibility = this.WhenAnyValue(x => x.ExtenderModStatus).Select(x => x != DivinityExtenderModStatus.NONE ? Visibility.Visible : Visibility.Collapsed).ToProperty(this, nameof(ExtenderStatusVisibility), true, RxApp.MainThreadScheduler);
 
 			var whenOsirisStatusChanges = this.WhenAnyValue(x => x.OsirisModStatus);
-			_osirisStatusVisibility = whenOsirisStatusChanges.Select(x => x != DivinityOsirisModStatus.NONE ? Visibility.Visible : Visibility.Collapsed).ToProperty(this, nameof(OsirisStatusVisibility), scheduler: RxApp.MainThreadScheduler);
-			_osirisStatusToolTipText = whenOsirisStatusChanges.Select(OsirisStatusToTooltipText).ToProperty(this, nameof(OsirisStatusToolTipText), scheduler: RxApp.MainThreadScheduler);
+			_osirisStatusVisibility = whenOsirisStatusChanges.Select(x => x != DivinityOsirisModStatus.NONE ? Visibility.Visible : Visibility.Collapsed).ToProperty(this, nameof(OsirisStatusVisibility), true, RxApp.MainThreadScheduler);
+			_osirisStatusToolTipText = whenOsirisStatusChanges.Select(OsirisStatusToTooltipText).ToProperty(this, nameof(OsirisStatusToolTipText), true, RxApp.MainThreadScheduler);
 			ExtenderModStatus = DivinityExtenderModStatus.NONE;
 			OsirisModStatus = DivinityOsirisModStatus.NONE;
 
