@@ -27,7 +27,7 @@ namespace DivinityModManager.Models
 		private ObservableAsPropertyHelper<bool> _hasAnySettings;
 		public bool HasAnySettings => _hasAnySettings.Value;
 
-		public bool Lua => TotalFeatureFlags > 0 && FeatureFlags.Contains("Lua");
+		public bool Lua => FeatureFlags.Contains("Lua");
 
 		public DivinityModScriptExtenderConfig()
 		{
