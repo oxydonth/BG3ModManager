@@ -33,7 +33,7 @@ namespace DivinityModManager.Models
 		[DataMember][Reactive] public string GameExecutablePath { get; set; }
 
 		[DefaultValue("")]
-		[SettingsEntry("NexusMods API Key", "Your personal NexusMods API key, which will allow the mod manager to fetch mod updates/information")]
+		[SettingsEntry("NexusMods API Key", "Your personal NexusMods API key, which will allow the mod manager to fetch mod updates/information", HideFromUI = true)]
 		[DataMember][Reactive] public string NexusModsAPIKey { get; set; }
 
 		[DefaultValue(false)]
