@@ -11,6 +11,7 @@
         <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
         <BuildDependsOn>$(BuildDependsOn);AfterBuildMigrated</BuildDependsOn>
         <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+        <Configurations>Debug;Release;Publish</Configurations>
         <Company>LaughingLeader</Company>
         <Copyright>Copyright © 2020</Copyright>
         <Description>A mod manager for Baldur's Gate 3.</Description>
@@ -18,10 +19,12 @@
         <LangVersion>7.3</LangVersion>
         <MapFileExtensions>true</MapFileExtensions>
         <NeutralLanguage>en</NeutralLanguage>
+        <DebugType>none</DebugType>
+        <Optimize>True</Optimize>
         <OutputPath>..\bin\$(Configuration)\</OutputPath>
         <OutputType>WinExe</OutputType>
-        <Platforms>x64</Platforms>
         <PlatformTarget>x64</PlatformTarget>
+        <Platforms>x64</Platforms>
         <Prefer32Bit>false</Prefer32Bit>
         <Product>Baldur's Gate 3 Mod Manager</Product>
         <RootNamespace>DivinityModManager</RootNamespace>
@@ -30,17 +33,21 @@
         <TargetFramework>net472</TargetFramework>
         <UseWPF>true</UseWPF>
     </PropertyGroup>
-    <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Publish|x64'">
+    <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+        <Optimize>False</Optimize>
+        <DebugType>full</DebugType>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)' == 'Publish'">
         <PreBuildEvent>rd /s /q $(TargetDir)_Lib</PreBuildEvent>
     </PropertyGroup>
-    <Target Name="AfterBuildMigrated" Condition="'$(Configuration)|$(Platform)' == 'Publish|x64'">
+    <Target Name="SetupLibFolder" AfterTargets="AfterBuild" Condition="'$(Configuration)' == 'Publish'">
         <ItemGroup>
             <MoveToLibFolder Include="$(OutputPath)*.dll ; $(OutputPath)*.pdb ; $(OutputPath)*.xml ; $(OutputPath)runtimes/win-x64/native/*.dll" />
         </ItemGroup>
         <Move SourceFiles="@(MoveToLibFolder)" DestinationFolder="$(OutputPath)_Lib" OverwriteReadOnlyFiles="true" />
         <RemoveDir Directories="$(OutputPath)de;$(OutputPath)en;$(OutputPath)es;$(OutputPath)fr;$(OutputPath)it;$(OutputPath)ja;$(OutputPath)ko;$(OutputPath)ru;$(OutputPath)zh-Hans;$(OutputPath)zh-Hant;$(OutputPath)cs-CZ;$(OutputPath)hu;$(OutputPath)ja-JP;$(OutputPath)pt-BR;$(OutputPath)ro;$(OutputPath)runtimes;$(OutputPath)sv" />
     </Target>
-    <Target Name="AfterAfterBuild" AfterTargets="AfterBuild" Condition="'$(Configuration)|$(Platform)' == 'Publish|x64'">
+    <Target Name="RunBuildRelease" AfterTargets="SetupLibFolder" Condition="'$(Configuration)' == 'Publish'">
         <GetAssemblyIdentity AssemblyFiles="$(TargetPath)">
             <Output TaskParameter="Assemblies" ItemName="AssemblyVersion" />
         </GetAssemblyIdentity>
