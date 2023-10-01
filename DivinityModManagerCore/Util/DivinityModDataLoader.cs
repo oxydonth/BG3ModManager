@@ -588,27 +588,25 @@ namespace DivinityModManager.Util
 						modData.IsForceLoadedMergedMod = hasModFolderData;
 					}
 				}
-				else
+				else if(isOverridingBuiltinDirectory || hasOsirisScripts != DivinityOsirisModStatus.NONE)
 				{
-					if(isOverridingBuiltinDirectory)
+					isOverridingBuiltinDirectory = true;
+					//var pakData = new DivinityPakFile()
+					//{
+					//	FilePath = pakPath,
+					//	BuiltinOverrideModsText = String.Join(Environment.NewLine, builtinModOverrides.Values.OrderBy(x => x.Name).Select(x => $"{x.Folder} ({x.Name})"))
+					//};
+					//overridePaks.Add(pakData);
+					modData = new DivinityModData()
 					{
-						//var pakData = new DivinityPakFile()
-						//{
-						//	FilePath = pakPath,
-						//	BuiltinOverrideModsText = String.Join(Environment.NewLine, builtinModOverrides.Values.OrderBy(x => x.Name).Select(x => $"{x.Folder} ({x.Name})"))
-						//};
-						//overridePaks.Add(pakData);
-						modData = new DivinityModData()
-						{
-							FilePath = pakPath,
-							Name = Path.GetFileNameWithoutExtension(pakPath),
-							Folder = builtinModOverrides.FirstOrDefault().Key,
-							Description = "This file overrides base game data.",
-							ModType = "File Override",
-							UUID = pakPath,
-						};
-						DivinityApp.Log($"Adding a file override mod pak '{modData.Name}'.");
-					}
+						FilePath = pakPath,
+						Name = Path.GetFileNameWithoutExtension(pakPath),
+						Folder = builtinModOverrides.FirstOrDefault().Key,
+						Description = "This file overrides base game data.",
+						ModType = "File Override",
+						UUID = pakPath,
+					};
+					DivinityApp.Log($"Adding a file override mod pak '{modData.Name}'.");
 				}
 
 				if (modData != null)
