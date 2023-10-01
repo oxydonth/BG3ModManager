@@ -55,6 +55,9 @@ using DivinityModManager.Models.Cache;
 using DivinityModManager.ModUpdater;
 using DivinityModManager.ModUpdater.Cache;
 using SharpCompress.Archives;
+using ZstdSharp;
+using SharpCompress.Compressors.Xz;
+using SharpCompress.Compressors.BZip2;
 
 namespace DivinityModManager.ViewModels
 {
@@ -1827,7 +1830,8 @@ Directory the zip will be extracted to:
 
 		private async Task<ImportOperationResults> AddModFromFile(Dictionary<string, DivinityModData> builtinMods, ImportOperationResults taskResult, string filePath, CancellationToken cts, bool toActiveList = false)
 		{
-			if (Path.GetExtension(filePath).Equals(".pak", StringComparison.OrdinalIgnoreCase))
+			var ext = Path.GetExtension(filePath).ToLower();
+			if (ext.Equals(".pak", StringComparison.OrdinalIgnoreCase))
 			{
 				var outputFilePath = Path.Combine(PathwayData.AppDataModsPath, Path.GetFileName(filePath));
 				try
@@ -1866,9 +1870,13 @@ Directory the zip will be extracted to:
 					DivinityApp.Log($"Error reading file ({filePath}):\n{ex}");
 				}
 			}
-			else
+			else if(_archiveFormats.Contains(ext, StringComparer.OrdinalIgnoreCase))
 			{
 				await ImportArchiveAsync(builtinMods, taskResult, filePath, true, cts, toActiveList);
+			}
+			else if(_compressedFormats.Contains(ext, StringComparer.OrdinalIgnoreCase))
+			{
+				await ImportCompressedFileAsync(builtinMods, taskResult, filePath, ext, true, cts, toActiveList);
 			}
 			return taskResult;
 		}
@@ -1929,7 +1937,8 @@ Directory the zip will be extracted to:
 							else if (total == 1)
 							{
 								var modFileName = result.Mods.First().FileName;
-								ShowAlert($"Successfully imported '{modFileName}'", AlertType.Success, 20);
+								var fileNames = String.Join(", ", files.Select(x => Path.GetFileName(x)));
+								ShowAlert($"Successfully imported '{modFileName}' from '{fileNames}'", AlertType.Success, 20);
 							}
 							else
 							{
@@ -1982,7 +1991,10 @@ Directory the zip will be extracted to:
 			return directory;
 		}
 
-		private readonly string _archiveFormats = "*.7z;*.7zip;*.bz2;*.gzip;*.rar;*.tar;*.tar.gz;*.zip;*.zst";
+		private static readonly List<string> _archiveFormats = new List<string>() { ".7z", ".7zip", ".gzip", ".rar", ".tar", ".tar.gz", ".zip" };
+		private static readonly List<string> _compressedFormats = new List<string>() { ".bz2", ".xz", ".zst" };
+		private static readonly string _archiveFormatsStr = String.Join(";", _archiveFormats.Select(x => "*" + x));
+		private static readonly string _compressedFormatsStr = String.Join(";", _compressedFormats.Select(x => "*" + x));
 
 		private void OpenModImportDialog()
 		{
@@ -1991,7 +2003,7 @@ Directory the zip will be extracted to:
 				CheckFileExists = true,
 				CheckPathExists = true,
 				DefaultExt = ".zip",
-				Filter = $"All formats (*.pak;*.zip;*.7z;*.rar)|*.pak{_archiveFormats}|Mod package (*.pak)|*.pak|Archive file ({_archiveFormats})|{_archiveFormats}|All files (*.*)|*.*",
+				Filter = $"All formats (*.pak;{_archiveFormatsStr};{_compressedFormatsStr})|*.pak;{_archiveFormatsStr};{_compressedFormatsStr}|Mod package (*.pak)|*.pak|Archive file ({_archiveFormatsStr})|{_archiveFormatsStr}|Compressed file ({_compressedFormatsStr})|{_compressedFormatsStr}|All files (*.*)|*.*",
 				Title = "Import Mods from Archive...",
 				ValidateNames = true,
 				ReadOnlyChecked = true,
@@ -2993,7 +3005,7 @@ Directory the zip will be extracted to:
 				CheckFileExists = true,
 				CheckPathExists = true,
 				DefaultExt = ".zip",
-				Filter = $"Archive file (*.7z,*.rar;*.zip)|{_archiveFormats}|All files (*.*)|*.*",
+				Filter = $"Archive file (*.7z,*.rar;*.zip)|{_archiveFormatsStr}|All files (*.*)|*.*",
 				Title = "Import Mods from Archive...",
 				ValidateNames = true,
 				ReadOnlyChecked = true,
@@ -3119,6 +3131,159 @@ Directory the zip will be extracted to:
 			DivinityApp.Log($"Imported Mod: {mod}");
 		}
 
+		private async Task<bool> ImportCompressedFileAsync(Dictionary<string, DivinityModData> builtinMods, ImportOperationResults taskResult, string filePath, string extension, bool onlyMods, CancellationToken cts, bool toActiveList = false)
+		{
+			System.IO.FileStream fileStream = null;
+			string outputDirectory = PathwayData.AppDataModsPath;
+			double taskStepAmount = 1.0 / 4;
+			bool success = false;
+			var jsonFiles = new Dictionary<string, string>();
+			try
+			{
+				fileStream = File.Open(filePath, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.Read, 4096, true);
+				if (fileStream != null)
+				{
+					var info = NexusModFileVersionData.FromFilePath(filePath);
+
+					await fileStream.ReadAsync(new byte[fileStream.Length], 0, (int)fileStream.Length);
+					fileStream.Position = 0;
+					IncreaseMainProgressValue(taskStepAmount);
+                    System.IO.Stream decompressionStream = null;
+                    System.IO.Stream outputStream = null;
+
+					try
+					{
+						switch (extension)
+						{
+							case ".bz2":
+								decompressionStream = new BZip2Stream(fileStream, SharpCompress.Compressors.CompressionMode.Decompress, true);
+								break;
+							case ".xz":
+								decompressionStream = new XZStream(fileStream);
+								break;
+							case ".zst":
+								decompressionStream = new DecompressionStream(fileStream);
+								break;
+						}
+						if (decompressionStream != null)
+						{
+							DivinityApp.Log($"Checking if compressed file ({extension}) is a pak.");
+							var outputName = Path.GetFileNameWithoutExtension(filePath) + ".pak";
+							var outputFilePath = Path.Combine(outputDirectory, outputName);
+							//outputStream = new System.IO.FileStream(Path.Combine(Path.GetDirectoryName(filePath), "Test.pak"), System.IO.FileMode.OpenOrCreate);
+							outputStream = new System.IO.MemoryStream();
+							await decompressionStream.CopyToAsync(outputStream, 4096, cts);
+
+							try
+							{
+								var mod = await DivinityModDataLoader.LoadModDataFromPakAsync(outputStream, outputFilePath, builtinMods, cts);
+								if (mod != null)
+								{
+									try
+									{
+										mod.LastModified = File.GetChangeTime(filePath);
+										mod.LastUpdated = mod.LastModified;
+									}
+									catch (Exception ex)
+									{
+										DivinityApp.Log($"Error getting pak last modified date for '{ex}': {ex}");
+									}
+
+									if (!outputName.Contains(mod.Name))
+									{
+										var nameFromMeta = $"{mod.Folder}.pak";
+										outputFilePath = Path.Combine(outputDirectory, nameFromMeta);
+										mod.FilePath = outputFilePath;
+									}
+									using (var fs = File.Create(outputFilePath, 4096, System.IO.FileOptions.Asynchronous))
+									{
+										try
+										{
+											await decompressionStream.CopyToAsync(fs, 4096, cts);
+											success = true;
+										}
+										catch (Exception ex)
+										{
+											taskResult.AddError(outputFilePath, ex);
+											DivinityApp.Log($"Error copying file '{outputName}' from archive to '{outputFilePath}':\n{ex}");
+										}
+									}
+
+									if (success)
+									{
+										taskResult.TotalPaks++;
+										taskResult.Mods.Add(mod);
+										mod.NexusModsData.SetModVersion(info);
+										await Observable.Start(() =>
+										{
+											AddImportedMod(mod, toActiveList);
+											return Unit.Default;
+										}, RxApp.MainThreadScheduler);
+									}
+								}
+							}
+							catch(Exception ex)
+							{
+								DivinityApp.Log($"Error reading decompressed file '{filePath}' as pak:\n{ex}");
+							}
+						}
+					}
+					catch(Exception ex)
+					{
+						DivinityApp.Log($"Error reading file '{filePath}':\n{ex}");
+					}
+					finally
+					{
+						decompressionStream?.Dispose();
+						outputStream?.Dispose();
+					}
+
+					if (info.Success && success)
+					{
+						//Still save cache from imported zips, even if we aren't updating
+						await UpdateHandler.Nexus.SaveCacheAsync(false, Version, MainProgressToken.Token);
+					}
+
+					IncreaseMainProgressValue(taskStepAmount);
+				}
+			}
+			catch (Exception ex)
+			{
+				DivinityApp.Log($"Error extracting package: {ex}");
+				RxApp.MainThreadScheduler.Schedule(_ =>
+				{
+					taskResult.AddError(filePath, ex);
+					ShowAlert($"Error extracting archive (check the log): {ex.Message}", AlertType.Danger, 0);
+				});
+			}
+			finally
+			{
+				RxApp.MainThreadScheduler.Schedule(_ => MainProgressWorkText = $"Cleaning up...");
+				fileStream?.Close();
+				IncreaseMainProgressValue(taskStepAmount);
+
+				if (!onlyMods && jsonFiles.Count > 0)
+				{
+					RxApp.MainThreadScheduler.Schedule(_ =>
+					{
+						foreach (var kvp in jsonFiles)
+						{
+							DivinityLoadOrder order = DivinityJsonUtils.SafeDeserialize<DivinityLoadOrder>(kvp.Value);
+							if (order != null)
+							{
+								taskResult.Orders.Add(order);
+								order.Name = kvp.Key;
+								DivinityApp.Log($"Imported mod order from archive: {String.Join(@"\n\t", order.Order.Select(x => x.Name))}");
+								AddNewModOrder(order);
+							}
+						}
+					});
+				}
+				IncreaseMainProgressValue(taskStepAmount);
+			}
+			return success;
+		}
+
 		private async Task<bool> ImportArchiveAsync(Dictionary<string, DivinityModData> builtinMods, ImportOperationResults taskResult, string archivePath, bool onlyMods, CancellationToken cts, bool toActiveList = false)
 		{
 			System.IO.FileStream fileStream = null;
@@ -3154,7 +3319,7 @@ Directory the zip will be extracted to:
 										{
 											try
 											{
-												await entryStream.CopyToAsync(fs, 4096, MainProgressToken.Token);
+												await entryStream.CopyToAsync(fs, 4096, cts);
 												success = true;
 											}
 											catch (Exception ex)
