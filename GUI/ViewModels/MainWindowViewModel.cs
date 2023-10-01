@@ -1953,13 +1953,25 @@ Directory the zip will be extracted to:
 			}
 		}
 
-		private string GetInitialStartingDirectory(string fallback = "")
+		private string GetInitialStartingDirectory(string prioritizePath = "")
 		{
-			var directory = fallback;
+			var directory = prioritizePath;
 
-			if (!String.IsNullOrEmpty(PathwayData.LastSaveFilePath) && DivinityFileUtils.TryGetDirectoryOrParent(PathwayData.LastSaveFilePath, out var lastDir))
+			if (!String.IsNullOrEmpty(prioritizePath) && DivinityFileUtils.TryGetDirectoryOrParent(PathwayData.LastSaveFilePath, out var actualDir))
 			{
-				directory = lastDir;
+				directory = actualDir;
+			}
+			else
+			{
+				if (!String.IsNullOrEmpty(Settings.LastImportDirectoryPath))
+				{
+					directory = Settings.LastImportDirectoryPath;
+				}
+
+				if (!String.IsNullOrEmpty(PathwayData.LastSaveFilePath) && DivinityFileUtils.TryGetDirectoryOrParent(PathwayData.LastSaveFilePath, out var lastDir))
+				{
+					directory = lastDir;
+				}
 			}
 
 			if(String.IsNullOrEmpty(directory) || !Directory.Exists(directory))
@@ -1979,12 +1991,12 @@ Directory the zip will be extracted to:
 				CheckFileExists = true,
 				CheckPathExists = true,
 				DefaultExt = ".zip",
-				Filter = $"All formats (*.pak;*.zip;*.7z;*.rar)|*.pak{_archiveFormats}|Mod package (*.pak)|*.pak|Archive file (*.7z,*.rar;*.zip)|{_archiveFormats}|All files (*.*)|*.*",
+				Filter = $"All formats (*.pak;*.zip;*.7z;*.rar)|*.pak{_archiveFormats}|Mod package (*.pak)|*.pak|Archive file ({_archiveFormats})|{_archiveFormats}|All files (*.*)|*.*",
 				Title = "Import Mods from Archive...",
 				ValidateNames = true,
 				ReadOnlyChecked = true,
 				Multiselect = true,
-				InitialDirectory = !String.IsNullOrEmpty(Settings.LastImportDirectoryPath) ? Settings.LastImportDirectoryPath : GetInitialStartingDirectory()
+				InitialDirectory = GetInitialStartingDirectory()
 			};
 
 			if (dialog.ShowDialog(View) == true)
@@ -2583,7 +2595,7 @@ Directory the zip will be extracted to:
 
 		private void SaveLoadOrderAs()
 		{
-			var startDirectory = Path.GetFullPath(!String.IsNullOrEmpty(Settings.LoadOrderPath) ? Settings.LoadOrderPath : GetInitialStartingDirectory(Directory.GetCurrentDirectory()));
+			var startDirectory = GetInitialStartingDirectory(Settings.LoadOrderPath);
 
 			if (!Directory.Exists(startDirectory))
 			{
@@ -3572,23 +3584,22 @@ Directory the zip will be extracted to:
 				Title = "Load Mod Order From Save..."
 			};
 
+			var startPath = "";
 			if (SelectedProfile != null)
 			{
 				string profilePath = Path.GetFullPath(Path.Combine(SelectedProfile.Folder, "Savegames"));
 				string storyPath = Path.Combine(profilePath, "Story");
 				if (Directory.Exists(storyPath))
 				{
-					dialog.InitialDirectory = storyPath;
+					startPath = storyPath;
 				}
 				else
 				{
-					dialog.InitialDirectory = profilePath;
+					startPath = profilePath;
 				}
 			}
-			else
-			{
-				dialog.InitialDirectory = GetInitialStartingDirectory();
-			}
+
+			dialog.InitialDirectory = GetInitialStartingDirectory(startPath);
 
 			if (dialog.ShowDialog(View) == true)
 			{
@@ -3650,29 +3661,9 @@ Directory the zip will be extracted to:
 				CheckPathExists = true,
 				DefaultExt = ".json",
 				Filter = "All formats (*.json;*.txt;*.tsv)|*.json;*.txt;*.tsv|JSON file (*.json)|*.json|Text file (*.txt)|*.txt|TSV file (*.tsv)|*.tsv",
-				Title = "Load Mod Order From File..."
+				Title = "Load Mod Order From File...",
+				InitialDirectory = GetInitialStartingDirectory(Settings.LastLoadedOrderFilePath)
 			};
-
-			if (!String.IsNullOrEmpty(Settings.LastLoadedOrderFilePath))
-			{
-				if (Directory.Exists(Settings.LastLoadedOrderFilePath))
-				{
-					dialog.InitialDirectory = Settings.LastLoadedOrderFilePath;
-				}
-				else if (File.Exists(Settings.LastLoadedOrderFilePath))
-				{
-					dialog.InitialDirectory = Path.GetDirectoryName(Settings.LastLoadedOrderFilePath);
-				}
-			}
-			else if (Directory.Exists(Settings.LoadOrderPath))
-			{
-				dialog.InitialDirectory = Settings.LoadOrderPath;
-			}
-
-			if (!Directory.Exists(dialog.InitialDirectory))
-			{
-				dialog.InitialDirectory = GetInitialStartingDirectory();
-			}
 
 			if (dialog.ShowDialog(View) == true)
 			{
@@ -3690,26 +3681,28 @@ Directory the zip will be extracted to:
 							SelectedModOrder.SetOrder(newOrder);
 							if (LoadModOrder(SelectedModOrder))
 							{
-								DivinityApp.Log($"Successfully re-loaded order '{SelectedModOrder.Name}' with imported order.");
+								ShowAlert($"Successfully overwrote order '{SelectedModOrder.Name}' with with imported order", AlertType.Success, 20);
 							}
 							else
 							{
-								DivinityApp.Log($"Failed to load order '{SelectedModOrder.Name}'");
+								ShowAlert($"Failed to reset order to '{dialog.FileName}'", AlertType.Danger, 60);
 							}
 						}
 						else
 						{
 							AddNewModOrder(newOrder);
+							ShowAlert($"Successfully imported order '{newOrder.Name}'", AlertType.Success, 20);
 						}
 					}
 					else
 					{
 						AddNewModOrder(newOrder);
+						ShowAlert($"Successfully imported order '{newOrder.Name}'", AlertType.Success, 20);
 					}
 				}
 				else
 				{
-					DivinityApp.Log($"Failed to load order from '{dialog.FileName}'.");
+					ShowAlert($"Failed to import order from '{dialog.FileName}'", AlertType.Danger, 60);
 				}
 			}
 		}
@@ -3730,23 +3723,22 @@ Directory the zip will be extracted to:
 				Title = "Pick Save to Rename..."
 			};
 
+			var startPath = "";
 			if (SelectedProfile != null)
 			{
 				string profilePath = Path.GetFullPath(Path.Combine(SelectedProfile.Folder, "Savegames"));
 				string storyPath = Path.Combine(profilePath, "Story");
 				if (Directory.Exists(storyPath))
 				{
-					dialog.InitialDirectory = storyPath;
+					startPath = storyPath;
 				}
 				else
 				{
-					dialog.InitialDirectory = profilePath;
+					startPath = profilePath;
 				}
 			}
-			else
-			{
-				dialog.InitialDirectory = GetInitialStartingDirectory();
-			}
+
+			dialog.InitialDirectory = GetInitialStartingDirectory(startPath);
 
 			if (dialog.ShowDialog(View) == true)
 			{
@@ -3765,9 +3757,9 @@ Directory the zip will be extracted to:
 					FileName = rootFileName + "_1.lsv"
 				};
 
-				if (!Directory.Exists(dialog.InitialDirectory))
+				if (!Directory.Exists(renameDialog.InitialDirectory))
 				{
-					dialog.InitialDirectory = GetInitialStartingDirectory();
+					dialog.InitialDirectory = GetInitialStartingDirectory(startPath);
 				}
 
 				if (renameDialog.ShowDialog(View) == true)
@@ -4153,17 +4145,9 @@ Directory the zip will be extracted to:
 			{
 				ShowNewFolderButton = true,
 				UseDescriptionForTitle = true,
-				Description = "Select folder to extract mod(s) to..."
+				Description = "Select folder to extract mod(s) to...",
+				SelectedPath = GetInitialStartingDirectory(Settings.LastExtractOutputPath)
 			};
-
-			if (Settings.LastExtractOutputPath.IsExistingDirectory())
-			{
-				dialog.SelectedPath = Settings.LastExtractOutputPath + "\\";
-			}
-			else
-			{
-				dialog.SelectedPath = GetInitialStartingDirectory();
-			}
 
 			if (dialog.ShowDialog(View) == true)
 			{
@@ -4271,17 +4255,9 @@ Directory the zip will be extracted to:
 			{
 				ShowNewFolderButton = true,
 				UseDescriptionForTitle = true,
-				Description = "Select folder to extract mod to..."
+				Description = "Select folder to extract mod to...",
+				SelectedPath = GetInitialStartingDirectory(Settings.LastExtractOutputPath)
 			};
-
-			if (Settings.LastExtractOutputPath.IsExistingDirectory())
-			{
-				dialog.SelectedPath = Settings.LastExtractOutputPath + "\\";
-			}
-			else
-			{
-				dialog.SelectedPath = GetInitialStartingDirectory();
-			}
 
 			if (dialog.ShowDialog(View) == true)
 			{
